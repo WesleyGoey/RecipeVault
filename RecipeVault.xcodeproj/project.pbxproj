@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5336D67A2FB5A85300A44899 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 5336D6792FB5A85300A44899 /* FirebaseAnalytics */; };
+		5336D67C2FB5A85300A44899 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 5336D67B2FB5A85300A44899 /* FirebaseAppCheck */; };
+		5336D67E2FB5A85300A44899 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 5336D67D2FB5A85300A44899 /* FirebaseAuth */; };
+		5336D6802FB5A85300A44899 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5336D67F2FB5A85300A44899 /* FirebaseCore */; };
+		5336D6822FB5A85300A44899 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 5336D6812FB5A85300A44899 /* FirebaseDatabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		9A11F6432FB4CBD000A9EBA0 /* RecipeVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecipeVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +31,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5336D6822FB5A85300A44899 /* FirebaseDatabase in Frameworks */,
+				5336D67C2FB5A85300A44899 /* FirebaseAppCheck in Frameworks */,
+				5336D67E2FB5A85300A44899 /* FirebaseAuth in Frameworks */,
+				5336D6802FB5A85300A44899 /* FirebaseCore in Frameworks */,
+				5336D67A2FB5A85300A44899 /* FirebaseAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +78,11 @@
 			);
 			name = RecipeVault;
 			packageProductDependencies = (
+				5336D6792FB5A85300A44899 /* FirebaseAnalytics */,
+				5336D67B2FB5A85300A44899 /* FirebaseAppCheck */,
+				5336D67D2FB5A85300A44899 /* FirebaseAuth */,
+				5336D67F2FB5A85300A44899 /* FirebaseCore */,
+				5336D6812FB5A85300A44899 /* FirebaseDatabase */,
 			);
 			productName = RecipeVault;
 			productReference = 9A11F6432FB4CBD000A9EBA0 /* RecipeVault.app */;
@@ -94,6 +112,9 @@
 			);
 			mainGroup = 9A11F63A2FB4CBD000A9EBA0;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9A11F6442FB4CBD000A9EBA0 /* Products */;
 			projectDirPath = "";
@@ -253,7 +274,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 23UCW7QT3F;
+				DEVELOPMENT_TEAM = XMK2Y8R52T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -266,7 +287,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = wesley.RecipeVault;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wesley.RecipeVault;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -285,7 +306,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 23UCW7QT3F;
+				DEVELOPMENT_TEAM = XMK2Y8R52T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -298,7 +319,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = wesley.RecipeVault;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wesley.RecipeVault;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -332,6 +353,45 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.13.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5336D6792FB5A85300A44899 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		5336D67B2FB5A85300A44899 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		5336D67D2FB5A85300A44899 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		5336D67F2FB5A85300A44899 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		5336D6812FB5A85300A44899 /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9A11F63B2FB4CBD000A9EBA0 /* Project object */;
 }
