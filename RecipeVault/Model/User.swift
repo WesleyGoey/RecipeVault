@@ -6,11 +6,20 @@
 //
 
 import Foundation
-import FirebaseDatabase
+import FirebaseFirestore
 
-struct User: Identifiable {
-    var id = UUID()
+struct User: Codable, Identifiable {
+    @DocumentID var id: String? // Automatically grabs the Firestore Document ID (which is the uid)
     var name: String
     var email: String
-    var passwordHash: String
+    var profilePicture: String
+    
+    // Optional helper to convert to dictionary if needed for your Service Layer
+    func toDict() -> [String: Any] {
+        return [
+            "name": name,
+            "email": email,
+            "profilePicture": profilePicture
+        ]
+    }
 }
