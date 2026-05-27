@@ -13,6 +13,7 @@
 		5336D6802FB5A85300A44899 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5336D67F2FB5A85300A44899 /* FirebaseCore */; };
 		5336D6822FB5A85300A44899 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 5336D6812FB5A85300A44899 /* FirebaseDatabase */; };
 		533877E52FC7521400ACCD46 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 533877E42FC7521400ACCD46 /* FirebaseFirestore */; };
+		533878752FC75E9100ACCD46 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 533878742FC75E9100ACCD46 /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 				5336D67C2FB5A85300A44899 /* FirebaseAppCheck in Frameworks */,
 				5336D67E2FB5A85300A44899 /* FirebaseAuth in Frameworks */,
 				5336D6802FB5A85300A44899 /* FirebaseCore in Frameworks */,
+				533878752FC75E9100ACCD46 /* FirebaseStorage in Frameworks */,
 				5336D67A2FB5A85300A44899 /* FirebaseAnalytics in Frameworks */,
 				533877E52FC7521400ACCD46 /* FirebaseFirestore in Frameworks */,
 			);
@@ -94,6 +96,7 @@
 				5336D67F2FB5A85300A44899 /* FirebaseCore */,
 				5336D6812FB5A85300A44899 /* FirebaseDatabase */,
 				533877E42FC7521400ACCD46 /* FirebaseFirestore */,
+				533878742FC75E9100ACCD46 /* FirebaseStorage */,
 			);
 			productName = RecipeVault;
 			productReference = 9A11F6432FB4CBD000A9EBA0 /* RecipeVault.app */;
@@ -406,6 +409,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		533878742FC75E9100ACCD46 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5336D6782FB5A85300A44899 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
