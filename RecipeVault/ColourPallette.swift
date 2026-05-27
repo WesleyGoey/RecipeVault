@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ColourPallette: View {
     // 3 Warna Utama yang Diinginkan
-    let backgroundCream = Color(hex: "#fffacd")
+    let backgroundCream = Color(hex: "#f8fae5")
     let primaryGreen = Color(hex: "#43766c")
     let accentOrange = Color(hex: "#cd4b12")
     
@@ -48,7 +48,7 @@ struct ColourPallette: View {
                             .foregroundColor(.secondary)
                         
                         HStack(spacing: 20) {
-                            colorSwatch(color: backgroundCream, label: "Background", hex: "#FFFACD")
+                            colorSwatch(color: backgroundCream, label: "Background", hex: "#F8FAE5")
                             colorSwatch(color: primaryGreen, label: "Primary", hex: "#43766C")
                             colorSwatch(color: accentOrange, label: "Accent", hex: "#CD4B12")
                         }
