@@ -49,6 +49,14 @@ class FirestoreService {
         return snapshot.documents.compactMap { try? $0.data(as: RecipeCollection.self) }
     }
     
+    // Fetch ONLY the current user's collections (For the Bottom Sheet & Profile)
+    func getUserCollections(userId: String) async throws -> [RecipeCollection] {
+        let snapshot = try await db.collection("collections")
+            .whereField("userId", isEqualTo: userId)
+            .getDocuments()
+            
+        return snapshot.documents.compactMap { try? $0.data(as: RecipeCollection.self) }
+    }
     // MARK: - Junction Table (Add Recipe to Collection)
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws {
         let ref = db.collection("collection_recipes").document()
