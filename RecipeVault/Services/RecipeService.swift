@@ -34,23 +34,23 @@ class RecipeService: RecipeServiceProtocol {
     
     // MARK: - Methods
     func createRecipeWithImage(recipe: Recipe, imageData: Data) async throws {
-        // 1. Validasi Ukuran File
-        guard validateSize(image: imageData) else {
-            throw NSError(
-                domain: "RecipeService",
-                code: 400,
-                userInfo: [NSLocalizedDescriptionKey: "Ukuran gambar melebihi 5 MB."]
-            )
+        // Validasi Atribut Baru sebelum menyentuh database
+        guard recipe.cookingTime > 0 else {
+            throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Waktu memasak harus lebih dari 0 menit."])
+        }
+        guard recipe.servings > 0 else {
+            throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Jumlah porsi harus lebih dari 0."])
         }
         
-        // 2. Unggah gambar
+        guard validateSize(image: imageData) else {
+            throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Ukuran gambar melebihi 5 MB."])
+        }
+        
         let imageURL = try await storageRepo.uploadImage(image: imageData, path: "recipe_images")
         
-        // 3. Salin struct resep (karena struct bersifat pass-by-value) dan assign URL
         var newRecipe = recipe
         newRecipe.recipeImage = imageURL
         
-        // 4. Simpan dokumen ke Firestore
         try await firestoreRepo.createRecipe(recipe: newRecipe)
     }
 }

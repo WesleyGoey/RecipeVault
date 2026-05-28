@@ -1,5 +1,5 @@
 //
-//  RecipeDetailView 2.swift
+//  RecipeDetailView.swift
 //  RecipeVault
 //
 //  Created by Sean tandjaja on 28/05/26.
@@ -183,11 +183,11 @@ extension RecipeDetailView {
         HStack(spacing: 12) {
             HStack(spacing: 6) {
                 Image(systemName: "clock")
-                Text("35 min") // We can make this dynamic later if needed
+                Text("\(viewModel.recipe.cookingTime) min")
             }
             Text("·")
                 .fontWeight(.bold)
-            Text("4 servings") // We can make this dynamic later if needed
+            Text("\(viewModel.recipe.servings) \(viewModel.recipe.servings == 1 ? "serving" : "servings")")
         }
         .font(.subheadline)
         .foregroundColor(.gray)
@@ -357,7 +357,9 @@ struct PreviewLiveWrapper: View {
                     ingredients: ["(Ingredient parsing coming soon)"],
                     steps: parsedSteps,
                     category: category,
-                    recipeImage: image
+                    recipeImage: image,
+                    cookingTime: 30,
+                    servings: 4
                 )
                 
                 realRecipe.id = mealId
