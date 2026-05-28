@@ -2,24 +2,45 @@
 //  TheMealDBService.swift
 //  RecipeVault
 //
-//  Created by Sean tandjaja on 28/05/26.
+//  Created by Wesley Goey on 28/05/26.
 //
 
 
+// MARK: - TheMealDBService
 import Foundation
 
-class TheMealDBService {
-    static let shared = TheMealDBService()
-    let baseURL = "https://www.themealdb.com/api/json/v1/1"
+class TheMealDBService: TheMealDBServiceProtocol {
     
+    // MARK: - Properties
+    static let shared = TheMealDBService(
+        apiRepo: TheMealDBRepository.shared,
+        cacheService: MemoryCacheService.shared
+    )
+    
+    private let apiRepo: TheMealDBRepositoryProtocol
+    private let cacheService: MemoryCacheServiceProtocol
+    
+    // MARK: - Initializer (Dependency Injection)
+    init(apiRepo: TheMealDBRepositoryProtocol, cacheService: MemoryCacheServiceProtocol) {
+        self.apiRepo = apiRepo
+        self.cacheService = cacheService
+    }
+    
+    // MARK: - Methods
     func searchMeals(query: String) async throws -> [MealDBRecipe] {
-        guard let url = URL(string: "\(baseURL)/search.php?s=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)") else {
-            throw URLError(.badURL)
+        let cacheKey = query.lowercased()
+        
+        // 1. Cek Data di RAM Cache (Mencegah Network Call berulang)
+        if let cachedData = cacheService.get(query: cacheKey), !cachedData.isEmpty {
+            return cachedData
         }
         
-        let (data, _) = try await URLSession.shared.data(from: url)
-        let response = try JSONDecoder().decode(MealResponse.self, from: data)
+        // 2. Fetch Data dari Internet via Repository
+        let results = try await apiRepo.searchMeals(query: query)
         
-        return response.meals ?? []
+        // 3. Simpan Hasil ke Cache
+        cacheService.set(query: cacheKey, result: results)
+        
+        return results
     }
 }

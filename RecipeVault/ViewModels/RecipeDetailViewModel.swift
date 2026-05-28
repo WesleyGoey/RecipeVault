@@ -6,6 +6,7 @@
 //
 
 
+// MARK: - RecipeDetailViewModel
 import Foundation
 import SwiftUI
 import Combine
@@ -20,7 +21,7 @@ class RecipeDetailViewModel: ObservableObject {
     // MARK: - Collection Bottom Sheet State
     @Published var showCollectionSheet: Bool = false
     @Published var userCollections: [RecipeCollection] = []
-    @Published var selectedCollectionIds: Set<String> = [] // A Set is perfect for multi-select tick boxes
+    @Published var selectedCollectionIds: Set<String> = []
     @Published var isSavingToCollections: Bool = false
     
     enum DetailTab {
@@ -28,8 +29,10 @@ class RecipeDetailViewModel: ObservableObject {
         case steps
     }
     
-    private let firestoreService = FirestoreService.shared
-    private let authService = FirebaseAuthService.shared
+    // Deklarasi dependensi baru sesuai arsitektur flat
+    private let firestoreRepo = FirestoreRepository.shared
+    private let collectionService = CollectionService.shared
+    private let authService = AuthService.shared
     
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -41,7 +44,7 @@ class RecipeDetailViewModel: ObservableObject {
     // MARK: - Favorite Actions
     func toggleFavorite() async {
         isFavorite.toggle() // Optimistic UI update
-        // TODO: Call FirestoreService to add/remove favorite using authService.getCurrentUID()
+        // TODO: Call FavoriteService to add/remove favorite
     }
     
     func checkIfFavorite() async {
@@ -61,8 +64,8 @@ class RecipeDetailViewModel: ObservableObject {
         guard let uid = authService.getCurrentUID() else { return }
         
         do {
-            // Now the code actually USES the uid, and uses the TRY keyword!
-            userCollections = try await firestoreService.getUserCollections(userId: uid)
+            // Operasi Mambaca -> Menggunakan Repository
+            userCollections = try await firestoreRepo.getUserCollections(userId: uid)
             print("Fetched \(userCollections.count) collections for bottom sheet!")
         } catch {
             print("Error fetching collections: \(error.localizedDescription)")
@@ -85,8 +88,8 @@ class RecipeDetailViewModel: ObservableObject {
         
         do {
             for collectionId in selectedCollectionIds {
-                // Creates the junction table entries in Firebase
-                try await firestoreService.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
+                // Operasi Menulis (Business Logic) -> Menggunakan Service
+                try await collectionService.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
             }
             showCollectionSheet = false
             selectedCollectionIds.removeAll() // Clear after saving
