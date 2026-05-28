@@ -5,15 +5,21 @@
 //  Created by Sean tandjaja on 28/05/26.
 //
 
-
+// MARK: - MemoryCacheService
 import Foundation
 
-class MemoryCacheService {
+class MemoryCacheService: MemoryCacheServiceProtocol {
+    
+    // MARK: - Properties
     static let shared = MemoryCacheService()
     
-    // A simple dictionary to hold data in RAM while the app is alive
+    // Dictionary untuk menyimpan data di RAM selama aplikasi hidup
     private var cache: [String: [MealDBRecipe]] = [:]
     
+    // MARK: - Initializer
+    private init() {}
+    
+    // MARK: - Methods
     func set(query: String, result: [MealDBRecipe]) {
         cache[query.lowercased()] = result
     }

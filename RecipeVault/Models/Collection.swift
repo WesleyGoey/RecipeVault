@@ -1,19 +1,12 @@
 //
-//  Visibility.swift
+//  Collection.swift
 //  RecipeVault
 //
-//  Created by Sean tandjaja on 27/05/26.
+//  Created by Wesley Goey on 28/05/26.
 //
-
 
 import Foundation
 import FirebaseFirestore
-
-// M-07: Visibility Enum
-enum Visibility: String, Codable {
-    case publicVisibility = "PUBLIC"
-    case privateVisibility = "PRIVATE"
-}
 
 // M-05: Collection
 struct RecipeCollection: Codable, Identifiable {
