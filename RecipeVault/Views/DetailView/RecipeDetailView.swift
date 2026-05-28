@@ -179,6 +179,7 @@ extension RecipeDetailView {
         }
     }
     
+    
     private var metaSection: some View {
         HStack(spacing: 12) {
             HStack(spacing: 6) {
@@ -375,7 +376,6 @@ struct PreviewLiveWrapper: View {
 }
 
 // MARK: - Local Color Extension
-// Bypasses the Target Membership bug AND prevents "Invalid redeclaration" errors!
 fileprivate extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)

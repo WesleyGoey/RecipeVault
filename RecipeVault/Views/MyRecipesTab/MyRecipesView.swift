@@ -1,0 +1,189 @@
+//
+//  MyRecipesView.swift
+//  RecipeVault
+//
+//  Created by Wesley Goey on 28/05/26.
+//
+
+
+// MARK: - MyRecipesView
+import SwiftUI
+
+struct MyRecipesView: View {
+    
+    // MARK: - Properties
+    @StateObject private var viewModel = RecipeViewModel()
+    @State private var showingCreateSheet = false
+    
+    private let columns = [
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16)
+    ]
+    
+    // Theme Colors
+    let bgYellow = Color(hex: "f8fae5")
+    let mutedTeal = Color(hex: "43766c")
+    
+    // MARK: - Body
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottomTrailing) {
+                // Background Utama
+                bgYellow.ignoresSafeArea()
+                
+                // Header dan Grid
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        headerSection
+                        gridSection
+                    }
+                }
+                
+                // Tombol aksi melayang (FAB)
+                floatingActionButton
+            }
+            .navigationBarHidden(true)
+            .task {
+                if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+                    viewModel.myRecipes = Recipe.previewMockData
+                } else {
+                    await viewModel.loadMyRecipes()
+                }
+            }
+            .sheet(isPresented: $showingCreateSheet) {
+                Text("RecipeCreateView Placeholder")
+            }
+        }
+    }
+}
+
+// MARK: - Subviews
+extension MyRecipesView {
+    
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("My Recipes")
+                .font(.custom("Merriweather-Bold", size: 36))
+                .foregroundColor(Color.primary)
+            
+            Text("\(viewModel.myRecipes.count) created")
+                .font(.subheadline)
+                .foregroundColor(.gray)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .padding(.bottom, 16)
+    }
+    
+    private var gridSection: some View {
+        LazyVGrid(columns: columns, spacing: 16) {
+            // 🚀 PERBAIKAN: Menambahkan id: \.title agar SwiftUI tahu setiap resep itu unik!
+            ForEach(viewModel.myRecipes, id: \.title) { recipe in
+                NavigationLink(destination: Text("Detail View Placeholder untuk \(recipe.title)")) {
+                    RecipeCardView(recipe: recipe)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 120)
+    }
+    
+    private var floatingActionButton: some View {
+        Button(action: {
+            showingCreateSheet = true
+        }) {
+            Image(systemName: "plus")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 64, height: 64)
+                .background(mutedTeal)
+                .clipShape(Circle())
+                .shadow(color: mutedTeal.opacity(0.3), radius: 8, x: 0, y: 4)
+        }
+        .padding(.trailing, 20)
+        .padding(.bottom, 24)
+    }
+}
+
+// MARK: - 🚀 Preview Mock Data Extension
+extension Recipe {
+    static let previewMockData = [
+        Recipe(
+            userId: "123",
+            title: "Mom's Sunday Pasta",
+            description: "Resep pasta turun temurun hari minggu.",
+            ingredients: [], steps: [],
+            category: "Italian",
+            recipeImage: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=500&auto=format&fit=crop",
+            cookingTime: 45, servings: 4
+        ),
+        Recipe(
+            userId: "123",
+            title: "Lemon Herb Roast Chicken",
+            description: "Ayam panggang juicy dengan perasan lemon segar.",
+            ingredients: [], steps: [],
+            category: "Dinner",
+            recipeImage: "https://images.unsplash.com/photo-1598103442097-8b74394b98c6?q=80&w=500&auto=format&fit=crop",
+            cookingTime: 60, servings: 4
+        ),
+        Recipe(
+            userId: "123",
+            title: "Blueberry Pavlova",
+            description: "Kue meringue renyah dengan topping berry melimpah.",
+            ingredients: [], steps: [],
+            category: "Dessert",
+            recipeImage: "https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?q=80&w=500&auto=format&fit=crop",
+            cookingTime: 90, servings: 6
+        ),
+        Recipe(
+            userId: "123",
+            title: "Weekend Shakshuka",
+            description: "Telur ceplok saus tomat pedas khas Timur Tengah.",
+            ingredients: [], steps: [],
+            category: "Brunch",
+            recipeImage: "https://images.unsplash.com/photo-1590412200988-a436bb705300?q=80&w=500&auto=format&fit=crop",
+            cookingTime: 25, servings: 2
+        ),
+        Recipe(
+            userId: "123",
+            title: "Indonesian Soto Ayam",
+            description: "Soto ayam kuah kuning hangat yang kaya rempah.",
+            ingredients: [], steps: [],
+            category: "Soto",
+            recipeImage: "https://images.unsplash.com/photo-1626804475315-943482bcb563?q=80&w=500&auto=format&fit=crop",
+            cookingTime: 40, servings: 4
+        ),
+        Recipe(
+            userId: "123",
+            title: "Classic Creamy Ramen",
+            description: "Mi kuah kaldu kental gurih ala Kopitiam.",
+            ingredients: [], steps: [],
+            category: "Noodles",
+            recipeImage: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=500&auto=format&fit=crop",
+            cookingTime: 20, servings: 1
+        )
+    ]
+}
+
+// MARK: - Preview
+#Preview {
+    MyRecipesView()
+}
+
+// MARK: - Local Color Extension
+fileprivate extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default: (a, r, g, b) = (1, 1, 1, 0)
+        }
+        self.init(.sRGB, red: Double(r) / 255, green: Double(g) / 255, blue:  Double(b) / 255, opacity: Double(a) / 255)
+    }
+}
