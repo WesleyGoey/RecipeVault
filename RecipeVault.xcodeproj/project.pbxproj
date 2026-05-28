@@ -16,11 +16,27 @@
 		533878752FC75E9100ACCD46 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 533878742FC75E9100ACCD46 /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		53C1BCF42FC80B190045B368 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9A11F63B2FB4CBD000A9EBA0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9A11F6422FB4CBD000A9EBA0;
+			remoteInfo = RecipeVault;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		53C1BCF02FC80B190045B368 /* RecipeVaultTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RecipeVaultTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9A11F6432FB4CBD000A9EBA0 /* RecipeVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecipeVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		53C1BCF12FC80B190045B368 /* RecipeVaultTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RecipeVaultTests;
+			sourceTree = "<group>";
+		};
 		9A11F6452FB4CBD000A9EBA0 /* RecipeVault */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = RecipeVault;
@@ -29,6 +45,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		53C1BCED2FC80B190045B368 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9A11F6402FB4CBD000A9EBA0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -57,6 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				9A11F6452FB4CBD000A9EBA0 /* RecipeVault */,
+				53C1BCF12FC80B190045B368 /* RecipeVaultTests */,
 				533877E32FC7521400ACCD46 /* Frameworks */,
 				9A11F6442FB4CBD000A9EBA0 /* Products */,
 			);
@@ -66,6 +90,7 @@
 			isa = PBXGroup;
 			children = (
 				9A11F6432FB4CBD000A9EBA0 /* RecipeVault.app */,
+				53C1BCF02FC80B190045B368 /* RecipeVaultTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -73,6 +98,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		53C1BCEF2FC80B190045B368 /* RecipeVaultTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 53C1BCF82FC80B190045B368 /* Build configuration list for PBXNativeTarget "RecipeVaultTests" */;
+			buildPhases = (
+				53C1BCEC2FC80B190045B368 /* Sources */,
+				53C1BCED2FC80B190045B368 /* Frameworks */,
+				53C1BCEE2FC80B190045B368 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				53C1BCF52FC80B190045B368 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				53C1BCF12FC80B190045B368 /* RecipeVaultTests */,
+			);
+			name = RecipeVaultTests;
+			packageProductDependencies = (
+			);
+			productName = RecipeVaultTests;
+			productReference = 53C1BCF02FC80B190045B368 /* RecipeVaultTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		9A11F6422FB4CBD000A9EBA0 /* RecipeVault */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9A11F64E2FB4CBD300A9EBA0 /* Build configuration list for PBXNativeTarget "RecipeVault" */;
@@ -109,9 +157,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastSwiftUpdateCheck = 2620;
+				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					53C1BCEF2FC80B190045B368 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 9A11F6422FB4CBD000A9EBA0;
+					};
 					9A11F6422FB4CBD000A9EBA0 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -135,11 +187,19 @@
 			projectRoot = "";
 			targets = (
 				9A11F6422FB4CBD000A9EBA0 /* RecipeVault */,
+				53C1BCEF2FC80B190045B368 /* RecipeVaultTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		53C1BCEE2FC80B190045B368 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9A11F6412FB4CBD000A9EBA0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -150,6 +210,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		53C1BCEC2FC80B190045B368 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9A11F63F2FB4CBD000A9EBA0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -159,7 +226,57 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		53C1BCF52FC80B190045B368 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9A11F6422FB4CBD000A9EBA0 /* RecipeVault */;
+			targetProxy = 53C1BCF42FC80B190045B368 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		53C1BCF62FC80B190045B368 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sean.RecipeVaultTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RecipeVault.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RecipeVault";
+			};
+			name = Debug;
+		};
+		53C1BCF72FC80B190045B368 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sean.RecipeVaultTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RecipeVault.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RecipeVault";
+			};
+			name = Release;
+		};
 		9A11F64C2FB4CBD300A9EBA0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -350,6 +467,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		53C1BCF82FC80B190045B368 /* Build configuration list for PBXNativeTarget "RecipeVaultTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				53C1BCF62FC80B190045B368 /* Debug */,
+				53C1BCF72FC80B190045B368 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		9A11F63E2FB4CBD000A9EBA0 /* Build configuration list for PBXProject "RecipeVault" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
