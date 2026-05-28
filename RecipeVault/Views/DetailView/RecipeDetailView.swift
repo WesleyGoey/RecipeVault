@@ -11,6 +11,9 @@ struct RecipeDetailView: View {
     // Uses ObservedObject because the ViewModel is passed in from the previous screen
     @ObservedObject var viewModel: RecipeDetailViewModel
     
+    // 🚀 Added to make the Back Button work
+    @Environment(\.dismiss) private var dismiss
+    
     // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
@@ -21,7 +24,7 @@ struct RecipeDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 
-                // 1. Hero Image (Now downloads from internet!)
+                // 1. Hero Image
                 heroImageSection
                 
                 // 2. Author Attribution
@@ -34,7 +37,7 @@ struct RecipeDetailView: View {
                     // 4. Meta Info (Time & Servings)
                     metaSection
                     
-                    // 5. Tags (Now uses real data)
+                    // 5. Tags
                     tagsSection
                     
                     // 6. Custom Segmented Control
@@ -56,14 +59,13 @@ struct RecipeDetailView: View {
         .edgesIgnoringSafeArea(.top)
         // This attaches the Collection Bottom Sheet to the View
         .sheet(isPresented: $viewModel.showCollectionSheet) {
-            // Temporary Text until we build the actual Bottom Sheet UI
             VStack {
                 Text("Save to Collection")
                     .font(.headline)
                     .padding()
                 Text("You have \(viewModel.userCollections.count) collections.")
             }
-            .presentationDetents([.medium]) // Makes it a half-screen sheet!
+            .presentationDetents([.medium])
         }
     }
 }
@@ -73,12 +75,11 @@ extension RecipeDetailView {
     
     private var heroImageSection: some View {
         ZStack(alignment: .topLeading) {
-            // 🚀 AsyncImage to load TheMealDB URLs
             AsyncImage(url: URL(string: viewModel.recipe.recipeImage)) { phase in
                 switch phase {
                 case .empty:
                     Rectangle().fill(Color.gray.opacity(0.3))
-                        .overlay(ProgressView()) // Loading spinner
+                        .overlay(ProgressView())
                 case .success(let image):
                     image
                         .resizable()
@@ -102,7 +103,7 @@ extension RecipeDetailView {
             
             // Custom Back Button
             Button(action: {
-                // TODO: Add Navigation pop action
+                dismiss() // 🚀 Closes the view and goes back!
             }) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .bold))
@@ -150,7 +151,6 @@ extension RecipeDetailView {
             Spacer()
             
             HStack(spacing: 12) {
-                // The PLUS Button (Opens Collection Sheet)
                 Button(action: {
                     Task { await viewModel.openCollectionSheet() }
                 }) {
@@ -162,7 +162,6 @@ extension RecipeDetailView {
                         .clipShape(Circle())
                 }
                 
-                // The HEART Button (Favorites)
                 Button(action: {
                     Task { await viewModel.toggleFavorite() }
                 }) {
@@ -178,7 +177,6 @@ extension RecipeDetailView {
             .padding(.top, 4)
         }
     }
-    
     
     private var metaSection: some View {
         HStack(spacing: 12) {
@@ -196,7 +194,6 @@ extension RecipeDetailView {
     
     private var tagsSection: some View {
         HStack(spacing: 10) {
-            // 🚀 Now uses the actual category from your Database/MealDB!
             let tags = [viewModel.recipe.category]
             
             ForEach(tags.filter { !$0.isEmpty }, id: \.self) { tag in
@@ -327,13 +324,11 @@ struct PreviewLiveWrapper: View {
         }
     }
     
-    // Makes a real network call just for the Canvas Preview!
     func fetchRealData() async {
         do {
             let url = URL(string: "https://www.themealdb.com/api/json/v1/1/random.php")!
             let (data, _) = try await URLSession.shared.data(from: url)
             
-            // Parse the raw JSON manually so we don't interfere with your actual App Models
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let meals = json["meals"] as? [[String: Any]],
                let firstMeal = meals.first {
@@ -345,7 +340,18 @@ struct PreviewLiveWrapper: View {
                 let image = firstMeal["strMealThumb"] as? String ?? ""
                 let mealId = firstMeal["idMeal"] as? String ?? UUID().uuidString
                 
-                // Break the giant paragraph into clean steps
+                // 🚀 TheMealDB Ingredient Parser
+                var parsedIngredients: [String] = []
+                for i in 1...20 {
+                    if let ingredient = firstMeal["strIngredient\(i)"] as? String,
+                       !ingredient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        
+                        let measure = (firstMeal["strMeasure\(i)"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        let combined = measure.isEmpty ? ingredient : "\(measure) \(ingredient)"
+                        parsedIngredients.append(combined)
+                    }
+                }
+                
                 let parsedSteps = instructions
                     .components(separatedBy: .newlines)
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -355,7 +361,7 @@ struct PreviewLiveWrapper: View {
                     userId: "themealdb",
                     title: title,
                     description: "A traditional \(area) dish.",
-                    ingredients: ["(Ingredient parsing coming soon)"],
+                    ingredients: parsedIngredients,
                     steps: parsedSteps,
                     category: category,
                     recipeImage: image,
@@ -366,7 +372,6 @@ struct PreviewLiveWrapper: View {
                 realRecipe.id = mealId
                 realRecipe.createdAt = Date()
                 
-                // Update the state to swap out the loading spinner for the actual UI
                 self.viewModel = RecipeDetailViewModel(recipe: realRecipe)
             }
         } catch {
