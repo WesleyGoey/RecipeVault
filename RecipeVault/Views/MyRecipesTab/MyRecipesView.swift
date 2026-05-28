@@ -115,8 +115,7 @@ extension Recipe {
             description: "Resep pasta turun temurun hari minggu.",
             ingredients: [], steps: [],
             category: "Italian",
-            recipeImage: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=500&auto=format&fit=crop",
-            cookingTime: 45, servings: 4
+            recipeImage: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=500&auto=format&fit=crop"
         ),
         Recipe(
             userId: "123",
@@ -124,8 +123,7 @@ extension Recipe {
             description: "Ayam panggang juicy dengan perasan lemon segar.",
             ingredients: [], steps: [],
             category: "Dinner",
-            recipeImage: "https://images.unsplash.com/photo-1598103442097-8b74394b98c6?q=80&w=500&auto=format&fit=crop",
-            cookingTime: 60, servings: 4
+            recipeImage: "https://images.unsplash.com/photo-1598103442097-8b74394b98c6?q=80&w=500&auto=format&fit=crop"
         ),
         Recipe(
             userId: "123",
@@ -133,8 +131,7 @@ extension Recipe {
             description: "Kue meringue renyah dengan topping berry melimpah.",
             ingredients: [], steps: [],
             category: "Dessert",
-            recipeImage: "https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?q=80&w=500&auto=format&fit=crop",
-            cookingTime: 90, servings: 6
+            recipeImage: "https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?q=80&w=500&auto=format&fit=crop"
         ),
         Recipe(
             userId: "123",
@@ -142,8 +139,7 @@ extension Recipe {
             description: "Telur ceplok saus tomat pedas khas Timur Tengah.",
             ingredients: [], steps: [],
             category: "Brunch",
-            recipeImage: "https://images.unsplash.com/photo-1590412200988-a436bb705300?q=80&w=500&auto=format&fit=crop",
-            cookingTime: 25, servings: 2
+            recipeImage: "https://images.unsplash.com/photo-1590412200988-a436bb705300?q=80&w=500&auto=format&fit=crop"
         ),
         Recipe(
             userId: "123",
@@ -151,8 +147,7 @@ extension Recipe {
             description: "Soto ayam kuah kuning hangat yang kaya rempah.",
             ingredients: [], steps: [],
             category: "Soto",
-            recipeImage: "https://images.unsplash.com/photo-1626804475315-943482bcb563?q=80&w=500&auto=format&fit=crop",
-            cookingTime: 40, servings: 4
+            recipeImage: "https://images.unsplash.com/photo-1626804475315-943482bcb563?q=80&w=500&auto=format&fit=crop"
         ),
         Recipe(
             userId: "123",
@@ -160,8 +155,7 @@ extension Recipe {
             description: "Mi kuah kaldu kental gurih ala Kopitiam.",
             ingredients: [], steps: [],
             category: "Noodles",
-            recipeImage: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=500&auto=format&fit=crop",
-            cookingTime: 20, servings: 1
+            recipeImage: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=500&auto=format&fit=crop"
         )
     ]
 }

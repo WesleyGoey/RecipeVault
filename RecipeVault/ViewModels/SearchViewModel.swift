@@ -76,9 +76,7 @@ class SearchViewModel: ObservableObject {
                         ingredients: parsedIngredients, // Passed the parsed data here!
                         steps: parsedSteps,
                         category: category,
-                        recipeImage: image,
-                        cookingTime: Int.random(in: 15...45),
-                        servings: Int.random(in: 2...4)
+                        recipeImage: image
                     )
                     recipe.id = id
                     recipe.createdAt = Date()

@@ -18,8 +18,6 @@ struct Recipe: Codable, Identifiable {
     var steps: [String]
     var category: String
     var recipeImage: String
-    var cookingTime: Int
-    var servings: Int
     @ServerTimestamp var createdAt: Date? // Firebase will automatically set the exact server time!
     
     // Helper method from your class diagram

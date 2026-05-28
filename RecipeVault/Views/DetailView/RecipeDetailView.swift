@@ -5,6 +5,7 @@
 //  Created by Sean tandjaja on 28/05/26.
 //
 
+// MARK: - RecipeDetailView
 import SwiftUI
 
 struct RecipeDetailView: View {
@@ -34,16 +35,15 @@ struct RecipeDetailView: View {
                     // 3. Title, Plus Button & Favorite Button
                     titleSection
                     
-                    // 4. Meta Info (Time & Servings)
-                    metaSection
+                    // 🚀 Meta Info (Time & Servings) dihapus dari sini
                     
-                    // 5. Tags
+                    // 4. Tags
                     tagsSection
                     
-                    // 6. Custom Segmented Control
+                    // 5. Custom Segmented Control
                     customPicker
                     
-                    // 7. Dynamic List (Ingredients or Steps)
+                    // 6. Dynamic List (Ingredients or Steps)
                     if viewModel.currentTab == .ingredients {
                         ingredientsList
                     } else {
@@ -144,7 +144,7 @@ extension RecipeDetailView {
     private var titleSection: some View {
         HStack(alignment: .top) {
             Text(viewModel.recipe.title)
-                .font(.custom("Merriweather-Bold", size: 32, relativeTo: .largeTitle))
+                .font(.custom("Merriweather-Bold", size: 28, relativeTo: .largeTitle))
                 .foregroundColor(darkText)
                 .fixedSize(horizontal: false, vertical: true)
             
@@ -178,19 +178,7 @@ extension RecipeDetailView {
         }
     }
     
-    private var metaSection: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 6) {
-                Image(systemName: "clock")
-                Text("\(viewModel.recipe.cookingTime) min")
-            }
-            Text("·")
-                .fontWeight(.bold)
-            Text("\(viewModel.recipe.servings) \(viewModel.recipe.servings == 1 ? "serving" : "servings")")
-        }
-        .font(.subheadline)
-        .foregroundColor(.gray)
-    }
+    // 🚀 Bagian Meta Section Dihapus Sepenuhnya
     
     private var tagsSection: some View {
         HStack(spacing: 10) {
@@ -340,7 +328,6 @@ struct PreviewLiveWrapper: View {
                 let image = firstMeal["strMealThumb"] as? String ?? ""
                 let mealId = firstMeal["idMeal"] as? String ?? UUID().uuidString
                 
-                // 🚀 TheMealDB Ingredient Parser
                 var parsedIngredients: [String] = []
                 for i in 1...20 {
                     if let ingredient = firstMeal["strIngredient\(i)"] as? String,
@@ -357,6 +344,7 @@ struct PreviewLiveWrapper: View {
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
                 
+                // 🚀 Membuang argumen cookingTime dan servings
                 var realRecipe = Recipe(
                     userId: "themealdb",
                     title: title,
@@ -364,9 +352,7 @@ struct PreviewLiveWrapper: View {
                     ingredients: parsedIngredients,
                     steps: parsedSteps,
                     category: category,
-                    recipeImage: image,
-                    cookingTime: 30,
-                    servings: 4
+                    recipeImage: image
                 )
                 
                 realRecipe.id = mealId

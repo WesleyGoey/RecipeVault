@@ -41,10 +41,10 @@ class RecipeViewModel: ObservableObject {
     }
 }
 
-// MARK: - Mock Data Extension (Bisa dihapus nanti)
+// MARK: - Mock Data Extension
 extension Recipe {
     static let mockRecipes = [
-        Recipe(userId: "123", title: "Mom's Sunday Pasta", description: "Delicious pasta", ingredients: ["Pasta"], steps: ["Boil water"], category: "Italian", recipeImage: "https://www.themealdb.com/images/media/meals/sutysw1468247559.jpg", cookingTime: 45, servings: 4),
-        Recipe(userId: "123", title: "Blueberry Pavlova", description: "Sweet dessert", ingredients: ["Blueberry"], steps: ["Bake"], category: "Dessert", recipeImage: "https://www.themealdb.com/images/media/meals/adxcjq1628770918.jpg", cookingTime: 60, servings: 8)
+        Recipe(userId: "123", title: "Mom's Sunday Pasta", description: "Delicious pasta", ingredients: ["Pasta"], steps: ["Boil water"], category: "Italian", recipeImage: "https://www.themealdb.com/images/media/meals/sutysw1468247559.jpg"),
+        Recipe(userId: "123", title: "Blueberry Pavlova", description: "Sweet dessert", ingredients: ["Blueberry"], steps: ["Bake"], category: "Dessert", recipeImage: "https://www.themealdb.com/images/media/meals/adxcjq1628770918.jpg")
     ]
 }

@@ -35,12 +35,6 @@ class RecipeService: RecipeServiceProtocol {
     // MARK: - Methods
     func createRecipeWithImage(recipe: Recipe, imageData: Data) async throws {
         // Validasi Atribut Baru sebelum menyentuh database
-        guard recipe.cookingTime > 0 else {
-            throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Waktu memasak harus lebih dari 0 menit."])
-        }
-        guard recipe.servings > 0 else {
-            throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Jumlah porsi harus lebih dari 0."])
-        }
         
         guard validateSize(image: imageData) else {
             throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Ukuran gambar melebihi 5 MB."])

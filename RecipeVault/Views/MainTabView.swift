@@ -47,13 +47,8 @@ struct MainTabView: View {
             .tag(Tab.search)
             
             // MARK: - 3. My Recipes Tab
-            VStack {
-                Text("My Recipes")
-                    .font(.custom("Merriweather-Bold", size: 28))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(bgYellow.ignoresSafeArea())
-            .tag(Tab.myRecipes)
+            MyRecipesView()
+                .tag(Tab.myRecipes)
             
             // MARK: - 4. Collections Tab
             VStack {
@@ -135,9 +130,9 @@ struct TabBarButton: View {
             VStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 22))
-                    // Makes the active icon solid and inactive icon outlined (if supported)
+                // Makes the active icon solid and inactive icon outlined (if supported)
                     .environment(\.symbolVariants, selectedTab == tab ? .fill : .none)
-                    // Makes the active icon slightly bolder
+                // Makes the active icon slightly bolder
                     .fontWeight(selectedTab == tab ? .bold : .regular)
                 
                 Text(title)
