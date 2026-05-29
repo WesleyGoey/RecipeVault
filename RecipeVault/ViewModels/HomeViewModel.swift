@@ -5,7 +5,6 @@
 //  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
 
-
 import Foundation
 import SwiftUI
 import Combine
@@ -55,7 +54,7 @@ class HomeViewModel: ObservableObject {
                let meals = json["meals"] as? [[String: Any]] {
                 
                 var fetchedCategories = meals.compactMap { $0["strCategory"] as? String }
-                fetchedCategories.sort() 
+                fetchedCategories.sort()
                 self.categories = ["All"] + fetchedCategories
             }
         } catch {
@@ -78,7 +77,10 @@ class HomeViewModel: ObservableObject {
         do {
             let urlString: String
             if category == "All" {
-                urlString = "https://www.themealdb.com/api/json/v1/1/search.php?s="
+                // 🚀 RANDOMIZE HACK: Pick a random letter that is known to have good results
+                let letters = ["a", "b", "c", "m", "p", "s"]
+                let randomLetter = letters.randomElement() ?? "c"
+                urlString = "https://www.themealdb.com/api/json/v1/1/search.php?f=\(randomLetter)"
             } else {
                 let safeCategory = category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                 urlString = "https://www.themealdb.com/api/json/v1/1/filter.php?c=\(safeCategory)"
@@ -90,7 +92,8 @@ class HomeViewModel: ObservableObject {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let meals = json["meals"] as? [[String: Any]] {
                 
-                self.feedRecipes = meals.compactMap { parseMeal($0, forceCategory: category == "All" ? nil : category) }
+                // 🚀 .shuffled() ensures the cards appear in a random order every time
+                self.feedRecipes = meals.compactMap { parseMeal($0, forceCategory: category == "All" ? nil : category) }.shuffled()
             }
         } catch {
             print("Failed to fetch feed: \(error.localizedDescription)")
@@ -119,7 +122,6 @@ class HomeViewModel: ObservableObject {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         
-        // 🚀 Removed cookingTime and servings here!
         var recipe = Recipe(
             userId: "themealdb",
             title: title,

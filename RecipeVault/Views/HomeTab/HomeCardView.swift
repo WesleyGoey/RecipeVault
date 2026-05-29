@@ -5,7 +5,6 @@
 //  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
 
-
 import SwiftUI
 
 struct HomeCardView: View {
@@ -13,34 +12,39 @@ struct HomeCardView: View {
     
     // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
-    let bgYellow = Color(hex: "f8fae5") // Digunakan untuk memberikan sedikit warna kekuningan pada teks "RECIPE OF THE DAY"
+    let bgYellow = Color(hex: "f8fae5")
     
     var body: some View {
         ZStack {
             // 1. Background Image
-            AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
-                switch phase {
-                case .empty:
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .overlay(ProgressView())
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                case .failure:
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .overlay(Image(systemName: "photo").foregroundColor(.gray))
-                @unknown default:
-                    EmptyView()
+            GeometryReader { geo in
+                AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
+                    switch phase {
+                    case .empty:
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .overlay(ProgressView())
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+                            .clipped()
+                    case .failure:
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .overlay(Image(systemName: "photo").foregroundColor(.gray))
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
             }
-            .frame(height: 320)
+            // 🚀 Diubah ke 250
+            .frame(height: 250)
             .frame(maxWidth: .infinity)
             .clipped()
             
-            // 2. Gradient Overlay (Gelap di bawah agar teks putih terlihat jelas)
+            // 2. Gradient Overlay
             LinearGradient(
                 gradient: Gradient(colors: [
                     .clear,
@@ -53,14 +57,14 @@ struct HomeCardView: View {
             
             // 3. Content Overlay
             VStack {
-                // Top-Left Badge ("🔥 FEATURED")
+                // Top-Left Badge
                 HStack {
                     HStack(spacing: 6) {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 12))
                         Text("FEATURED")
-                            .font(.custom("Merriweather-Bold", size: 12))
-                            .tracking(1.0) // Jarak antar huruf
+                            .font(.merriweather(12, weight: .bold))
+                            .tracking(1.0)
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 14)
@@ -73,25 +77,26 @@ struct HomeCardView: View {
                 
                 Spacer()
                 
-                // Bottom Center Texts
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Text("RECIPE OF THE DAY")
-                        .font(.custom("Merriweather-Bold", size: 12))
+                        .font(.merriweather(12, weight: .bold))
                         .tracking(2.0)
                         .foregroundColor(bgYellow.opacity(0.9))
                     
                     Text(recipe.title)
-                        .font(.custom("Merriweather-Bold", size: 32))
+                        .font(.merriweather(32, weight: .bold))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .padding(.horizontal, 16)
                 }
-                .padding(.bottom, 16)
+                // 🚀 Padding bawah dikurangi sedikit agar teks tidak bertabrakan dengan batas kartu
+                .padding(.bottom, 8)
             }
             .padding(20)
         }
-        .frame(height: 320)
+        // 🚀 Diubah ke 250
+        .frame(height: 250)
         .clipShape(RoundedRectangle(cornerRadius: 32))
         .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
     }
@@ -100,7 +105,7 @@ struct HomeCardView: View {
 // MARK: - Preview
 #Preview {
     ZStack {
-        Color(hex: "43766c").ignoresSafeArea() // Background gelap untuk preview
+        Color(hex: "43766c").ignoresSafeArea()
         
         HomeCardView(
             recipe: Recipe(

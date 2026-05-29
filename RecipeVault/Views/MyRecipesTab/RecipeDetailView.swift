@@ -9,22 +9,27 @@ import SwiftUI
 
 // MARK: - RecipeDetailView
 struct RecipeDetailView: View {
-    // Menerima data resep dari layar sebelumnya
-    let recipe: Recipe
-    
-    // Menggunakan RecipeViewModel global
+    // 🚀 Made recipe a @State variable so it can update when missing data is fetched
+    @State private var recipe: Recipe
     @ObservedObject var viewModel: RecipeViewModel
     
     @Environment(\.dismiss) private var dismiss
     
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
+    @State private var isLoadingDetails = false // Loading state for missing ingredients
     
     // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     let darkText = Color.primary
+    
+    // 🚀 Custom init to allow passing data into a @State variable
+    init(recipe: Recipe, viewModel: RecipeViewModel) {
+        self._recipe = State(initialValue: recipe)
+        self.viewModel = viewModel
+    }
     
     var body: some View {
         ScrollView {
@@ -37,10 +42,18 @@ struct RecipeDetailView: View {
                     tagsSection
                     customPicker
                     
-                    if viewModel.currentTab == .ingredients {
-                        ingredientsList
+                    // 🚀 Show loading spinner if fetching missing data
+                    if isLoadingDetails {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 40)
                     } else {
-                        stepsList
+                        if viewModel.currentTab == .ingredients {
+                            ingredientsList
+                        } else {
+                            stepsList
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -50,8 +63,12 @@ struct RecipeDetailView: View {
         .background(bgYellow.ignoresSafeArea())
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
-        .onAppear {
-            Task { await viewModel.checkIfFavorite(recipe: recipe) }
+        .task {
+            await viewModel.checkIfFavorite(recipe: recipe)
+            // 🚀 If ingredients are empty (came from a category filter), fetch the full details!
+            if recipe.ingredients.isEmpty, let mealId = recipe.id {
+                await fetchFullDetails(id: mealId)
+            }
         }
         
         // MARK: - Modals & Sheets
@@ -83,6 +100,46 @@ struct RecipeDetailView: View {
             Text("Are you sure you want to delete this recipe? This action cannot be undone.")
         }
     }
+    
+    // 🚀 NEW FUNCTION: Fetches the missing ingredients & steps using the recipe ID
+    private func fetchFullDetails(id: String) async {
+        isLoadingDetails = true
+        guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/lookup.php?i=\(id)") else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let meals = json["meals"] as? [[String: Any]],
+               let fullMeal = meals.first {
+                
+                // Parse Ingredients
+                var parsedIngredients: [String] = []
+                for i in 1...20 {
+                    if let ingredient = fullMeal["strIngredient\(i)"] as? String,
+                       !ingredient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        let measure = (fullMeal["strMeasure\(i)"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        let combined = measure.isEmpty ? ingredient : "\(measure) \(ingredient)"
+                        parsedIngredients.append(combined)
+                    }
+                }
+                
+                // Parse Steps
+                let instructions = fullMeal["strInstructions"] as? String ?? ""
+                let parsedSteps = instructions
+                    .components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+                
+                // Update the state with animation
+                withAnimation {
+                    recipe.ingredients = parsedIngredients
+                    recipe.steps = parsedSteps
+                }
+            }
+        } catch {
+            print("Failed to fetch full recipe details: \(error.localizedDescription)")
+        }
+        isLoadingDetails = false
+    }
 }
 
 // MARK: - Subviews
@@ -109,7 +166,6 @@ extension RecipeDetailView {
                 LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.6)]), startPoint: .center, endPoint: .bottom)
             )
             
-            // Top Navigation Bar
             HStack {
                 Button(action: { dismiss() }) {
                     Image(systemName: "chevron.left")
@@ -122,7 +178,6 @@ extension RecipeDetailView {
                 
                 Spacer()
                 
-                // 🚀 PERBAIKAN: Tampilkan menu HANYA jika User adalah pemilik resep
                 if viewModel.isOwner(recipe: recipe) {
                     Menu {
                         Button {
@@ -155,7 +210,7 @@ extension RecipeDetailView {
         HStack {
             Circle().fill(mutedTeal).frame(width: 40, height: 40).overlay(Text("TM").foregroundColor(.white).font(.caption.bold()))
             VStack(alignment: .leading, spacing: 2) {
-                Text("TheMealDB").font(.custom("Merriweather-Bold", size: 16, relativeTo: .headline))
+                Text("TheMealDB").font(.merriweather(16, weight: .bold))
                 Text("@themealdb").font(.subheadline).foregroundColor(.gray)
             }
             Spacer()
@@ -168,7 +223,7 @@ extension RecipeDetailView {
     private var titleSection: some View {
         HStack(alignment: .top) {
             Text(recipe.title)
-                .font(.custom("Merriweather-Bold", size: 28, relativeTo: .largeTitle))
+                .font(.merriweather(28, weight: .bold))
                 .foregroundColor(darkText)
                 .fixedSize(horizontal: false, vertical: true)
             
@@ -238,7 +293,7 @@ extension RecipeDetailView {
             ForEach(recipe.ingredients, id: \.self) { ingredient in
                 HStack(spacing: 16) {
                     Circle().fill(mutedTeal.opacity(0.7)).frame(width: 10, height: 10).padding(6).background(mutedTeal.opacity(0.15)).clipShape(Circle())
-                    Text(ingredient).font(.custom("Merriweather-Regular", size: 18, relativeTo: .body)).foregroundColor(darkText)
+                    Text(ingredient).font(.merriweather(18, weight: .regular)).foregroundColor(darkText)
                     Spacer()
                 }
                 .padding(16).background(Color.white).cornerRadius(16).shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)
@@ -251,7 +306,7 @@ extension RecipeDetailView {
             ForEach(Array(recipe.steps.enumerated()), id: \.element) { index, step in
                 HStack(alignment: .top, spacing: 16) {
                     Text("\(index + 1)").font(.headline).foregroundColor(.white).frame(width: 32, height: 32).background(mutedTeal).clipShape(Circle())
-                    Text(step).font(.custom("Merriweather-Regular", size: 18, relativeTo: .body)).foregroundColor(darkText).lineSpacing(4).padding(.top, 4)
+                    Text(step).font(.merriweather(18, weight: .regular)).foregroundColor(darkText).lineSpacing(4).padding(.top, 4)
                     Spacer()
                 }
                 .padding(16).background(Color.white).cornerRadius(16).shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)
@@ -269,7 +324,7 @@ struct PickerTab: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.custom("Merriweather-Bold", size: 16, relativeTo: .headline))
+                .font(.merriweather(16, weight: .bold))
                 .foregroundColor(isSelected ? .black : .gray)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -298,7 +353,7 @@ struct PreviewLiveWrapper: View {
                     ProgressView()
                         .scaleEffect(1.5)
                     Text("Fetching live data from TheMealDB...")
-                        .font(.custom("Merriweather-Regular", size: 16))
+                        .font(.merriweather(16, weight: .regular))
                         .foregroundColor(.gray)
                 }
                 .task {

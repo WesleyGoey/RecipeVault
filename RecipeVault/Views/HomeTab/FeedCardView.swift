@@ -9,7 +9,7 @@ import SwiftUI
 
 struct FeedCardView: View {
     let recipe: Recipe
-    // 🚀 Tambahkan parameter tinggi agar bisa diatur dinamis
+    // Parameter tinggi agar bisa diatur dinamis (untuk efek Zig-Zag)
     var cardHeight: CGFloat = 240
     
     let burntOrange = Color(hex: "cd4b12")
@@ -26,8 +26,8 @@ struct FeedCardView: View {
                     case .success(let image):
                         image
                             .resizable()
-                            .scaledToFill()
-                            .frame(width: geo.size.width, height: geo.size.height)
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
                             .clipped()
                     case .failure:
                         Rectangle().fill(Color.gray.opacity(0.3)).overlay(Image(systemName: "photo").foregroundColor(.gray))
@@ -47,14 +47,14 @@ struct FeedCardView: View {
             // 3. Text Content
             VStack(alignment: .leading, spacing: 10) {
                 Text(recipe.title)
-                    .font(.custom("Merriweather-Bold", size: 18))
+                    .font(.merriweather(18, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 
                 Text(recipe.category)
-                    .font(.custom("Merriweather-Bold", size: 12))
+                    .font(.merriweather(12, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
@@ -63,9 +63,7 @@ struct FeedCardView: View {
             }
             .padding(16)
         }
-        // 🚀 Menggunakan tinggi dinamis dari parameter
         .frame(height: cardHeight)
-        // 🚀 Menaikkan radius menjadi 32 agar bentuknya "less rectangle" (lebih organik)
         .clipShape(RoundedRectangle(cornerRadius: 32))
         .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
     }

@@ -4,6 +4,12 @@
 //
 //  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
+//
+//  HomeView.swift
+//  RecipeVault
+//
+//  Created by Nicholas Gerwin Mawardji on 29/05/26.
+//
 
 import SwiftUI
 
@@ -22,7 +28,8 @@ struct HomeView: View {
                     
                     // MARK: - 1. Title Area
                     Text("Recipe Vault")
-                        .font(.custom("Merriweather-Bold", size: 40))
+                        // 🚀 Menggunakan extension Font.merriweather
+                        .font(.merriweather(40, weight: .bold))
                         .foregroundColor(darkText)
                         .padding(.horizontal, 24)
                         .padding(.top, 20)
@@ -43,7 +50,7 @@ struct HomeView: View {
                     // MARK: - 3. Quick Browse (Category Filter)
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Quick Browse")
-                            .font(.custom("Merriweather-Bold", size: 20))
+                            .font(.merriweather(20, weight: .bold))
                             .foregroundColor(darkText)
                             .padding(.horizontal, 24)
                         
@@ -69,14 +76,14 @@ struct HomeView: View {
                         // Feed Header
                         HStack(alignment: .bottom) {
                             Text(viewModel.selectedCategory == "All" ? "Today's Feed" : viewModel.selectedCategory)
-                                .font(.custom("Merriweather-Bold", size: 24))
+                                .font(.merriweather(24, weight: .bold))
                                 .foregroundColor(darkText)
                             
                             Spacer()
                             
                             if !viewModel.isLoadingFeed {
                                 Text("\(viewModel.feedRecipes.count) recipes")
-                                    .font(.custom("Merriweather-Regular", size: 14))
+                                    .font(.merriweather(14, weight: .regular))
                                     .foregroundColor(.gray)
                                     .padding(.bottom, 2)
                             }
@@ -92,10 +99,10 @@ struct HomeView: View {
                         } else if viewModel.feedRecipes.isEmpty {
                             VStack(spacing: 12) {
                                 Text("No \(viewModel.selectedCategory.lowercased()) recipes yet")
-                                    .font(.custom("Merriweather-Bold", size: 18))
+                                    .font(.merriweather(18, weight: .bold))
                                     .foregroundColor(mutedTeal)
                                 Text("Try another category")
-                                    .font(.custom("Merriweather-Regular", size: 14))
+                                    .font(.merriweather(14, weight: .regular))
                                     .foregroundColor(.gray)
                             }
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -150,7 +157,8 @@ struct CategoryPill: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.custom("Merriweather-Bold", size: 16))
+                // 🚀 Menggunakan extension Font.merriweather
+                .font(.merriweather(16, weight: .bold))
                 .foregroundColor(isSelected ? .white : mutedTeal)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
