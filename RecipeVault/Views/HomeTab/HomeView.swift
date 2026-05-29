@@ -1,0 +1,169 @@
+//
+//  HomeView.swift
+//  RecipeVault
+//
+//  Created by Nicholas Gerwin Mawardji on 29/05/26.
+//
+
+import SwiftUI
+
+struct HomeView: View {
+    @StateObject private var viewModel = HomeViewModel()
+    
+    // Theme Colors
+    let bgYellow = Color(hex: "f8fae5")
+    let mutedTeal = Color(hex: "43766c")
+    let darkText = Color.primary
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 32) {
+                    
+                    // MARK: - 1. Title Area
+                    Text("Recipe Vault")
+                        .font(.custom("Merriweather-Bold", size: 40))
+                        .foregroundColor(darkText)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 20)
+                    
+                    // MARK: - 2. Hero Section (Recipe of the Day)
+                    if viewModel.isLoadingHero {
+                        ProgressView()
+                            .frame(height: 320)
+                            .frame(maxWidth: .infinity)
+                    } else if let heroRecipe = viewModel.recipeOfTheDay {
+                        NavigationLink(destination: RecipeDetailView(recipe: heroRecipe, viewModel: RecipeViewModel())) {
+                            HomeCardView(recipe: heroRecipe)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 24)
+                    }
+                    
+                    // MARK: - 3. Quick Browse (Category Filter)
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Quick Browse")
+                            .font(.custom("Merriweather-Bold", size: 20))
+                            .foregroundColor(darkText)
+                            .padding(.horizontal, 24)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(viewModel.categories, id: \.self) { category in
+                                    CategoryPill(
+                                        title: category,
+                                        isSelected: viewModel.selectedCategory == category
+                                    ) {
+                                        withAnimation(.easeInOut) {
+                                            viewModel.selectCategory(category)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                        }
+                    }
+                    
+                    // MARK: - 4. Dynamic Feed Area (Zig-Zag / Masonry)
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Feed Header
+                        HStack(alignment: .bottom) {
+                            Text(viewModel.selectedCategory == "All" ? "Today's Feed" : viewModel.selectedCategory)
+                                .font(.custom("Merriweather-Bold", size: 24))
+                                .foregroundColor(darkText)
+                            
+                            Spacer()
+                            
+                            if !viewModel.isLoadingFeed {
+                                Text("\(viewModel.feedRecipes.count) recipes")
+                                    .font(.custom("Merriweather-Regular", size: 14))
+                                    .foregroundColor(.gray)
+                                    .padding(.bottom, 2)
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        
+                        // Feed Content
+                        if viewModel.isLoadingFeed {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 40)
+                        } else if viewModel.feedRecipes.isEmpty {
+                            VStack(spacing: 12) {
+                                Text("No \(viewModel.selectedCategory.lowercased()) recipes yet")
+                                    .font(.custom("Merriweather-Bold", size: 18))
+                                    .foregroundColor(mutedTeal)
+                                Text("Try another category")
+                                    .font(.custom("Merriweather-Regular", size: 14))
+                                    .foregroundColor(.gray)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.top, 40)
+                        } else {
+                            // 🚀 MASONRY / ZIG-ZAG LAYOUT
+                            HStack(alignment: .top, spacing: 16) {
+                                
+                                // KOLOM KIRI (Hanya berisi index Genap: 0, 2, 4...)
+                                VStack(spacing: 16) {
+                                    ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 == 0 }, id: \.element.id) { index, recipe in
+                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
+                                            // Pola Tinggi: Indeks 0 = 280, Indeks 2 = 220
+                                            FeedCardView(recipe: recipe, cardHeight: (index % 4 == 0) ? 280 : 220)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+                                
+                                // KOLOM KANAN (Hanya berisi index Ganjil: 1, 3, 5...)
+                                VStack(spacing: 16) {
+                                    ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 != 0 }, id: \.element.id) { index, recipe in
+                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
+                                            // Pola Tinggi Kebalikan: Indeks 1 = 220, Indeks 3 = 280
+                                            FeedCardView(recipe: recipe, cardHeight: (index % 4 == 3) ? 280 : 220)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                }
+                                
+                            }
+                            .padding(.horizontal, 24)
+                        }
+                    }
+                }
+                .padding(.bottom, 120) // Ruang ekstra agar ScrollView tidak tertutup Tab Bar
+            }
+            .background(bgYellow.ignoresSafeArea())
+        }
+    }
+}
+
+// MARK: - Helper Component: Category Pill Button
+struct CategoryPill: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    let mutedTeal = Color(hex: "43766c")
+    let bgYellow = Color(hex: "f8fae5")
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.custom("Merriweather-Bold", size: 16))
+                .foregroundColor(isSelected ? .white : mutedTeal)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(isSelected ? mutedTeal : Color.clear)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(mutedTeal, lineWidth: isSelected ? 0 : 1.5)
+                )
+        }
+    }
+}
+
+#Preview {
+    HomeView()
+}

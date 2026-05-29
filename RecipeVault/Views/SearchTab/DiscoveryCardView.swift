@@ -83,7 +83,7 @@ extension DiscoverCardView {
                     .tracking(1.5) // Memberikan jarak antar huruf (letter spacing)
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 8)	
                     .background(mutedTeal)
                     .clipShape(Capsule())
                 
