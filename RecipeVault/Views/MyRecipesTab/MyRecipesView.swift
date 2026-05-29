@@ -13,7 +13,12 @@ struct MyRecipesView: View {
     
     // MARK: - Properties
     @StateObject private var viewModel = RecipeViewModel()
+    
+    // State untuk Modals (Create, Edit, Delete)
     @State private var showingCreateSheet = false
+    @State private var recipeToEdit: Recipe? = nil
+    @State private var recipeToDelete: Recipe? = nil
+    @State private var showingDeleteAlert = false
     
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -50,9 +55,28 @@ struct MyRecipesView: View {
                     await viewModel.loadMyRecipes()
                 }
             }
+            
+            // MARK: - Overlays & Modals
+            // 1. Sheet untuk Create Recipe Baru
             .sheet(isPresented: $showingCreateSheet) {
-                // 🚀 REVISI: Membuka Form Create Recipe sungguhan
                 RecipeCreateView()
+            }
+            // 2. 🚀 Sheet dinamis untuk Edit Recipe yang dipilih dari Context Menu
+            .sheet(item: $recipeToEdit) { recipe in
+                // Pastikan RecipeEditView menerima parameter (recipe: Recipe)
+                Text("RecipeEditView Placeholder untuk: \(recipe.title)")
+                // RecipeEditView(recipe: recipe)
+            }
+            // 3. 🚀 Alert Konfirmasi Delete dari Context Menu
+            .alert("Delete Recipe", isPresented: $showingDeleteAlert, presenting: recipeToDelete) { recipe in
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await viewModel.deleteRecipe(recipe: recipe)
+                    }
+                }
+            } message: { recipe in
+                Text("Are you sure you want to delete '\(recipe.title)'? This action cannot be undone.")
             }
         }
     }
@@ -79,11 +103,29 @@ extension MyRecipesView {
     private var gridSection: some View {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(viewModel.myRecipes, id: \.title) { recipe in
-                // 🚀 REVISI: Mengarahkan tap kartu ke RecipeDetailView
-                NavigationLink(destination: RecipeDetailView(viewModel: RecipeDetailViewModel(recipe: recipe))) {
+                NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: viewModel)) {
                     RecipeCardView(recipe: recipe)
                 }
                 .buttonStyle(PlainButtonStyle())
+                // 🚀 FITUR BARU: Context Menu saat kartu di-hold/tahan
+                .contextMenu {
+                    if viewModel.isOwner(recipe: recipe) {
+                        Button {
+                            // Memasukkan resep ke dalam state memicu terbukanya Edit Sheet
+                            recipeToEdit = recipe
+                        } label: {
+                            Label("Edit Recipe", systemImage: "pencil")
+                        }
+                        
+                        Button(role: .destructive) {
+                            // Menyimpan data resep sementara dan memunculkan Alert Hapus
+                            recipeToDelete = recipe
+                            showingDeleteAlert = true
+                        } label: {
+                            Label("Delete Recipe", systemImage: "trash")
+                        }
+                    }
+                }
             }
         }
         .padding(.horizontal, 20)

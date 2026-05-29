@@ -201,9 +201,8 @@ extension SearchView {
                         } else {
                             // Menampilkan 5 resep pertama dari MealDB sebagai "Trending"
                             ForEach(viewModel.mealDBRecipes.prefix(5)) { recipe in
-                                NavigationLink(destination: RecipeDetailView(viewModel: RecipeDetailViewModel(recipe: recipe))) {
+                                NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
                                     RecipeCardView(recipe: recipe)
-                                        .frame(width: 170) // Membatasi lebar agar bisa di-scroll horizontal
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
@@ -234,7 +233,8 @@ extension SearchView {
             } else {
                 ForEach(viewModel.mealDBRecipes) { recipe in
                     // 🚀 NavigationLink untuk setiap hasil pencarian
-                    NavigationLink(destination: RecipeDetailView(viewModel: RecipeDetailViewModel(recipe: recipe))) {
+
+                    NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
                         RecipeCardView(recipe: recipe)
                     }
                     .buttonStyle(PlainButtonStyle()) // Menghapus highlight biru saat ditekan
