@@ -2,69 +2,85 @@
 //  CollectionViewModel.swift
 //  RecipeVault
 //
-//  Created by Wesley Goey on 28/05/26.
+//  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
 
 import Foundation
 import SwiftUI
 import Combine
 
-// MARK: - View State Enum
-enum ViewState: Equatable {
-    case idle
-    case loading
-    case success
-    case error(String)
-}
 
-// MARK: - Collection ViewModel
 @MainActor
-final class CollectionViewModel: ObservableObject {
+class CollectionViewModel: ObservableObject {
     
-    // MARK: - Published Properties
-    @Published var collections: [Collection] = []
-    @Published var collectionRecipes: [Recipe] = [] // Model Recipe diasumsikan sudah ada
-    @Published var viewState: ViewState = .idle
+    // MARK: - Properties
+    @Published var myCollections: [RecipeCollection] = []
+    @Published var recipesInCollection: [Recipe] = [] // Resep di dalam koleksi yang sedang dibuka
     
-    // MARK: - Dependencies
-    private let collectionService: CollectionServiceProtocol
-    private let recipeService: RecipeServiceProtocol
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String = ""
     
-    // MARK: - Initializer
-    init(collectionService: CollectionServiceProtocol, recipeService: RecipeServiceProtocol) {
-        self.collectionService = collectionService
-        self.recipeService = recipeService
-    }
+    private let firestoreRepo = FirestoreRepository.shared
+    private let collectionService = CollectionService.shared
+    private let authService = AuthService.shared
     
     // MARK: - Fetch Methods
-    
-    /// Mengambil detail resep untuk sebuah koleksi menggunakan junction table CollectionRecipe
-    func fetchRecipesForCollection(collectionId: String) async {
-        viewState = .loading
-        
+    func loadMyCollections() async {
+        guard let uid = authService.getCurrentUID() else { return }
+        isLoading = true
         do {
-            // 1. Ambil junction data (relasi) dari Service/Repository
-            // Asumsi: collectionService memiliki metode getCollectionRecipes(collectionId:)
-            let junctionData = try await collectionService.getCollectionRecipes(collectionId: collectionId)
-            
-            // 2. Ekstrak array recipeId
-            let recipeIds = junctionData.map { $0.recipeId }
-            
-            guard !recipeIds.isEmpty else {
-                self.collectionRecipes = []
-                self.viewState = .success
-                return
-            }
-            
-            // 3. Fetch data Recipe asli berdasarkan daftar ID
-            // Asumsi: recipeService memiliki metode getRecipes(byIds:)
-            let fetchedRecipes = try await recipeService.getRecipes(byIds: recipeIds)
-            
-            self.collectionRecipes = fetchedRecipes
-            self.viewState = .success
-            
+            // TODO: myCollections = try await firestoreRepo.getUserCollections(userId: uid)
+            myCollections = RecipeCollection.mockCollections // Mock Data Preview
         } catch {
-            self.viewState = .error("Gagal memuat isi koleksi. Periksa koneksi internet Anda.")
+            self.errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+    
+    func loadRecipesForCollection(collectionId: String) async {
+        isLoading = true
+        do {
+            // TODO: Ambil resep berdasarkan collectionId melalui Junction Table
+            recipesInCollection = Recipe.mockRecipes // Mock Data Preview
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+    
+    // MARK: - Action Methods
+    func deleteCollection(collection: RecipeCollection) async {
+        guard let collectionId = collection.id else { return }
+        do {
+            // TODO: Panggil fungsi delete di CollectionService
+            myCollections.removeAll { $0.id == collectionId }
+            print("Collection Deleted Successfully!")
+        } catch {
+            print("Error deleting collection: \(error.localizedDescription)")
         }
     }
+    
+    // Logika Tombol '+' untuk memasukkan resep ke dalam koleksi (dioper dari RecipeViewModel)
+    func addRecipeToCollection(collectionId: String, recipeId: String) async {
+        do {
+            try await collectionService.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
+            print("Successfully added recipe to collection!")
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+    
+    func isOwner(collection: RecipeCollection) -> Bool {
+        return collection.userId == authService.getCurrentUID()
+    }
+}
+
+// MARK: - Mock Data
+extension RecipeCollection {
+    static let mockCollections = [
+        RecipeCollection(userId: "123", name: "Weeknight Favorites", description: "Quick and easy recipes for busy weekdays.", collectionImage: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=500&auto=format&fit=crop", visibility: .publicVisibility),
+        RecipeCollection(userId: "123", name: "Summer BBQ", description: "Best grilling recipes.", collectionImage: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=500&auto=format&fit=crop", visibility: .privateVisibility),
+        RecipeCollection(userId: "123", name: "Keto Essentials", description: "Low carb high fat meals.", collectionImage: "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=500&auto=format&fit=crop", visibility: .publicVisibility),
+        RecipeCollection(userId: "123", name: "Date Night Dinners", description: "Fancy meals for two.", collectionImage: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=500&auto=format&fit=crop", visibility: .privateVisibility)
+    ]
 }

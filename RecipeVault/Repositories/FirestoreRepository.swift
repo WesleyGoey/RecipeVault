@@ -37,25 +37,25 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
     }
     
     // MARK: - Collection Methods
-    func createCollection(collection: Collection) async throws {
+    func createCollection(collection: RecipeCollection) async throws {
         let ref = db.collection("collections").document()
         try ref.setData(from: collection)
     }
     
-    func getPublicCollections() async throws -> [Collection] {
+    func getPublicCollections() async throws -> [RecipeCollection] {
         let snapshot = try await db.collection("collections")
             .whereField("visibility", isEqualTo: Visibility.publicVisibility.rawValue)
             .getDocuments()
             
-        return snapshot.documents.compactMap { try? $0.data(as: Collection.self) }
+        return snapshot.documents.compactMap { try? $0.data(as: RecipeCollection.self) }
     }
     
-    func getUserCollections(userId: String) async throws -> [Collection] {
+    func getUserCollections(userId: String) async throws -> [RecipeCollection] {
         let snapshot = try await db.collection("collections")
             .whereField("userId", isEqualTo: userId)
             .getDocuments()
             
-        return snapshot.documents.compactMap { try? $0.data(as: Collection.self) }
+        return snapshot.documents.compactMap { try? $0.data(as: RecipeCollection.self) }
     }
     
     // MARK: - Junction Table Methods

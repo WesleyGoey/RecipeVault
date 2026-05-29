@@ -9,7 +9,7 @@ import Foundation
 import FirebaseFirestore
 
 // M-05: Collection
-struct Collection: Codable, Identifiable {
+struct RecipeCollection: Codable, Identifiable {
     @DocumentID var id: String?
     var userId: String
     var name: String

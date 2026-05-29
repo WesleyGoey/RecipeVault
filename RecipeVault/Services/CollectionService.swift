@@ -1,19 +1,17 @@
 //
-//  CollectionService 2.swift
+//  CollectionService.swift
 //  RecipeVault
 //
-//  Created by Nicholas Gerwin Mawardji on 29/05/26.
+//  Created by Wesley Goey on 28/05/26.
 //
 
 
+// MARK: - CollectionService
 import Foundation
-import FirebaseFirestore
 
-// MARK: - Collection Service Implementation
-final class CollectionService: CollectionServiceProtocol {
+class CollectionService: CollectionServiceProtocol {
     
     // MARK: - Properties
-    // Menggunakan singleton pattern untuk kemudahan akses jika tidak menggunakan dependency container
     static let shared = CollectionService(firestoreRepo: FirestoreRepository.shared)
     private let firestoreRepo: FirestoreRepositoryProtocol
     
@@ -25,9 +23,8 @@ final class CollectionService: CollectionServiceProtocol {
         self.firestoreRepo = firestoreRepo
     }
     
-    // MARK: - Create Operations
-    
-    func createCollection(collection: Collection) async throws {
+    // MARK: - Methods
+    func createCollection(collection: RecipeCollection) async throws {
         // 1. Ambil jumlah koleksi pengguna saat ini
         let existingCollections = try await firestoreRepo.getUserCollections(userId: collection.userId)
         
@@ -44,16 +41,7 @@ final class CollectionService: CollectionServiceProtocol {
         try await firestoreRepo.createCollection(collection: collection)
     }
     
-    // MARK: - Update Operations
-    
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws {
         try await firestoreRepo.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
-    }
-    
-    // MARK: - Fetch Operations
-    
-    /// Mengambil data junction dari repository untuk mengetahui resep apa saja yang ada di koleksi ini
-    func getCollectionRecipes(collectionId: String) async throws -> [CollectionRecipe] {
-        return try await firestoreRepo.getCollectionRecipes(collectionId: collectionId)
     }
 }
