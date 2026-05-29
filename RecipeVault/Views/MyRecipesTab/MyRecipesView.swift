@@ -51,7 +51,8 @@ struct MyRecipesView: View {
                 }
             }
             .sheet(isPresented: $showingCreateSheet) {
-                Text("RecipeCreateView Placeholder")
+                // 🚀 REVISI: Membuka Form Create Recipe sungguhan
+                RecipeCreateView()
             }
         }
     }
@@ -77,9 +78,9 @@ extension MyRecipesView {
     
     private var gridSection: some View {
         LazyVGrid(columns: columns, spacing: 16) {
-            // 🚀 PERBAIKAN: Menambahkan id: \.title agar SwiftUI tahu setiap resep itu unik!
             ForEach(viewModel.myRecipes, id: \.title) { recipe in
-                NavigationLink(destination: Text("Detail View Placeholder untuk \(recipe.title)")) {
+                // 🚀 REVISI: Mengarahkan tap kartu ke RecipeDetailView
+                NavigationLink(destination: RecipeDetailView(viewModel: RecipeDetailViewModel(recipe: recipe))) {
                     RecipeCardView(recipe: recipe)
                 }
                 .buttonStyle(PlainButtonStyle())
