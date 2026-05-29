@@ -10,6 +10,9 @@
 import Foundation
 
 protocol CollectionServiceProtocol {
-    func createCollection(collection: RecipeCollection) async throws
+    func createCollection(collection: Collection) async throws
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws
+
+    // Mengambil daftar relasi resep yang berada di dalam sebuah koleksi
+        func getCollectionRecipes(collectionId: String) async throws -> [CollectionRecipe]
 }

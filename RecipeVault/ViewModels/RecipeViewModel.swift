@@ -25,7 +25,7 @@ class RecipeViewModel: ObservableObject {
     
     // MARK: - Collection Bottom Sheet State
     @Published var showCollectionSheet: Bool = false
-    @Published var userCollections: [RecipeCollection] = []
+    @Published var userCollections: [Collection] = []
     @Published var selectedCollectionIds: Set<String> = []
     @Published var isSavingToCollections: Bool = false
     
