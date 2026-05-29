@@ -124,7 +124,7 @@ extension RecipeDetailView {
                 Spacer()
                 
                 // Tampilkan menu titik tiga HANYA jika User pemilik resep
-                
+                if viewModel.isOwner(recipe: recipe) {
                     Menu {
                         Button {
                             showingEditSheet = true
@@ -146,7 +146,7 @@ extension RecipeDetailView {
                             .clipShape(Circle())
                     }
                 }
-            
+            }
             
             .padding(.top, 50)
             .padding(.horizontal, 20)
