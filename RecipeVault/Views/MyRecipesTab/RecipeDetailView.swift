@@ -5,14 +5,14 @@
 //  Created by Sean tandjaja on 28/05/26.
 //
 
-// MARK: - RecipeDetailView
 import SwiftUI
 
+// MARK: - RecipeDetailView
 struct RecipeDetailView: View {
-    // 🚀 Menerima data resep dari layar sebelumnya (Card yang diklik)
+    // Menerima data resep dari layar sebelumnya
     let recipe: Recipe
     
-    // 🚀 Menggunakan RecipeViewModel global
+    // Menggunakan RecipeViewModel global
     @ObservedObject var viewModel: RecipeViewModel
     
     @Environment(\.dismiss) private var dismiss
@@ -62,7 +62,6 @@ struct RecipeDetailView: View {
                     .padding()
                 Text("You have \(viewModel.userCollections.count) collections.")
                 
-                // Panggil save menggunakan resep aktif
                 Button("Save") {
                     Task { await viewModel.saveToSelectedCollections(recipe: recipe) }
                 }
@@ -123,8 +122,8 @@ extension RecipeDetailView {
                 
                 Spacer()
                 
-                // Tampilkan menu titik tiga HANYA jika User pemilik resep
-                
+                // 🚀 PERBAIKAN: Tampilkan menu HANYA jika User adalah pemilik resep
+                if viewModel.isOwner(recipe: recipe) {
                     Menu {
                         Button {
                             showingEditSheet = true
@@ -146,8 +145,7 @@ extension RecipeDetailView {
                             .clipShape(Circle())
                     }
                 }
-            
-            
+            }
             .padding(.top, 50)
             .padding(.horizontal, 20)
         }
@@ -262,7 +260,7 @@ extension RecipeDetailView {
     }
 }
 
-// MARK: - Helper Components (Ini yang menyebabkan error Cannot find PickerTab)
+// MARK: - Helper Components
 struct PickerTab: View {
     let title: String
     let isSelected: Bool

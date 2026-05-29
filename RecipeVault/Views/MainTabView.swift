@@ -28,20 +28,13 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             
             // MARK: - 1. Home Tab
-            VStack {
-                Text("Home View")
-                    .font(.custom("Merriweather-Bold", size: 28))
-                Text("Put your Discovery Feed here.")
-                    .foregroundColor(.gray)
-            }
+            HomeView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(bgYellow.ignoresSafeArea())
             .tag(Tab.home)
             
             // MARK: - 2. Search Tab
-            VStack {
-                SearchView()
-            }
+            SearchView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(bgYellow.ignoresSafeArea())
             .tag(Tab.search)
@@ -51,10 +44,7 @@ struct MainTabView: View {
                 .tag(Tab.myRecipes)
             
             // MARK: - 4. Collections Tab
-            VStack {
-                Text("Collections")
-                    .font(.custom("Merriweather-Bold", size: 28))
-            }
+            CollectionsView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(bgYellow.ignoresSafeArea())
             .tag(Tab.collections)
