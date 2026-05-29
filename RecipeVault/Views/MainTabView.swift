@@ -50,22 +50,7 @@ struct MainTabView: View {
             .tag(Tab.collections)
             
             // MARK: - 5. Profile Tab
-            VStack(spacing: 20) {
-                Text("Profile")
-                    .font(.custom("Merriweather-Bold", size: 28))
-                
-                Button(action: {
-                    authViewModel.logout()
-                }) {
-                    Text("Log Out")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding()
-                        .frame(maxWidth: 200)
-                        .background(Color(hex: "cd4b12")) // burntOrange
-                        .clipShape(Capsule())
-                }
-            }
+            ProfileView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(bgYellow.ignoresSafeArea())
             .tag(Tab.profile)
@@ -97,7 +82,7 @@ extension MainTabView {
         .background(
             Color(hex: "f8fae5")
                 .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: -5)
-                .ignoresSafeArea(edges: .bottom) // 👈 ADD THIS MAGIC LINE HERE
+                .ignoresSafeArea(edges: .bottom)
         )
     }
 }
@@ -126,7 +111,8 @@ struct TabBarButton: View {
                     .fontWeight(selectedTab == tab ? .bold : .regular)
                 
                 Text(title)
-                    .font(.custom("Merriweather-Regular", size: 10))
+                    // 🚀 Updated to use your Font extension!
+                    .font(.merriweather(10, weight: .regular))
             }
             // Colors: Muted Teal if active, gray if inactive
             .foregroundColor(selectedTab == tab ? mutedTeal : Color.gray.opacity(0.8))
@@ -140,4 +126,3 @@ struct TabBarButton: View {
     MainTabView()
         .environmentObject(AuthViewModel())
 }
-

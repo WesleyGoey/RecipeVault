@@ -5,14 +5,6 @@
 //  Created by NicholasaGerwin Mawardjiwin Mawardji on 29/05/26.
 //
 
-
-//
-//  CollectionsView.swift
-//  RecipeVault
-//
-//  Created by Wesley Goey on 29/05/26.
-//
-
 import SwiftUI
 
 struct CollectionsView: View {

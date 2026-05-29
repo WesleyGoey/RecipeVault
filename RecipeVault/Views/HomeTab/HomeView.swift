@@ -4,12 +4,6 @@
 //
 //  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
-//
-//  HomeView.swift
-//  RecipeVault
-//
-//  Created by Nicholas Gerwin Mawardji on 29/05/26.
-//
 
 import SwiftUI
 
