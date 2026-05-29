@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-struct CollectionCardView: View {
+struct ProfileCollectionCardView: View {
     let collection: RecipeCollection
     let recipeCount: Int
     var placeholderColors: [Color] = [Color(hex: "F3E9C9"), Color(hex: "E6D8B7")]
@@ -111,7 +111,7 @@ struct CollectionCardView_Previews: PreviewProvider {
             createdAt: nil
         )
         VStack {
-            CollectionCardView(collection: sample, recipeCount: 7)
+            ProfileCollectionCardView(collection: sample, recipeCount: 7)
                 .frame(width: 170, height: 140)
                 .padding()
         }

@@ -261,7 +261,7 @@ struct ProfileView: View {
             } else {
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(vm.collections) { col in
-                        CollectionCardView(collection: col, recipeCount: vm.collectionCounts[col.id ?? ""] ?? 0)
+                        ProfileCollectionCardView(collection: col, recipeCount: vm.collectionCounts[col.id ?? ""] ?? 0)
                             .frame(height: 170)
                     }
                 }
