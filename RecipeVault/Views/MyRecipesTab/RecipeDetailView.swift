@@ -70,7 +70,8 @@ struct RecipeDetailView: View {
             .presentationDetents([.medium])
         }
         .sheet(isPresented: $showingEditSheet) {
-            Text("RecipeEditView Placeholder untuk: \(recipe.title)")
+            // 🚀 Buka Edit View sesungguhnya
+            RecipeEditView(recipe: recipe)
         }
         .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
@@ -96,7 +97,15 @@ extension RecipeDetailView {
                 case .empty:
                     Rectangle().fill(Color.gray.opacity(0.3)).overlay(ProgressView())
                 case .success(let image):
-                    image.resizable().scaledToFill()
+                    // 🚀 FIX: Menggunakan Color.clear sebagai batas keras (hard limit)
+                    // Trik ini mencegah ScaledToFill melebarkan ScrollView ke luar layar!
+                    Color.clear
+                        .overlay(
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        )
+                        .clipped()
                 case .failure:
                     Rectangle().fill(Color.gray.opacity(0.3)).overlay(Image(systemName: "photo").foregroundColor(.gray))
                 @unknown default:
@@ -114,9 +123,9 @@ extension RecipeDetailView {
             HStack {
                 Button(action: { dismiss() }) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
-                        .padding(12)
+                        .frame(width: 44, height: 44) // Menggunakan frame simetris
                         .background(Color.black.opacity(0.4))
                         .clipShape(Circle())
                 }
@@ -139,15 +148,14 @@ extension RecipeDetailView {
                         }
                     } label: {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 21, weight: .bold))
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundColor(.white)
-                            .padding(15)
+                            .frame(width: 44, height: 44) // Menggunakan frame simetris
                             .background(Color.black.opacity(0.4))
                             .clipShape(Circle())
                     }
                 }
             }
-            
             .padding(.top, 50)
             .padding(.horizontal, 20)
         }
@@ -262,7 +270,7 @@ extension RecipeDetailView {
     }
 }
 
-// MARK: - Helper Components (Ini yang menyebabkan error Cannot find PickerTab)
+// MARK: - Helper Components
 struct PickerTab: View {
     let title: String
     let isSelected: Bool
