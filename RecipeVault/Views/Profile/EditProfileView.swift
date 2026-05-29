@@ -158,3 +158,8 @@ struct EditProfileView: View {
         return parts.prefix(2).compactMap { $0.first }.map { String($0) }.joined()
     }
 }
+
+// MARK: - Preview
+#Preview {
+    EditProfileView(vm: ProfileViewModel())
+}

@@ -5,12 +5,17 @@
 
 import SwiftUI
 
+
 struct AppTextAutocapitalization {
     // Digunakan hanya sebagai flag sederhana pembantu di dalam field
     var isWords: Bool
 }
 
 struct AuthView: View {
+    // 🚀 PERBAIKAN 1: Injeksi AuthViewModel sebagai otak utama layar ini
+    @StateObject private var authVM = AuthViewModel()
+    
+    // Tetap menggunakan ProfileViewModel hanya untuk refresh data profil setelah sukses login
     @ObservedObject var vm: ProfileViewModel
     var initialMode: AuthMode = .login
     @Environment(\.dismiss) private var dismiss
@@ -27,9 +32,9 @@ struct AuthView: View {
     @State private var regPassword: String = ""
     @State private var regConfirmPassword: String = ""
 
-    @State private var isLoading: Bool = false
-    @State private var errorMessage: String = ""
     @State private var showSuccessToast: Bool = false
+    
+    // 🚀 PERBAIKAN 2: Variabel isLoading dan errorMessage dihapus dari @State karena sudah ada di authVM
 
     init(vm: ProfileViewModel, initialMode: AuthMode = .login) {
         self.vm = vm
@@ -60,8 +65,9 @@ struct AuthView: View {
                         .padding(.horizontal, 20)
                     }
 
-                    if !errorMessage.isEmpty {
-                        Text(errorMessage)
+                    // 🚀 PERBAIKAN 3: Membaca errorMessage dari AuthViewModel
+                    if !authVM.errorMessage.isEmpty {
+                        Text(authVM.errorMessage)
                             .font(.merriweather(13))
                             .foregroundColor(.red)
                             .multilineTextAlignment(.center)
@@ -72,7 +78,8 @@ struct AuthView: View {
                     // Primary action button
                     Button(action: { Task { await submit() } }) {
                         HStack {
-                            if isLoading {
+                            // 🚀 PERBAIKAN 4: Membaca isLoading dari AuthViewModel
+                            if authVM.isLoading {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     .scaleEffect(0.9)
@@ -87,7 +94,7 @@ struct AuthView: View {
                         .cornerRadius(14)
                         .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 4)
                     }
-                    .disabled(isLoading || !isFormValid())
+                    .disabled(authVM.isLoading || !isFormValid())
                     .frame(maxWidth: 360)
                     .padding(.top, 6)
                     .padding(.horizontal, 20)
@@ -122,7 +129,7 @@ struct AuthView: View {
                 }
             }
             .navigationBarHidden(true)
-            .disabled(isLoading)
+            .disabled(authVM.isLoading)
         }
     }
 
@@ -192,13 +199,11 @@ struct AuthView: View {
                     SecureField(placeholder, text: text)
                         .padding(12)
                         .font(.merriweather(16))
-                        // Secure field secara default tidak memiliki autocorrect & autocaps
                 } else {
                     TextField(placeholder, text: text)
                         .keyboardType(keyboard)
                         .padding(12)
                         .font(.merriweather(16))
-                        // Menggunakan modifier bawaan tanpa logic membingungkan
                         .autocapitalization(isWords ? .words : .none)
                         .disableAutocorrection(true)
                 }
@@ -221,44 +226,55 @@ struct AuthView: View {
         }
     }
 
+    // 🚀 PERBAIKAN 5: Mendelegasikan Logika Otentikasi ke AuthViewModel
     private func submit() async {
-        errorMessage = ""
-        isLoading = true
+        // Bersihkan error sebelum mencoba lagi
+        authVM.errorMessage = ""
 
         if mode == .login {
-            // login flow
+            // Validasi lokal
             guard !loginEmail.trimmingCharacters(in: .whitespaces).isEmpty, !loginPassword.isEmpty else {
-                errorMessage = "Email dan password dibutuhkan."
-                isLoading = false
+                authVM.errorMessage = "Email dan password dibutuhkan."
                 return
             }
-            do {
-                _ = try await AuthService.shared.login(email: loginEmail.trimmingCharacters(in: .whitespacesAndNewlines), password: loginPassword)
-                // After successful sign-in, refresh profile
+            
+            // Masukkan data ke ViewModel dan jalankan Login
+            authVM.email = loginEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+            authVM.password = loginPassword
+            await authVM.login()
+            
+            // Jika berhasil masuk, refresh data profil dan tutup sheet
+            if authVM.isLoggedIn {
                 await vm.initializeUserProfile()
                 dismiss()
-            } catch {
-                errorMessage = "Login gagal: \(error.localizedDescription)"
             }
+            
         } else {
-            // register flow
+            // Validasi lokal
             let nameTrim = regName.trimmingCharacters(in: .whitespacesAndNewlines)
             let emailTrim = regEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !nameTrim.isEmpty else { errorMessage = "Masukkan username."; isLoading = false; return }
-            guard emailTrim.contains("@") && !regPassword.isEmpty else { errorMessage = "Email / password tidak valid."; isLoading = false; return }
-            guard regPassword == regConfirmPassword else { errorMessage = "Password dan konfirmasi tidak cocok."; isLoading = false; return }
-            guard regPassword.count >= 8 else { errorMessage = "Password minimal 8 karakter."; isLoading = false; return }
+            
+            guard !nameTrim.isEmpty else { authVM.errorMessage = "Masukkan username."; return }
+            guard emailTrim.contains("@") && !regPassword.isEmpty else { authVM.errorMessage = "Email / password tidak valid."; return }
+            guard regPassword == regConfirmPassword else { authVM.errorMessage = "Password dan konfirmasi tidak cocok."; return }
+            guard regPassword.count >= 8 else { authVM.errorMessage = "Password minimal 8 karakter."; return }
 
-            do {
-                _ = try await AuthService.shared.registerAndCreateProfile(name: nameTrim, email: emailTrim, password: regPassword)
-                // After createUser and save profile, current user is signed in — reload profile
+            // Masukkan data ke ViewModel dan jalankan Register
+            authVM.name = nameTrim
+            authVM.email = emailTrim
+            authVM.password = regPassword
+            await authVM.register()
+            
+            // Jika berhasil daftar, refresh data profil dan tutup sheet
+            if authVM.isLoggedIn {
                 await vm.initializeUserProfile()
                 dismiss()
-            } catch {
-                errorMessage = "Register gagal: \(error.localizedDescription)"
             }
         }
-
-        isLoading = false
     }
+}
+
+// MARK: - Preview
+#Preview {
+    AuthView(vm: ProfileViewModel(), initialMode: .login)
 }
