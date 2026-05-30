@@ -9,6 +9,7 @@
 import Foundation
 
 protocol FirestoreRepositoryProtocol {
+    func getUserProfile(userId: String) async throws -> [String: Any]?
     func saveUserProfile(userId: String, name: String, email: String, profilePicture: String) async throws
     
     // 🚀 FULL CRUD RECIPE
@@ -20,10 +21,17 @@ protocol FirestoreRepositoryProtocol {
     func createCollection(collection: RecipeCollection) async throws
     func getPublicCollections() async throws -> [RecipeCollection]
     func getUserCollections(userId: String) async throws -> [RecipeCollection]
+    func getRecipeCountInCollection(collectionId: String) async throws -> Int
     func updateCollection(collection: RecipeCollection) async throws   // 🚀 Baru
     func deleteCollection(collectionId: String) async throws           // 🚀 Baru
     
-    // MARK: - Junction Table Methods
+    /// 🚀 FAVORITES
+    func toggleFavorite(userId: String, recipeId: String, isFavorite: Bool) async throws
+    func getFavoriteRecipeIds(userId: String) async throws -> [String]
+    func getFavoriteRecipes(userId: String) async throws -> [Recipe]
+    
+    // 🚀 RELASI (Add to Collection)
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws
-    func getRecipesInCollection(collectionId: String) async throws -> [Recipe] // 🚀 Baru
+    func removeRecipeFromCollection(collectionId: String, recipeId: String) async throws
+    func getRecipesInCollection(collectionId: String) async throws -> [Recipe]
 }

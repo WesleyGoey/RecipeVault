@@ -40,7 +40,7 @@ class CollectionService: CollectionServiceProtocol {
         
         var newCollection = collection
         if let data = imageData {
-            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Gambar > 5MB"]) }
+            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Image > 5MB"]) }
             newCollection.collectionImage = try await storageRepo.uploadImage(image: data, path: "collection_images")
         }
         
@@ -56,11 +56,15 @@ class CollectionService: CollectionServiceProtocol {
         return try await firestoreRepo.getRecipesInCollection(collectionId: collectionId)
     }
     
+    func getRecipeCountInCollection(collectionId: String) async throws -> Int {
+        return try await firestoreRepo.getRecipeCountInCollection(collectionId: collectionId)
+    }
+    
     // 3. UPDATE (Ubah Nama, Deskripsi, Visibilitas, Gambar)
     func updateCollection(collection: RecipeCollection, newImageData: Data?) async throws {
         var updatedCollection = collection
         if let data = newImageData {
-            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Gambar > 5MB"]) }
+            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Image > 5MB"]) }
             updatedCollection.collectionImage = try await storageRepo.uploadImage(image: data, path: "collection_images")
         }
         try await firestoreRepo.updateCollection(collection: updatedCollection)
@@ -71,8 +75,11 @@ class CollectionService: CollectionServiceProtocol {
         try await firestoreRepo.deleteCollection(collectionId: collectionId)
     }
     
-    // MARK: - Relasi
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws {
         try await firestoreRepo.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
+    }
+    
+    func removeRecipeFromCollection(collectionId: String, recipeId: String) async throws {
+        try await firestoreRepo.removeRecipeFromCollection(collectionId: collectionId, recipeId: recipeId)
     }
 }

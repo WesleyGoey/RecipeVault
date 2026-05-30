@@ -29,7 +29,6 @@ struct MyRecipesView: View {
                         gridSection
                     }
                 }
-                
                 floatingActionButton
             }
             .navigationBarHidden(true)
@@ -40,7 +39,12 @@ struct MyRecipesView: View {
                     await viewModel.loadMyRecipes()
                 }
             }
-            // 🚀 INJEKSI VIEWMODEL KE SHEET
+            
+            // 🚀 SHEET UNTUK MENAMBAH KE KOLEKSI DARI HALAMAN UTAMA
+            .sheet(isPresented: $viewModel.showCollectionSheet) {
+                CollectionSelectionSheet(viewModel: viewModel)
+            }
+            
             .sheet(isPresented: $showingCreateSheet) {
                 RecipeCreateView(viewModel: viewModel)
             }
@@ -79,7 +83,8 @@ extension MyRecipesView {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(viewModel.myRecipes, id: \.title) { recipe in
                 NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: viewModel)) {
-                    RecipeCardView(recipe: recipe)
+                    // 🚀 LEMPAR VIEWMODEL KE CARD
+                    RecipeCardView(recipe: recipe, viewModel: viewModel)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .contextMenu {
@@ -109,6 +114,65 @@ extension MyRecipesView {
         }
         .padding(.trailing, 20)
         .padding(.bottom, 24)
+    }
+}
+
+// MARK: - Komponen UI Bottom Sheet (Bisa digunakan di MyRecipes & RecipeDetail)
+struct CollectionSelectionSheet: View {
+    @ObservedObject var viewModel: RecipeViewModel
+    
+    var body: some View {
+        NavigationStack {
+            List(viewModel.userCollections, id: \.id) { collection in
+                Button(action: {
+                    if let id = collection.id { viewModel.toggleCollectionSelection(collectionId: id) }
+                }) {
+                    HStack {
+                        Text(collection.name)
+                            .font(.merriweather(16, weight: .bold))
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if let id = collection.id, viewModel.selectedCollectionIds.contains(id) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(Color(hex: "cd4b12")) // burntOrange
+                                .font(.system(size: 20))
+                        } else {
+                            Image(systemName: "circle")
+                                .foregroundColor(.gray)
+                                .font(.system(size: 20))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .navigationTitle("Save to Collection")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { viewModel.showCollectionSheet = false }
+                        .foregroundColor(Color(hex: "cd4b12"))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        Task { await viewModel.saveToSelectedCollections() }
+                    }
+                    .font(.merriweather(16, weight: .bold))
+                    .foregroundColor(Color(hex: "43766c")) // mutedTeal
+                    .disabled(viewModel.selectedCollectionIds.isEmpty || viewModel.isSavingToCollections)
+                }
+            }
+            .overlay {
+                if viewModel.isSavingToCollections {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                    ProgressView().padding().background(Color.white).cornerRadius(12)
+                } else if viewModel.userCollections.isEmpty {
+                    Text("You don't have any collections yet.")
+                        .font(.merriweather(14))
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 

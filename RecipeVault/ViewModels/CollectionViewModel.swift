@@ -14,6 +14,7 @@ class CollectionViewModel: ObservableObject {
     
     @Published var myCollections: [RecipeCollection] = []
     @Published var recipesInCollection: [Recipe] = []
+    @Published var collectionCounts: [String: Int] = [:]
     
     @Published var isLoading: Bool = false
     @Published var errorMessage: String = ""
@@ -28,6 +29,15 @@ class CollectionViewModel: ObservableObject {
         errorMessage = ""
         do {
             myCollections = try await collectionService.getUserCollections(userId: uid)
+            
+            // 🚀 Ambil jumlah resep untuk setiap koleksi
+            for collection in myCollections {
+                if let colId = collection.id {
+                    let count = (try? await collectionService.getRecipeCountInCollection(collectionId: colId)) ?? 0
+                    collectionCounts[colId] = count
+                }
+            }
+            
         } catch {
             self.errorMessage = error.localizedDescription
         }
@@ -100,10 +110,23 @@ class CollectionViewModel: ObservableObject {
         isLoading = false
     }
     
+    // 🚀 FITUR TAMBAHAN: Hapus resep dari koleksi spesifik
+    func removeRecipeFromCollection(recipe: Recipe, from collection: RecipeCollection) async {
+        guard let collectionId = collection.id, let recipeId = recipe.id else { return }
+        do {
+            try await collectionService.removeRecipeFromCollection(collectionId: collectionId, recipeId: recipeId)
+            recipesInCollection.removeAll { $0.id == recipeId } // Hapus dari UI layar Detail
+        } catch {
+            self.errorMessage = error.localizedDescription
+        }
+    }
+    
+    // MARK: - Ownership
     func isOwner(collection: RecipeCollection) -> Bool {
         return collection.userId == authService.getCurrentUID()
     }
 }
+
 
 // MARK: - Mock Data
 extension RecipeCollection {

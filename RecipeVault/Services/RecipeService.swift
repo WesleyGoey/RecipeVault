@@ -35,7 +35,7 @@ class RecipeService: RecipeServiceProtocol {
     func createRecipe(recipe: Recipe, imageData: Data?) async throws {
         var newRecipe = recipe
         if let data = imageData {
-            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Gambar > 5MB"]) }
+            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Image > 5MB"]) }
             newRecipe.recipeImage = try await storageRepo.uploadImage(image: data, path: "recipe_images")
         }
         try await firestoreRepo.createRecipe(recipe: newRecipe)
@@ -50,7 +50,7 @@ class RecipeService: RecipeServiceProtocol {
     func updateRecipe(recipe: Recipe, newImageData: Data?) async throws {
         var updatedRecipe = recipe
         if let data = newImageData {
-            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Gambar > 5MB"]) }
+            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Image > 5MB"]) }
             updatedRecipe.recipeImage = try await storageRepo.uploadImage(image: data, path: "recipe_images")
         }
         try await firestoreRepo.updateRecipe(recipe: updatedRecipe)
@@ -63,5 +63,17 @@ class RecipeService: RecipeServiceProtocol {
         
         // (Opsional) Di masa depan, kamu bisa memanggil CloudStorageRepository di sini
         // untuk ikut menghapus file gambarnya agar Storage Firebase tidak cepat penuh.
+    }
+    
+    func toggleFavorite(userId: String, recipeId: String, isFavorite: Bool) async throws {
+        try await firestoreRepo.toggleFavorite(userId: userId, recipeId: recipeId, isFavorite: isFavorite)
+    }
+    
+    func getFavoriteRecipeIds(userId: String) async throws -> [String] {
+        return try await firestoreRepo.getFavoriteRecipeIds(userId: userId)
+    }
+    
+    func getFavoriteRecipes(userId: String) async throws -> [Recipe] {
+        return try await firestoreRepo.getFavoriteRecipes(userId: userId)
     }
 }

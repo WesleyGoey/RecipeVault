@@ -1,6 +1,6 @@
 //
-// CollectionCardView.swift
-// RecipeVault
+//  ProfileCollectionCardView.swift
+//  RecipeVault
 //
 
 import SwiftUI
@@ -12,14 +12,26 @@ struct ProfileCollectionCardView: View {
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
+            // MARK: - Background Image / Placeholder
             Group {
-                if let url = URL(string: collection.collectionImage), !collection.collectionImage.isEmpty {
+                if collection.collectionImage.isEmpty {
+                    // 🚀 JIKA GAMBAR KOSONG: Tampilkan Icon Folder Elegan
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                        Image(systemName: "square.stack.fill")
+                            .font(.system(size: 44))
+                            .foregroundColor(Color(hex: "163A2B").opacity(0.15)) // Warna hijau gelap transparan
+                    }
+                } else if let url = URL(string: collection.collectionImage) {
                     AsyncImage(url: url) { phase in
                         switch phase {
                         case .empty:
-                            ProgressView()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .background(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                ProgressView()
+                            }
                         case .success(let image):
                             image
                                 .resizable()
@@ -27,20 +39,25 @@ struct ProfileCollectionCardView: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .clipped()
                         case .failure:
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                            // 🚀 JIKA GAGAL LOAD: Tampilkan Icon Folder
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                Image(systemName: "square.stack.fill")
+                                    .font(.system(size: 44))
+                                    .foregroundColor(Color(hex: "163A2B").opacity(0.15))
+                            }
                         @unknown default:
                             RoundedRectangle(cornerRadius: 14)
                                 .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                         }
                     }
-                } else {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
             }
             .frame(height: 140)
             .clipShape(RoundedRectangle(cornerRadius: 14))
+            
+            // MARK: - Overlays (Pills & Count)
             .overlay(
                 VStack {
                     HStack {
@@ -58,6 +75,21 @@ struct ProfileCollectionCardView: View {
                             .background(Color(hex: "2F6B5E"))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                             .padding(8)
+                        } else {
+                            // Tambahan untuk Private (opsional)
+                            Label {
+                                Text("PRIVATE")
+                                    .font(.caption2).bold()
+                            } icon: {
+                                Image(systemName: "lock.fill")
+                                    .font(.caption2).bold()
+                            }
+                            .foregroundColor(.white)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
+                            .background(Color.gray.opacity(0.9))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .padding(8)
                         }
                         Spacer()
                     }
@@ -65,6 +97,7 @@ struct ProfileCollectionCardView: View {
                 }
             )
 
+            // Recipe Count Pill
             HStack {
                 Spacer()
                 VStack {
@@ -79,11 +112,13 @@ struct ProfileCollectionCardView: View {
                 }
             }
 
+            // Collection Name Banner
             VStack(alignment: .leading, spacing: 6) {
                 Spacer()
                 Text(collection.name)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(Color(hex: "163A2B"))
+                    .lineLimit(1)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
                     .background(Color.white)
@@ -98,24 +133,21 @@ struct ProfileCollectionCardView: View {
     }
 }
 
-#if DEBUG
-struct CollectionCardView_Previews: PreviewProvider {
-    static var previews: some View {
-        let sample = RecipeCollection(
-            id: "c1",
-            userId: "u1",
-            name: "Weeknight Favorites",
-            description: "Tasty easy dinners",
-            collectionImage: "",
-            visibility: .publicVisibility,
-            createdAt: nil
+// MARK: - Preview
+#Preview {
+    ZStack {
+        Color(hex: "FBF9EC").ignoresSafeArea()
+        ProfileCollectionCardView(
+            collection: RecipeCollection(
+                userId: "u1",
+                name: "Weeknight Favorites",
+                description: "Tasty easy dinners",
+                collectionImage: "", // Kosong untuk mengetes Icon
+                visibility: .publicVisibility
+            ),
+            recipeCount: 7
         )
-        VStack {
-            ProfileCollectionCardView(collection: sample, recipeCount: 7)
-                .frame(width: 170, height: 140)
-                .padding()
-        }
-        .previewLayout(.sizeThatFits)
+        .frame(width: 170, height: 140)
+        .padding()
     }
 }
-#endif
