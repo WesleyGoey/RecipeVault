@@ -20,5 +20,10 @@ protocol FirestoreRepositoryProtocol {
     func createCollection(collection: RecipeCollection) async throws
     func getPublicCollections() async throws -> [RecipeCollection]
     func getUserCollections(userId: String) async throws -> [RecipeCollection]
+    func updateCollection(collection: RecipeCollection) async throws   // 🚀 Baru
+    func deleteCollection(collectionId: String) async throws           // 🚀 Baru
+    
+    // MARK: - Junction Table Methods
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws
+    func getRecipesInCollection(collectionId: String) async throws -> [Recipe] // 🚀 Baru
 }

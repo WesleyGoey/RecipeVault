@@ -61,20 +61,24 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         try await db.collection("recipes").document(recipeId).delete()
     }
     
-    // MARK: - Collection Methods
+    // MARK: - Collection Methods (Di dalam FirestoreRepository.swift)
     func createCollection(collection: RecipeCollection) async throws {
         let ref = db.collection("collections").document()
-        try ref.setData(from: collection)
+        var newCol = collection
+        newCol.id = ref.documentID
+        
+        // Gunakan encoder untuk mengizinkan Timestamp estimate seperti pada resep
+        try ref.setData(from: newCol)
     }
-    
+
     func getPublicCollections() async throws -> [RecipeCollection] {
         let snapshot = try await db.collection("collections")
-            .whereField("visibility", isEqualTo: Visibility.publicVisibility.rawValue)
+            .whereField("visibility", isEqualTo: "public") // Pastikan string enum sesuai
             .getDocuments()
         
         return snapshot.documents.compactMap { try? $0.data(as: RecipeCollection.self) }
     }
-    
+
     func getUserCollections(userId: String) async throws -> [RecipeCollection] {
         let snapshot = try await db.collection("collections")
             .whereField("userId", isEqualTo: userId)
@@ -82,12 +86,50 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         
         return snapshot.documents.compactMap { try? $0.data(as: RecipeCollection.self) }
     }
-    
+
+    // 🚀 TAMBAHAN: UPDATE COLLECTION
+    func updateCollection(collection: RecipeCollection) async throws {
+        guard let colId = collection.id else { throw NSError(domain: "Firestore", code: 400, userInfo: [NSLocalizedDescriptionKey: "Collection ID tidak ditemukan"]) }
+        try db.collection("collections").document(colId).setData(from: collection)
+    }
+
+    // 🚀 TAMBAHAN: DELETE COLLECTION
+    func deleteCollection(collectionId: String) async throws {
+        try await db.collection("collections").document(collectionId).delete()
+        // Opsional: Hapus juga data di tabel collection_recipes yang terkait dengan koleksi ini
+    }
+
     // MARK: - Junction Table Methods
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws {
         let ref = db.collection("collection_recipes").document()
-        let junction = CollectionRecipe(collectionId: collectionId, recipeId: recipeId)
+        let junctionData: [String: Any] = [
+            "collectionId": collectionId,
+            "recipeId": recipeId,
+            "addedAt": FieldValue.serverTimestamp()
+        ]
+        try await ref.setData(junctionData)
+    }
+
+    // 🚀 TAMBAHAN: Mengambil resep di dalam koleksi
+    func getRecipesInCollection(collectionId: String) async throws -> [Recipe] {
+        // 1. Cari semua recipeId di tabel relasi
+        let snapshot = try await db.collection("collection_recipes")
+            .whereField("collectionId", isEqualTo: collectionId)
+            .getDocuments()
         
-        try ref.setData(from: junction)
+        let recipeIds = snapshot.documents.compactMap { $0.data()["recipeId"] as? String }
+        
+        guard !recipeIds.isEmpty else { return [] }
+        
+        // 2. Ambil dokumen Recipe berdasarkan ID yang ditemukan
+        var recipes: [Recipe] = []
+        for id in recipeIds {
+            let doc = try await db.collection("recipes").document(id).getDocument()
+            // 🚀 PERBAIKAN: Menggunakan parameter 'withServerTimestampBehavior' yang tepat
+            if let recipe = try? doc.data(as: Recipe.self) {
+                recipes.append(recipe)
+            }
+        }
+        return recipes
     }
 }

@@ -1,29 +1,39 @@
 //
-//  CollectionCreateView.swift
+//  CollectionEditView.swift
 //  RecipeVault
 //
-//  Created by Nicholas Gerwin Mawardji on 29/05/26.
+//  Created by Wesley Goey on 30/05/26.
 //
+
 
 import SwiftUI
 import PhotosUI
 
-struct CollectionCreateView: View {
+struct CollectionEditView: View {
     @Environment(\.dismiss) var dismiss
     
-    // 🚀 INJEKSI VIEWMODEL
+    let collectionToEdit: RecipeCollection
     @ObservedObject var viewModel: CollectionViewModel
     
-    @State private var name = ""
-    @State private var description = ""
-    @State private var visibility: Visibility = .publicVisibility
+    @State private var name: String
+    @State private var description: String
+    @State private var visibility: Visibility
     
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    @State private var isImageDeleted: Bool = false
     
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
+    
+    init(collectionToEdit: RecipeCollection, viewModel: CollectionViewModel) {
+        self.collectionToEdit = collectionToEdit
+        self.viewModel = viewModel
+        _name = State(initialValue: collectionToEdit.name)
+        _description = State(initialValue: collectionToEdit.description)
+        _visibility = State(initialValue: collectionToEdit.visibility)
+    }
     
     var body: some View {
         NavigationStack {
@@ -38,44 +48,69 @@ struct CollectionCreateView: View {
                 .padding(20)
             }
             .background(bgYellow.ignoresSafeArea())
-            .navigationTitle("New Collection")
+            .navigationTitle("Edit Collection")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                         .foregroundColor(burntOrange)
-                        .font(.merriweather(16, weight: .bold)) // 🚀 FONT
+                        .font(.merriweather(16, weight: .bold))
                 }
             }
             .overlay(alignment: .bottom) {
-                saveButton
+                updateButton
             }
         }
     }
 }
 
 // MARK: - Subviews
-extension CollectionCreateView {
+extension CollectionEditView {
     private var photoUploadSection: some View {
-        PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
-            if let selectedImage {
-                Image(uiImage: selectedImage).resizable().scaledToFill().frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
-            } else {
-                VStack(spacing: 12) {
-                    Image(systemName: "photo.badge.plus").font(.system(size: 32))
-                    Text("Add Cover Image").font(.merriweather(16, weight: .bold))
-                }
-                .foregroundColor(mutedTeal).frame(maxWidth: .infinity).padding(.vertical, 40).background(Color.white).cornerRadius(16)
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(mutedTeal.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8])))
-            }
-        }
-        .onChange(of: photoItem) { newItem in
-            Task {
-                if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                    selectedImage = image
+        ZStack(alignment: .topTrailing) {
+            PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
+                if let selectedImage {
+                    Image(uiImage: selectedImage).resizable().scaledToFill().frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
+                } else if !collectionToEdit.collectionImage.isEmpty && !isImageDeleted {
+                    AsyncImage(url: URL(string: collectionToEdit.collectionImage)) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        Rectangle().fill(Color.gray.opacity(0.2)).overlay(ProgressView())
+                    }.frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
+                } else {
+                    placeholderView
                 }
             }
+            .onChange(of: photoItem) { newItem in
+                Task {
+                    if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                        selectedImage = image
+                        isImageDeleted = false
+                    }
+                }
+            }
+            
+            if selectedImage != nil || (!collectionToEdit.collectionImage.isEmpty && !isImageDeleted) {
+                Button(action: {
+                    withAnimation {
+                        selectedImage = nil
+                        photoItem = nil
+                        isImageDeleted = true
+                    }
+                }) {
+                    Image(systemName: "trash.circle.fill").resizable().frame(width: 32, height: 32).foregroundColor(.red).background(Circle().fill(Color.white)).shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                }.padding(12)
+            }
         }
+    }
+    
+    private var placeholderView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "photo.badge.plus").font(.system(size: 32))
+            Text("Change Cover Image").font(.merriweather(16, weight: .bold))
+        }
+        .foregroundColor(mutedTeal).frame(maxWidth: .infinity).padding(.vertical, 40).background(Color.white).cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(mutedTeal.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8])))
     }
     
     private func inputSection(title: String, placeholder: String, text: Binding<String>) -> some View {
@@ -130,20 +165,18 @@ extension CollectionCreateView {
         }
     }
     
-    private var saveButton: some View {
+    private var updateButton: some View {
         Button(action: {
             Task {
+                guard let colId = collectionToEdit.id else { return }
                 let imgData = selectedImage?.jpegData(compressionQuality: 0.8)
-                // 🚀 PANGGIL FUNGSI CREATE DARI VIEWMODEL
-                let success = await viewModel.createCollection(name: name, description: description, visibility: visibility, imageData: imgData)
+                let success = await viewModel.updateCollection(collectionId: colId, name: name, description: description, visibility: visibility, oldImageURL: collectionToEdit.collectionImage, newImageData: imgData, isImageDeleted: isImageDeleted)
                 if success { dismiss() }
             }
         }) {
             HStack {
                 if viewModel.isLoading { ProgressView().tint(.white).padding(.trailing, 8) }
-                Text(viewModel.isLoading ? "Saving..." : "Save Collection")
-                    .font(.merriweather(16, weight: .bold))
-                    .foregroundColor(.white)
+                Text(viewModel.isLoading ? "Updating..." : "Update Collection").font(.merriweather(16, weight: .bold)).foregroundColor(.white)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 16).background(mutedTeal).cornerRadius(16)
         }
@@ -154,5 +187,5 @@ extension CollectionCreateView {
 }
 
 #Preview {
-    CollectionCreateView(viewModel: CollectionViewModel())
+    CollectionEditView(collectionToEdit: RecipeCollection.mockCollections[0], viewModel: CollectionViewModel())
 }

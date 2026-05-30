@@ -45,7 +45,7 @@ struct CollectionCardView: View {
             // Teks Info Koleksi
             VStack(alignment: .leading, spacing: 4) {
                 Text(collection.name)
-                    .font(.custom("Merriweather-Bold", size: 16))
+                    .font(.merriweather(16, weight: .bold))
                     .foregroundColor(darkText)
                     .lineLimit(1) // Maksimal 1 baris agar rapi
                 
