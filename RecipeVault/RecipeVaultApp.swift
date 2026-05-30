@@ -7,27 +7,34 @@
 
 import SwiftUI
 import FirebaseCore
-
+import FirebaseAppCheck // 🚀 1. WAJIB IMPORT INI
 
 class AppDelegate: NSObject, UIApplicationDelegate {
-  func application(_ application: UIApplication,
+    func application(_ application: UIApplication,
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-    FirebaseApp.configure()
-
-    return true
-  }
+        
+        #if DEBUG
+        // 🚀 2. Tukar provider menjadi DEBUG khusus saat dijalankan di Simulator/Xcode Development
+        let providerFactory = AppCheckDebugProviderFactory()
+        AppCheck.setAppCheckProviderFactory(providerFactory)
+        #endif
+        
+        FirebaseApp.configure()
+        return true
+    }
 }
 
 @main
 struct RecipeVaultApp: App {
-  // register app delegate for Firebase setup
-  @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @StateObject private var authVM = AuthViewModel()
 
-  var body: some Scene {
-    WindowGroup {
-      NavigationView {
-        MainTabView()
-      }
+    var body: some Scene {
+        WindowGroup {
+            NavigationView {
+                MainTabView()
+            }
+            .environmentObject(authVM)
+        }
     }
-  }
 }

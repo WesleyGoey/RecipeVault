@@ -14,23 +14,23 @@ struct ProfileView: View {
     @State private var selectedTab: Int = 0 // 0 = Collections, 1 = Favorites (used only when logged in)
     @State private var showAuthView: Bool = false
     @State private var authInitialMode: AuthMode = .login
-
+    
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
     
     // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
-
+    
     var body: some View {
         NavigationView {
             ZStack {
                 Color(hex: "FBF9EC").ignoresSafeArea()
-
+                
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
                         // Header (common)
                         headerSection
                             .padding(.horizontal)
-
+                        
                         // If not logged in: show single auth area (no segments, no lists)
                         if vm.userId.isEmpty {
                             unauthenticatedSingleArea
@@ -40,7 +40,7 @@ struct ProfileView: View {
                             // logged-in UI: segmented control + lists
                             segmentedControl
                                 .padding(.horizontal)
-
+                            
                             if selectedTab == 0 {
                                 collectionsSection
                                     .padding(.horizontal)
@@ -51,7 +51,7 @@ struct ProfileView: View {
                                     .padding(.top, 6)
                             }
                         }
-
+                        
                         Spacer(minLength: 24)
                     }
                     .padding(.top, 18)
@@ -71,7 +71,7 @@ struct ProfileView: View {
             } message: { Text(vm.operationError) }
         }
     }
-
+    
     // MARK: - Header
     private var headerSection: some View {
         Group {
@@ -88,7 +88,7 @@ struct ProfileView: View {
                             .frame(width: 40, height: 40)
                             .foregroundColor(.white)
                     }
-
+                    
                     VStack(spacing: 6) {
                         Text("Welcome To RecipeVault")
                             .font(.merriweather(22, weight: .bold))
@@ -126,7 +126,7 @@ struct ProfileView: View {
                                 .foregroundColor(.white)
                         }
                     }
-
+                    
                     VStack(alignment: .leading, spacing: 6) {
                         Text(vm.name.isEmpty ? "No Name" : vm.name)
                             .font(.merriweather(20, weight: .bold))
@@ -135,37 +135,28 @@ struct ProfileView: View {
                             .foregroundColor(.gray)
                         
                         HStack(spacing: 10) {
-                            // 🚀 PERBAIKAN: Logika Logout Pasti & Tombol Burnt Orange
                             Button(action: {
-                                do {
-                                    // 1. Paksa Firebase menghapus sesi terlebih dahulu
-                                    try AuthService.shared.logout()
-                                    // 2. Beri tahu UI global untuk pindah ke mode Unauthenticated
-                                    authVM.logout()
-                                    // 3. Reset data profil di halaman ini
-                                    Task { await vm.initializeUserProfile() }
-                                } catch {
-                                    vm.operationError = "Logout failed: \(error.localizedDescription)"
-                                }
+                                authVM.logout()
+                                Task { await vm.initializeUserProfile() }
                             }) {
                                 Text("Log out")
                                     .font(.merriweather(14, weight: .bold))
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 8)
-                                    .background(burntOrange) // Menggunakan skema warna orange
+                                    .background(burntOrange)
                                     .foregroundColor(.white)
                                     .clipShape(Capsule())
                                     .shadow(color: burntOrange.opacity(0.3), radius: 4, x: 0, y: 2)
                             }
                         }
-                        .padding(.top, 4) // Memberikan sedikit jarak dari email
+                        .padding(.top, 4)
                     }
                     Spacer()
                 }
             }
         }
     }
-
+    
     // MARK: - Unauthenticated single area (simplified)
     private var unauthenticatedSingleArea: some View {
         VStack(spacing: 20) {
@@ -174,7 +165,7 @@ struct ProfileView: View {
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 8)
-
+            
             // Two primary choices centered: Login and Register
             HStack(spacing: 12) {
                 Button(action: {
@@ -190,7 +181,7 @@ struct ProfileView: View {
                         .cornerRadius(12)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "EDEFE3"), lineWidth: 1))
                 }
-
+                
                 Button(action: {
                     authInitialMode = .register
                     showAuthView = true
@@ -209,7 +200,7 @@ struct ProfileView: View {
         .padding(.top, 18)
         .frame(maxWidth: .infinity)
     }
-
+    
     // MARK: - Segmented control (for signed-in)
     private var segmentedControl: some View {
         HStack(spacing: 0) {
@@ -224,7 +215,7 @@ struct ProfileView: View {
                     .shadow(color: selectedTab == 0 ? Color.black.opacity(0.06) : Color.clear, radius: 6, x: 0, y: 3)
             }
             .buttonStyle(PlainButtonStyle())
-
+            
             Button(action: { withAnimation { selectedTab = 1 } }) {
                 Text("Favorites")
                     .font(.merriweather(15, weight: selectedTab == 1 ? .bold : .regular))
@@ -242,7 +233,7 @@ struct ProfileView: View {
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
     }
-
+    
     // MARK: - Collections when signed-in
     private var collectionsSection: some View {
         Group {
@@ -283,7 +274,7 @@ struct ProfileView: View {
             }
         }
     }
-
+    
     // MARK: - Favorites when signed-in
     private var favoritesSection: some View {
         Group {

@@ -34,6 +34,7 @@ struct RecipeDetailView: View {
     
     var body: some View {
         ScrollView {
+            // ... (Isi VStack biarkan persis seperti kodemu) ...
             VStack(alignment: .leading, spacing: 0) {
                 heroImageSection
                 attributionSection
@@ -44,10 +45,7 @@ struct RecipeDetailView: View {
                     customPicker
                     
                     if isLoadingDetails {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 40)
+                        ProgressView().scaleEffect(1.5).frame(maxWidth: .infinity).padding(.top, 40)
                     } else {
                         if viewModel.currentTab == .ingredients {
                             ingredientsList
@@ -63,6 +61,13 @@ struct RecipeDetailView: View {
         .background(bgYellow.ignoresSafeArea())
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
+        .onChange(of: viewModel.myRecipes) { updatedRecipes in
+            if let latestRecipeData = updatedRecipes.first(where: { $0.id == recipe.id }) {
+                withAnimation {
+                    self.recipe = latestRecipeData
+                }
+            }
+        }
         .task {
             await viewModel.checkIfFavorite(recipe: recipe)
             if recipe.ingredients.isEmpty, let mealId = recipe.id {
@@ -198,10 +203,22 @@ extension RecipeDetailView {
     }
     
     private var tagsSection: some View {
-        HStack(spacing: 10) {
-            let tags = [recipe.category]
-            ForEach(tags.filter { !$0.isEmpty }, id: \.self) { tag in
-                Text(tag).font(.merriweather(12, weight: .bold)).foregroundColor(.white).padding(.horizontal, 16).padding(.vertical, 8).background(burntOrange).clipShape(Capsule())
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                // 🚀 PERBAIKAN: Memecah string berdasarkan koma menjadi Array
+                let tags = recipe.category.components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+                
+                ForEach(tags, id: \.self) { tag in
+                    Text(tag)
+                        .font(.merriweather(12, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(burntOrange)
+                        .clipShape(Capsule())
+                }
             }
         }
     }
