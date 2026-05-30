@@ -32,18 +32,12 @@ class RecipeService: RecipeServiceProtocol {
     // MARK: - Methods (🚀 REVISI FULL CRUD)
     
     // 1. CREATE
-    func createRecipeWithImage(recipe: Recipe, imageData: Data?) async throws {
+    func createRecipe(recipe: Recipe, imageData: Data?) async throws {
         var newRecipe = recipe
-        
-        // Jika ada gambar, upload dulu
         if let data = imageData {
-            guard validateSize(image: data) else {
-                throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Ukuran gambar melebihi 5 MB."])
-            }
-            let imageURL = try await storageRepo.uploadImage(image: data, path: "recipe_images")
-            newRecipe.recipeImage = imageURL
+            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Gambar > 5MB"]) }
+            newRecipe.recipeImage = try await storageRepo.uploadImage(image: data, path: "recipe_images")
         }
-        
         try await firestoreRepo.createRecipe(recipe: newRecipe)
     }
     
@@ -55,18 +49,10 @@ class RecipeService: RecipeServiceProtocol {
     // 3. UPDATE
     func updateRecipe(recipe: Recipe, newImageData: Data?) async throws {
         var updatedRecipe = recipe
-        
-        // Cek apakah user mengganti foto saat edit
         if let data = newImageData {
-            guard validateSize(image: data) else {
-                throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Ukuran gambar melebihi 5 MB."])
-            }
-            // Upload gambar baru dan timpa URL lama
-            let imageURL = try await storageRepo.uploadImage(image: data, path: "recipe_images")
-            updatedRecipe.recipeImage = imageURL
+            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Gambar > 5MB"]) }
+            updatedRecipe.recipeImage = try await storageRepo.uploadImage(image: data, path: "recipe_images")
         }
-        
-        // Simpan perubahan ke Firestore
         try await firestoreRepo.updateRecipe(recipe: updatedRecipe)
     }
     

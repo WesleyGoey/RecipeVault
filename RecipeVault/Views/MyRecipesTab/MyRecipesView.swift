@@ -2,41 +2,27 @@
 //  MyRecipesView.swift
 //  RecipeVault
 //
-//  Created by Wesley Goey on 28/05/26.
-//
 
-
-// MARK: - MyRecipesView
 import SwiftUI
 
 struct MyRecipesView: View {
-    
-    // MARK: - Properties
     @StateObject private var viewModel = RecipeViewModel()
     
-    // State untuk Modals (Create, Edit, Delete)
     @State private var showingCreateSheet = false
     @State private var recipeToEdit: Recipe? = nil
     @State private var recipeToDelete: Recipe? = nil
     @State private var showingDeleteAlert = false
     
-    private let columns = [
-        GridItem(.flexible(), spacing: 16),
-        GridItem(.flexible(), spacing: 16)
-    ]
+    private let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
     
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let mutedTeal = Color(hex: "43766c")
     
-    // MARK: - Body
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
-                // Background Utama
                 bgYellow.ignoresSafeArea()
                 
-                // Header dan Grid
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         headerSection
@@ -44,7 +30,6 @@ struct MyRecipesView: View {
                     }
                 }
                 
-                // Tombol aksi melayang (FAB)
                 floatingActionButton
             }
             .navigationBarHidden(true)
@@ -55,22 +40,17 @@ struct MyRecipesView: View {
                     await viewModel.loadMyRecipes()
                 }
             }
-            
-            // MARK: - Overlays & Modals
-            // 1. Sheet untuk Create Recipe Baru
+            // 🚀 INJEKSI VIEWMODEL KE SHEET
             .sheet(isPresented: $showingCreateSheet) {
                 RecipeCreateView(viewModel: viewModel)
             }
             .sheet(item: $recipeToEdit) { recipe in
                 RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
             }
-            // 3. 🚀 Alert Konfirmasi Delete dari Context Menu
             .alert("Delete Recipe", isPresented: $showingDeleteAlert, presenting: recipeToDelete) { recipe in
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
-                    Task {
-                        await viewModel.deleteRecipe(recipe: recipe)
-                    }
+                    Task { await viewModel.deleteRecipe(recipe: recipe) }
                 }
             } message: { recipe in
                 Text("Are you sure you want to delete '\(recipe.title)'? This action cannot be undone.")
@@ -79,17 +59,15 @@ struct MyRecipesView: View {
     }
 }
 
-// MARK: - Subviews
 extension MyRecipesView {
-    
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("My Recipes")
-                .font(.custom("Merriweather-Bold", size: 36))
+                .font(.merriweather(36, weight: .bold))
                 .foregroundColor(Color.primary)
             
             Text("\(viewModel.myRecipes.count) created")
-                .font(.subheadline)
+                .font(.merriweather(14, weight: .regular))
                 .foregroundColor(.gray)
         }
         .padding(.horizontal, 20)
@@ -104,23 +82,13 @@ extension MyRecipesView {
                     RecipeCardView(recipe: recipe)
                 }
                 .buttonStyle(PlainButtonStyle())
-                // 🚀 FITUR BARU: Context Menu saat kartu di-hold/tahan
                 .contextMenu {
                     if viewModel.isOwner(recipe: recipe) {
-                        Button {
-                            // Memasukkan resep ke dalam state memicu terbukanya Edit Sheet
-                            recipeToEdit = recipe
-                        } label: {
-                            Label("Edit Recipe", systemImage: "pencil")
-                        }
-                        
+                        Button { recipeToEdit = recipe } label: { Label("Edit Recipe", systemImage: "pencil") }
                         Button(role: .destructive) {
-                            // Menyimpan data resep sementara dan memunculkan Alert Hapus
                             recipeToDelete = recipe
                             showingDeleteAlert = true
-                        } label: {
-                            Label("Delete Recipe", systemImage: "trash")
-                        }
+                        } label: { Label("Delete Recipe", systemImage: "trash") }
                     }
                 }
             }
@@ -130,9 +98,7 @@ extension MyRecipesView {
     }
     
     private var floatingActionButton: some View {
-        Button(action: {
-            showingCreateSheet = true
-        }) {
+        Button(action: { showingCreateSheet = true }) {
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundColor(.white)

@@ -60,7 +60,7 @@ extension RecipeCardView {
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(recipe.title)
-                .font(.custom("Merriweather-Bold", size: 16, relativeTo: .headline))
+                .font(.merriweather(16, weight: .bold))
                 .foregroundColor(.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
