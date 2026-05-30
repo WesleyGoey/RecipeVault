@@ -59,13 +59,10 @@ struct MyRecipesView: View {
             // MARK: - Overlays & Modals
             // 1. Sheet untuk Create Recipe Baru
             .sheet(isPresented: $showingCreateSheet) {
-                RecipeCreateView()
+                RecipeCreateView(viewModel: viewModel)
             }
-            // 2. 🚀 Sheet dinamis untuk Edit Recipe yang dipilih dari Context Menu
             .sheet(item: $recipeToEdit) { recipe in
-                // Pastikan RecipeEditView menerima parameter (recipe: Recipe)
-                Text("RecipeEditView Placeholder untuk: \(recipe.title)")
-                // RecipeEditView(recipe: recipe)
+                RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
             }
             // 3. 🚀 Alert Konfirmasi Delete dari Context Menu
             .alert("Delete Recipe", isPresented: $showingDeleteAlert, presenting: recipeToDelete) { recipe in

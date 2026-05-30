@@ -39,33 +39,74 @@ class RecipeViewModel: ObservableObject {
     private let authService = AuthService.shared
     
     // MARK: - Core CRUD Methods
-    func loadMyRecipes() async {
-        guard let uid = authService.getCurrentUID() else { return }
-        isLoading = true
-        
-        do {
-            // MOCK DATA SEMENTARA UNTUK PREVIEW
-            myRecipes = Recipe.mockRecipes
-        } catch {
-            self.errorMessage = error.localizedDescription
+        func loadMyRecipes() async {
+            guard let uid = authService.getCurrentUID() else { return }
+            isLoading = true
+            do {
+                // 🚀 PERBAIKAN: Ambil data asli dari Firebase, bukan Mock Data!
+                myRecipes = try await RecipeService.shared.getUserRecipes(userId: uid)
+            } catch {
+                self.errorMessage = error.localizedDescription
+            }
+            isLoading = false
         }
         
-        isLoading = false
-    }
-    
-    func deleteRecipe(recipe: Recipe) async {
-        guard let recipeId = recipe.id else { return }
-        do {
-            // TODO: Panggil Service untuk hapus data di server
-            // try await RecipeService.shared.deleteRecipe(id: recipeId)
+        // MARK: - Create
+        func createRecipe(title: String, description: String, category: String, ingredients: [String], steps: [String], imageData: Data?) async -> Bool {
+            isLoading = true
+            guard let uid = authService.getCurrentUID() else { return false }
             
-            // Hapus dari list lokal agar UI langsung hilang tanpa perlu reload
-            myRecipes.removeAll { $0.id == recipeId }
-            print("Recipe Deleted Successfully!")
-        } catch {
-            print("Error deleting recipe: \(error.localizedDescription)")
+            let cleanedIngredients = ingredients.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            let cleanedSteps = steps.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            
+            let newRecipe = Recipe(userId: uid, title: title, description: description, ingredients: cleanedIngredients, steps: cleanedSteps, category: category, recipeImage: "")
+            
+            do {
+                try await RecipeService.shared.createRecipeWithImage(recipe: newRecipe, imageData: imageData)
+                await loadMyRecipes() // Refresh UI
+                isLoading = false
+                return true
+            } catch {
+                self.errorMessage = error.localizedDescription
+                isLoading = false
+                return false
+            }
         }
-    }
+        
+        // MARK: - Update
+        func updateRecipe(recipeId: String, title: String, description: String, category: String, ingredients: [String], steps: [String], oldImageURL: String, newImageData: Data?) async -> Bool {
+            isLoading = true
+            guard let uid = authService.getCurrentUID() else { return false }
+            
+            let cleanedIngredients = ingredients.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            let cleanedSteps = steps.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            
+            var updatedRecipe = Recipe(userId: uid, title: title, description: description, ingredients: cleanedIngredients, steps: cleanedSteps, category: category, recipeImage: oldImageURL)
+            updatedRecipe.id = recipeId // Pastikan ID tidak berubah
+            
+            do {
+                try await RecipeService.shared.updateRecipeWithImage(recipe: updatedRecipe, newImageData: newImageData)
+                await loadMyRecipes() // Refresh UI
+                isLoading = false
+                return true
+            } catch {
+                self.errorMessage = error.localizedDescription
+                isLoading = false
+                return false
+            }
+        }
+        
+        // MARK: - Delete
+        func deleteRecipe(recipe: Recipe) async {
+            guard let recipeId = recipe.id else { return }
+            do {
+                // 🚀 PERBAIKAN: Hapus dari Firebase!
+                try await RecipeService.shared.deleteRecipe(recipeId: recipeId)
+                myRecipes.removeAll { $0.id == recipeId }
+            } catch {
+                print("Error deleting recipe: \(error.localizedDescription)")
+            }
+        }
     
     // MARK: - Ownership & Interaction
     func isOwner(recipe: Recipe) -> Bool {

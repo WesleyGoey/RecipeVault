@@ -10,5 +10,8 @@
 import Foundation
 
 protocol RecipeServiceProtocol {
-    func createRecipeWithImage(recipe: Recipe, imageData: Data) async throws
+    func createRecipeWithImage(recipe: Recipe, imageData: Data?) async throws
+    func getUserRecipes(userId: String) async throws -> [Recipe]
+    func updateRecipe(recipe: Recipe, newImageData: Data?) async throws
+    func deleteRecipe(recipeId: String) async throws
 }
