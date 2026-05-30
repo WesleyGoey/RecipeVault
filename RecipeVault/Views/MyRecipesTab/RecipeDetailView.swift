@@ -90,19 +90,47 @@ struct RecipeDetailView: View {
         }
     }
     
-    // ... (Fungsi fetchFullDetails biarkan sama persis dengan aslimu) ...
     private func fetchFullDetails(id: String) async {
-        // [Kode fetchFullDetails milikmu tetap di sini]
+        isLoadingDetails = true
+        guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/lookup.php?i=\(id)") else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let meals = json["meals"] as? [[String: Any]],
+               let fullMeal = meals.first {
+                
+                var parsedIngredients: [String] = []
+                for i in 1...20 {
+                    if let ingredient = fullMeal["strIngredient\(i)"] as? String,
+                       !ingredient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        let measure = (fullMeal["strMeasure\(i)"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        let combined = measure.isEmpty ? ingredient : "\(measure) \(ingredient)"
+                        parsedIngredients.append(combined)
+                    }
+                }
+                
+                let instructions = fullMeal["strInstructions"] as? String ?? ""
+                let parsedSteps = instructions.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                
+                withAnimation {
+                    recipe.ingredients = parsedIngredients
+                    recipe.steps = parsedSteps
+                }
+            }
+        } catch {
+            print("Failed to fetch full recipe details: \(error.localizedDescription)")
+        }
+        isLoadingDetails = false
     }
 }
 
 extension RecipeDetailView {
     
-    // MARK: - Hero Image Section (Diperbarui dengan Placeholder)
+    // MARK: - Hero Image Section (Diperbarui dengan Placeholder KONSISTEN)
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
             if recipe.recipeImage.isEmpty {
-                // Placeholder jika tidak ada gambar
+                // 🚀 Placeholder jika string URL kosong dari awal
                 ZStack {
                     mutedTeal.opacity(0.15)
                     Image(systemName: "fork.knife")
@@ -113,20 +141,26 @@ extension RecipeDetailView {
             } else {
                 AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
                     switch phase {
-                    case .empty: Rectangle().fill(Color.gray.opacity(0.15)).overlay(ProgressView())
+                    case .empty:
+                        Rectangle().fill(Color.gray.opacity(0.15)).overlay(ProgressView())
                     case .success(let image):
                         Color.clear.overlay(image.resizable().scaledToFill()).clipped()
-                    case .failure: ZStack {
-                        mutedTeal.opacity(0.15)
-                        Image(systemName: "photo.fill").font(.system(size: 60)).foregroundColor(mutedTeal.opacity(0.5))
-                    }
-                    @unknown default: EmptyView()
+                    case .failure:
+                        // 🚀 Placeholder jika URL ada tapi gagal ditarik (error link)
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 60))
+                                .foregroundColor(mutedTeal.opacity(0.5))
+                        }
+                    @unknown default:
+                        EmptyView()
                     }
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }
             
-            // Overlay Gradient agar tombol back terlihat
+            // Overlay Gradient agar tombol back terlihat jelas
             LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.6)]), startPoint: .center, endPoint: .bottom)
                 .frame(height: 300)
             
@@ -157,7 +191,6 @@ extension RecipeDetailView {
             Spacer()
             
             HStack(spacing: 12) {
-                // 🚀 TOMBOL ADD TO COLLECTION
                 Button(action: { Task { await viewModel.openCollectionSheet(for: recipe) } }) {
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .bold))
@@ -167,7 +200,6 @@ extension RecipeDetailView {
                         .clipShape(Circle())
                 }
                 
-                // 🚀 TOMBOL FAVORITE
                 let isFav = viewModel.isFavorite(recipe: recipe)
                 Button(action: { Task { await viewModel.toggleFavorite(recipe: recipe) } }) {
                     Image(systemName: isFav ? "heart.fill" : "heart")
@@ -182,8 +214,6 @@ extension RecipeDetailView {
             .padding(.top, 4)
         }
     }
-    
-    // ... [Sisa fungsi ekstensi biarkan sama persis (attributionSection, tagsSection, dll)] ...
     
     private var attributionSection: some View {
         HStack {
@@ -257,6 +287,7 @@ extension RecipeDetailView {
     }
 }
 
+// Struct penolong untuk Tab
 struct PickerTab: View {
     let title: String
     let isSelected: Bool
@@ -269,7 +300,7 @@ struct PickerTab: View {
 }
 
 #Preview {
-    PreviewLiveWrapper() // Tetap memanggil struct preview live buatanmu sebelumnya
+    PreviewLiveWrapper()
 }
 
 struct PreviewLiveWrapper: View {

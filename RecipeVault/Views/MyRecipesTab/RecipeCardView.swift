@@ -12,7 +12,7 @@ struct RecipeCardView: View {
     // MARK: - Properties
     let recipe: Recipe
     
-    // 🚀 INJEKSI VIEWMODEL UNTUK MENGAKSES FUNGSI FAVORITE & COLLECTION
+    // INJEKSI VIEWMODEL UNTUK MENGAKSES FUNGSI FAVORITE & COLLECTION
     @ObservedObject var viewModel: RecipeViewModel
     
     // Theme Colors
@@ -34,10 +34,10 @@ struct RecipeCardView: View {
 // MARK: - Subviews
 extension RecipeCardView {
     
-    // MARK: - Image Section
+    // MARK: - Image Section & Placeholder
     private var imageSection: some View {
         Group {
-            // 🚀 JIKA GAMBAR KOSONG: Tampilkan Placeholder Elegan
+            // JIKA GAMBAR KOSONG: Tampilkan Placeholder Garpu Pisau Elegan
             if recipe.recipeImage.isEmpty {
                 ZStack {
                     mutedTeal.opacity(0.15)
@@ -46,13 +46,14 @@ extension RecipeCardView {
                         .foregroundColor(mutedTeal.opacity(0.5))
                 }
             } else {
-                // 🚀 JIKA ADA URL: Gunakan AsyncImage dengan Fallback Loading/Error
+                // JIKA ADA URL: Gunakan AsyncImage dengan Fallback Loading/Error
                 AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
                     switch phase {
                     case .empty:
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.15))
-                            .overlay(ProgressView())
+                        ZStack {
+                            mutedTeal.opacity(0.05)
+                            ProgressView()
+                        }
                     case .success(let image):
                         image
                             .resizable()
@@ -60,7 +61,7 @@ extension RecipeCardView {
                     case .failure:
                         ZStack {
                             mutedTeal.opacity(0.15)
-                            Image(systemName: "photo.fill")
+                            Image(systemName: "fork.knife")
                                 .font(.system(size: 40))
                                 .foregroundColor(mutedTeal.opacity(0.5))
                         }
@@ -88,7 +89,7 @@ extension RecipeCardView {
             HStack(spacing: 12) {
                 Spacer()
                 
-                // 🚀 TOMBOL ADD TO COLLECTION
+                // TOMBOL ADD TO COLLECTION
                 Button(action: {
                     Task { await viewModel.openCollectionSheet(for: recipe) }
                 }) {
@@ -100,7 +101,7 @@ extension RecipeCardView {
                         .clipShape(Circle())
                 }
                 
-                // 🚀 TOMBOL FAVORITE DENGAN LOGIKA NYATA
+                // TOMBOL FAVORITE DENGAN LOGIKA NYATA
                 let isFav = viewModel.isFavorite(recipe: recipe)
                 Button(action: {
                     Task { await viewModel.toggleFavorite(recipe: recipe) }
@@ -124,11 +125,24 @@ extension RecipeCardView {
 #Preview {
     ZStack {
         Color(hex: "f8fae5").ignoresSafeArea()
+        
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
-            // Contoh Dengan Gambar
-            RecipeCardView(recipe: Recipe.previewMockData[1], viewModel: RecipeViewModel())
-            // Contoh Tanpa Gambar
-            RecipeCardView(recipe: Recipe.previewMockData[0], viewModel: RecipeViewModel())
+            
+            // 1. Kartu DENGAN Gambar (Mock Asli)
+            RecipeCardView(
+                recipe: Recipe.previewMockData[0],
+                viewModel: RecipeViewModel()
+            )
+            
+            // 2. Kartu TANPA Gambar (Modifikasi Mock instan)
+            RecipeCardView(
+                recipe: {
+                    var mock = Recipe.previewMockData[1]
+                    mock.recipeImage = "" // Sengaja dikosongkan
+                    return mock
+                }(),
+                viewModel: RecipeViewModel()
+            )
         }
         .padding(20)
     }

@@ -8,50 +8,49 @@
 import SwiftUI
 
 struct CollectionCardView: View {
-    // 🚀 Menggunakan model RecipeCollection
     let collection: RecipeCollection
-    var recipeCount: Int = 0 // 🚀 Tambahan parameter jumlah resep
+    var recipeCount: Int = 0
     
-    // Theme Colors
     let darkText = Color.primary
+    let mutedTeal = Color(hex: "43766c")
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Gambar Koleksi
-            Color.clear
-                .aspectRatio(1, contentMode: .fit)
-                .overlay(
+            
+            // MARK: - Kotak Gambar (Isolasi total agar tidak tembus)
+            ZStack {
+                // Background solid agar tidak transparan
+                Color.white
+                
+                if collection.collectionImage.isEmpty {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "square.stack.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(mutedTeal.opacity(0.5))
+                } else {
                     AsyncImage(url: URL(string: collection.collectionImage)) { phase in
                         switch phase {
-                        case .empty:
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.2))
-                                .overlay(ProgressView())
                         case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        case .failure:
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.2))
-                                .overlay(Image(systemName: "photo").foregroundColor(.gray))
-                        @unknown default:
-                            EmptyView()
+                            image.resizable().scaledToFill()
+                        default:
+                            mutedTeal.opacity(0.15)
+                            Image(systemName: "square.stack.fill").foregroundColor(mutedTeal.opacity(0.5))
                         }
                     }
-                )
-                .clipped() // 🚀 Tambahkan ini agar aman
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: Color.black.opacity(0.04), radius: 5, x: 0, y: 2)
+                }
+            }
+            .frame(height: 140) // Kunci tinggi agar rapi di grid
+            .frame(maxWidth: .infinity)
+            .clipped() // Memotong apapun yang meluap dari kotak 140
+            .clipShape(RoundedRectangle(cornerRadius: 16))
             
-            // Teks Info Koleksi
+            // MARK: - Teks Info (Di luar ZStack gambar)
             VStack(alignment: .leading, spacing: 4) {
                 Text(collection.name)
                     .font(.merriweather(16, weight: .bold))
                     .foregroundColor(darkText)
                     .lineLimit(1)
                 
-                // 🚀 Mengganti "Collection • You" menjadi Visibilitas dan Jumlah Resep
                 let visibilityText = collection.visibility == .publicVisibility ? "Public" : "Private"
                 Text("\(visibilityText) • \(recipeCount) \(recipeCount == 1 ? "Recipe" : "Recipes")")
                     .font(.caption)
@@ -65,9 +64,13 @@ struct CollectionCardView: View {
 // MARK: - Preview
 #Preview {
     ZStack {
+        // Warna background layar kuning
         Color(hex: "f8fae5").ignoresSafeArea()
         
+        // 🚀 PREVIEW MENAMPILKAN 2 KARTU (DENGAN GAMBAR & TANPA GAMBAR)
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+            
+            // 1. Kartu DENGAN Gambar
             CollectionCardView(
                 collection: RecipeCollection(
                     userId: "123",
@@ -76,7 +79,19 @@ struct CollectionCardView: View {
                     collectionImage: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=500&auto=format&fit=crop",
                     visibility: .publicVisibility
                 ),
-                recipeCount: 5 // 🚀 Contoh data preview
+                recipeCount: 5
+            )
+            
+            // 2. Kartu TANPA Gambar (Ikon tidak akan tembus)
+            CollectionCardView(
+                collection: RecipeCollection(
+                    userId: "123",
+                    name: "Secret Recipes",
+                    description: "My secret formulas",
+                    collectionImage: "", // Kosong untuk tes Ikon
+                    visibility: .privateVisibility
+                ),
+                recipeCount: 12
             )
         }
         .padding(20)
