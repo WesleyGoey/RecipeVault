@@ -17,7 +17,7 @@ struct CollectionCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             
-            // MARK: - Kotak Gambar (Isolasi total agar tidak tembus)
+            // MARK: - Kotak Gambar (Membaca Base64)
             ZStack {
                 // Background solid agar tidak transparan
                 Color.white
@@ -27,16 +27,21 @@ struct CollectionCardView: View {
                     Image(systemName: "square.stack.fill")
                         .font(.system(size: 40))
                         .foregroundColor(mutedTeal.opacity(0.5))
+                }
+                // 🚀 BACA TEKS BASE64 LANGSUNG
+                else if let imageData = Data(base64Encoded: collection.collectionImage),
+                        let uiImage = UIImage(data: imageData) {
+                    
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        
                 } else {
-                    AsyncImage(url: URL(string: collection.collectionImage)) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFill()
-                        default:
-                            mutedTeal.opacity(0.15)
-                            Image(systemName: "square.stack.fill").foregroundColor(mutedTeal.opacity(0.5))
-                        }
-                    }
+                    // Fallback jika data corrupt
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "square.stack.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(mutedTeal.opacity(0.5))
                 }
             }
             .frame(height: 140) // Kunci tinggi agar rapi di grid
@@ -67,18 +72,11 @@ struct CollectionCardView: View {
         // Warna background layar kuning
         Color(hex: "f8fae5").ignoresSafeArea()
         
-        // 🚀 PREVIEW MENAMPILKAN 2 KARTU (DENGAN GAMBAR & TANPA GAMBAR)
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
             
-            // 1. Kartu DENGAN Gambar
+            // 1. Kartu DENGAN Gambar (Mock data tidak punya base64 asli, jadi akan fallback ke Ikon otomatis)
             CollectionCardView(
-                collection: RecipeCollection(
-                    userId: "123",
-                    name: "Weeknight Favorites",
-                    description: "Quick dinners",
-                    collectionImage: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=500&auto=format&fit=crop",
-                    visibility: .publicVisibility
-                ),
+                collection: RecipeCollection.mockCollections[0],
                 recipeCount: 5
             )
             

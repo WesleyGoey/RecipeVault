@@ -5,7 +5,6 @@
 //  Created by Wesley Goey on 30/05/26.
 //
 
-
 import SwiftUI
 import PhotosUI
 
@@ -21,6 +20,9 @@ struct CollectionEditView: View {
     
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    
+    // 🚀 STATE MENTAHAN & DELETE
+    @State private var rawImageData: Data?
     @State private var isImageDeleted: Bool = false
     
     let bgYellow = Color(hex: "f8fae5")
@@ -60,6 +62,15 @@ struct CollectionEditView: View {
             .overlay(alignment: .bottom) {
                 updateButton
             }
+            // 🚀 MUNCULKAN ERROR FIREBASE
+            .alert("Update Failed", isPresented: Binding(
+                get: { !viewModel.operationError.isEmpty },
+                set: { if !$0 { viewModel.operationError = "" } }
+            )) {
+                Button("OK", role: .cancel) { viewModel.operationError = "" }
+            } message: {
+                Text(viewModel.operationError)
+            }
         }
     }
 }
@@ -71,12 +82,20 @@ extension CollectionEditView {
             PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
                 if let selectedImage {
                     Image(uiImage: selectedImage).resizable().scaledToFill().frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
-                } else if !collectionToEdit.collectionImage.isEmpty && !isImageDeleted {
-                    AsyncImage(url: URL(string: collectionToEdit.collectionImage)) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        Rectangle().fill(Color.gray.opacity(0.2)).overlay(ProgressView())
-                    }.frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                else if !collectionToEdit.collectionImage.isEmpty && !isImageDeleted {
+                    // 🚀 GANTI ASYNCIMAGE DENGAN BACA TEKS BASE64
+                    if let imageData = Data(base64Encoded: collectionToEdit.collectionImage),
+                       let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 160)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    } else {
+                        placeholderView
+                    }
                 } else {
                     placeholderView
                 }
@@ -84,22 +103,32 @@ extension CollectionEditView {
             .onChange(of: photoItem) { newItem in
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                        selectedImage = image
-                        isImageDeleted = false
+                        self.selectedImage = image
+                        self.isImageDeleted = false
+                        // 🚀 SIMPAN GAMBAR MENTAHAN
+                        self.rawImageData = image.jpegData(compressionQuality: 1.0)
                     }
                 }
             }
             
+            // 🚀 TOMBOL TRASH KANAN ATAS
             if selectedImage != nil || (!collectionToEdit.collectionImage.isEmpty && !isImageDeleted) {
                 Button(action: {
                     withAnimation {
                         selectedImage = nil
                         photoItem = nil
+                        rawImageData = nil
                         isImageDeleted = true
                     }
                 }) {
-                    Image(systemName: "trash.circle.fill").resizable().frame(width: 32, height: 32).foregroundColor(.red).background(Circle().fill(Color.white)).shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-                }.padding(12)
+                    Image(systemName: "trash.circle.fill")
+                        .resizable()
+                        .frame(width: 32, height: 32)
+                        .foregroundColor(.red)
+                        .background(Circle().fill(Color.white))
+                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                }
+                .padding(12)
             }
         }
     }
@@ -169,8 +198,18 @@ extension CollectionEditView {
         Button(action: {
             Task {
                 guard let colId = collectionToEdit.id else { return }
-                let imgData = selectedImage?.jpegData(compressionQuality: 0.8)
-                let success = await viewModel.updateCollection(collectionId: colId, name: name, description: description, visibility: visibility, oldImageURL: collectionToEdit.collectionImage, newImageData: imgData, isImageDeleted: isImageDeleted)
+                
+                // 🚀 UPDATE MENGGUNAKAN GAMBAR MENTAH
+                let success = await viewModel.updateCollection(
+                    collectionId: colId,
+                    name: name,
+                    description: description,
+                    visibility: visibility,
+                    oldImageURL: collectionToEdit.collectionImage,
+                    newImageData: rawImageData,
+                    isImageDeleted: isImageDeleted
+                )
+                
                 if success { dismiss() }
             }
         }) {

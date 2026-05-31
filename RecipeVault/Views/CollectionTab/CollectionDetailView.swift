@@ -70,9 +70,11 @@ struct CollectionDetailView: View {
         .alert("Delete Collection", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
+                // 🚀 Tutup halaman instan baru hapus data di background
+                dismiss()
                 Task {
+                    try? await Task.sleep(nanoseconds: 250_000_000)
                     await viewModel.deleteCollection(collection: collection)
-                    dismiss()
                 }
             }
         } message: {
@@ -84,7 +86,7 @@ struct CollectionDetailView: View {
 // MARK: - Subviews
 extension CollectionDetailView {
     
-    // MARK: - Hero Image Section (Diperbarui dengan Placeholder Folder)
+    // MARK: - Hero Image Section (Membaca Base64)
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
             
@@ -97,24 +99,23 @@ extension CollectionDetailView {
                         .foregroundColor(mutedTeal.opacity(0.5))
                 }
                 .frame(height: 320).frame(maxWidth: .infinity).clipped()
+            }
+            // 🚀 BACA TEKS BASE64 LANGSUNG
+            else if let imageData = Data(base64Encoded: collection.collectionImage),
+                    let uiImage = UIImage(data: imageData) {
+                
+                Color.clear.overlay(
+                    Image(uiImage: uiImage).resizable().scaledToFill()
+                ).clipped()
+                .frame(height: 320).frame(maxWidth: .infinity).clipped()
+                
             } else {
-                AsyncImage(url: URL(string: collection.collectionImage)) { phase in
-                    switch phase {
-                    case .empty:
-                        Rectangle().fill(Color.gray.opacity(0.3)).overlay(ProgressView())
-                    case .success(let image):
-                        Color.clear.overlay(image.resizable().scaledToFill()).clipped()
-                    case .failure:
-                        // 🚀 Placeholder jika URL error
-                        ZStack {
-                            mutedTeal.opacity(0.15)
-                            Image(systemName: "square.stack.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(mutedTeal.opacity(0.5))
-                        }
-                    @unknown default:
-                        EmptyView()
-                    }
+                // 🚀 Placeholder jika data Base64 error/corrupt
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "square.stack.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(mutedTeal.opacity(0.5))
                 }
                 .frame(height: 320).frame(maxWidth: .infinity).clipped()
             }
@@ -169,7 +170,7 @@ extension CollectionDetailView {
         }.padding(.vertical, 10)
     }
     
-    // MARK: - Daftar Resep di Dalam Koleksi (Diperbarui dengan Placeholder Garpu Pisau)
+    // MARK: - Daftar Resep di Dalam Koleksi (Membaca Base64)
     private var recipesListSection: some View {
         LazyVStack(spacing: 16) {
             ForEach(viewModel.recipesInCollection, id: \.title) { recipe in
@@ -181,22 +182,20 @@ extension CollectionDetailView {
                                 mutedTeal.opacity(0.15)
                                 Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
                             }
+                        }
+                        // 🚀 BACA GAMBAR RESEP DARI TEKS BASE64
+                        else if let imageData = Data(base64Encoded: recipe.recipeImage),
+                                let uiImage = UIImage(data: imageData) {
+                            
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                            
                         } else {
-                            AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
-                                switch phase {
-                                case .empty:
-                                    Color.gray.opacity(0.2).overlay(ProgressView())
-                                case .success(let image):
-                                    image.resizable().scaledToFill()
-                                case .failure:
-                                    // 🚀 Placeholder jika gambar Resep error ditarik
-                                    ZStack {
-                                        mutedTeal.opacity(0.15)
-                                        Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
-                                    }
-                                @unknown default:
-                                    EmptyView()
-                                }
+                            // 🚀 Fallback jika Base64 error
+                            ZStack {
+                                mutedTeal.opacity(0.15)
+                                Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
                             }
                         }
                     }

@@ -17,7 +17,9 @@ class CollectionViewModel: ObservableObject {
     @Published var collectionCounts: [String: Int] = [:]
     
     @Published var isLoading: Bool = false
-    @Published var errorMessage: String = ""
+    
+    // 🚀 REVISI: Mengubah errorMessage menjadi operationError agar konsisten dengan ViewModel lain
+    @Published var operationError: String = ""
     
     private let collectionService = CollectionService.shared
     private let authService = AuthService.shared
@@ -26,11 +28,11 @@ class CollectionViewModel: ObservableObject {
     func loadMyCollections() async {
         guard let uid = authService.getCurrentUID() else { return }
         isLoading = true
-        errorMessage = ""
+        operationError = ""
         do {
             myCollections = try await collectionService.getUserCollections(userId: uid)
             
-            // 🚀 Ambil jumlah resep untuk setiap koleksi
+            // Ambil jumlah resep untuk setiap koleksi
             for collection in myCollections {
                 if let colId = collection.id {
                     let count = (try? await collectionService.getRecipeCountInCollection(collectionId: colId)) ?? 0
@@ -39,18 +41,18 @@ class CollectionViewModel: ObservableObject {
             }
             
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
         }
         isLoading = false
     }
     
     func loadRecipesForCollection(collectionId: String) async {
         isLoading = true
-        errorMessage = ""
+        operationError = ""
         do {
             recipesInCollection = try await collectionService.getRecipesInCollection(collectionId: collectionId)
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
         }
         isLoading = false
     }
@@ -59,7 +61,7 @@ class CollectionViewModel: ObservableObject {
     func createCollection(name: String, description: String, visibility: Visibility, imageData: Data?) async -> Bool {
         guard let uid = authService.getCurrentUID() else { return false }
         isLoading = true
-        errorMessage = ""
+        operationError = ""
         
         let newCol = RecipeCollection(userId: uid, name: name, description: description, collectionImage: "", visibility: visibility)
         
@@ -69,7 +71,7 @@ class CollectionViewModel: ObservableObject {
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
             isLoading = false
             return false
         }
@@ -79,7 +81,7 @@ class CollectionViewModel: ObservableObject {
     func updateCollection(collectionId: String, name: String, description: String, visibility: Visibility, oldImageURL: String, newImageData: Data?, isImageDeleted: Bool) async -> Bool {
         guard let uid = authService.getCurrentUID() else { return false }
         isLoading = true
-        errorMessage = ""
+        operationError = ""
         
         let finalImageURL = isImageDeleted ? "" : oldImageURL
         var updatedCol = RecipeCollection(userId: uid, name: name, description: description, collectionImage: finalImageURL, visibility: visibility)
@@ -91,7 +93,7 @@ class CollectionViewModel: ObservableObject {
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
             isLoading = false
             return false
         }
@@ -105,19 +107,19 @@ class CollectionViewModel: ObservableObject {
             try await collectionService.deleteCollection(collectionId: collectionId)
             myCollections.removeAll { $0.id == collectionId } // Hapus instan dari UI
         } catch {
-            self.errorMessage = "Error deleting: \(error.localizedDescription)"
+            self.operationError = "Error deleting: \(error.localizedDescription)"
         }
         isLoading = false
     }
     
-    // 🚀 FITUR TAMBAHAN: Hapus resep dari koleksi spesifik
+    // FITUR TAMBAHAN: Hapus resep dari koleksi spesifik
     func removeRecipeFromCollection(recipe: Recipe, from collection: RecipeCollection) async {
         guard let collectionId = collection.id, let recipeId = recipe.id else { return }
         do {
             try await collectionService.removeRecipeFromCollection(collectionId: collectionId, recipeId: recipeId)
             recipesInCollection.removeAll { $0.id == recipeId } // Hapus dari UI layar Detail
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
         }
     }
     
@@ -127,13 +129,12 @@ class CollectionViewModel: ObservableObject {
     }
 }
 
-
 // MARK: - Mock Data
 extension RecipeCollection {
     static let mockCollections = [
-        RecipeCollection(userId: "123", name: "Weeknight Favorites", description: "Quick and easy recipes for busy weekdays.", collectionImage: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=500&auto=format&fit=crop", visibility: .publicVisibility),
-        RecipeCollection(userId: "123", name: "Summer BBQ", description: "Best grilling recipes.", collectionImage: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=500&auto=format&fit=crop", visibility: .privateVisibility),
-        RecipeCollection(userId: "123", name: "Keto Essentials", description: "Low carb high fat meals.", collectionImage: "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?q=80&w=500&auto=format&fit=crop", visibility: .publicVisibility),
-        RecipeCollection(userId: "123", name: "Date Night Dinners", description: "Fancy meals for two.", collectionImage: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=500&auto=format&fit=crop", visibility: .privateVisibility)
+        RecipeCollection(userId: "123", name: "Weeknight Favorites", description: "Quick and easy recipes for busy weekdays.", collectionImage: "mock_image_1", visibility: .publicVisibility),
+        RecipeCollection(userId: "123", name: "Summer BBQ", description: "Best grilling recipes.", collectionImage: "mock_image_2", visibility: .privateVisibility),
+        RecipeCollection(userId: "123", name: "Keto Essentials", description: "Low carb high fat meals.", collectionImage: "mock_image_3", visibility: .publicVisibility),
+        RecipeCollection(userId: "123", name: "Date Night Dinners", description: "Fancy meals for two.", collectionImage: "mock_image_4", visibility: .privateVisibility)
     ]
 }

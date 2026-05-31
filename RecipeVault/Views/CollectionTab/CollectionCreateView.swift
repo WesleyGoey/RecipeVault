@@ -20,6 +20,8 @@ struct CollectionCreateView: View {
     
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    // 🚀 STATE BARU: Menyimpan data mentah agar HP tidak freeze
+    @State private var rawImageData: Data?
     
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
@@ -50,6 +52,15 @@ struct CollectionCreateView: View {
             .overlay(alignment: .bottom) {
                 saveButton
             }
+            // 🚀 TAMBAHAN: MUNCULKAN ERROR FIREBASE JIKA DATA DITOLAK
+            .alert("Upload Failed", isPresented: Binding(
+                get: { !viewModel.operationError.isEmpty },
+                set: { if !$0 { viewModel.operationError = "" } }
+            )) {
+                Button("OK", role: .cancel) { viewModel.operationError = "" }
+            } message: {
+                Text(viewModel.operationError)
+            }
         }
     }
 }
@@ -72,7 +83,9 @@ extension CollectionCreateView {
         .onChange(of: photoItem) { newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                    selectedImage = image
+                    self.selectedImage = image
+                    // 🚀 KOMPRESI MENTAH 100% DI LATAR BELAKANG
+                    self.rawImageData = image.jpegData(compressionQuality: 1.0)
                 }
             }
         }
@@ -133,9 +146,8 @@ extension CollectionCreateView {
     private var saveButton: some View {
         Button(action: {
             Task {
-                let imgData = selectedImage?.jpegData(compressionQuality: 0.8)
-                // 🚀 PANGGIL FUNGSI CREATE DARI VIEWMODEL
-                let success = await viewModel.createCollection(name: name, description: description, visibility: visibility, imageData: imgData)
+                // 🚀 PANGGIL FUNGSI CREATE DENGAN DATA MENTAH
+                let success = await viewModel.createCollection(name: name, description: description, visibility: visibility, imageData: rawImageData)
                 if success { dismiss() }
             }
         }) {
