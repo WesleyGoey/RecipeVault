@@ -8,49 +8,56 @@
 import SwiftUI
 
 struct CollectionCardView: View {
-    // 🚀 Menggunakan model RecipeCollection
     let collection: RecipeCollection
+    var recipeCount: Int = 0
     
-    // Theme Colors
     let darkText = Color.primary
+    let mutedTeal = Color(hex: "43766c")
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Gambar Koleksi (Rasio 1:1 agar responsif sempurna di grid)
-            Color.clear
-                .aspectRatio(1, contentMode: .fit)
-                .overlay(
-                    AsyncImage(url: URL(string: collection.collectionImage)) { phase in
-                        switch phase {
-                        case .empty:
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.2))
-                                .overlay(ProgressView())
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill) // Mengisi seluruh kotak
-                        case .failure:
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.2))
-                                .overlay(Image(systemName: "photo").foregroundColor(.gray))
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: Color.black.opacity(0.04), radius: 5, x: 0, y: 2)
             
-            // Teks Info Koleksi
+            // MARK: - Kotak Gambar (Membaca Base64)
+            ZStack {
+                // Background solid agar tidak transparan
+                Color.white
+                
+                if collection.collectionImage.isEmpty {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "square.stack.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(mutedTeal.opacity(0.5))
+                }
+                // 🚀 BACA TEKS BASE64 LANGSUNG
+                else if let imageData = Data(base64Encoded: collection.collectionImage),
+                        let uiImage = UIImage(data: imageData) {
+                    
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        
+                } else {
+                    // Fallback jika data corrupt
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "square.stack.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(mutedTeal.opacity(0.5))
+                }
+            }
+            .frame(height: 140) // Kunci tinggi agar rapi di grid
+            .frame(maxWidth: .infinity)
+            .clipped() // Memotong apapun yang meluap dari kotak 140
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            
+            // MARK: - Teks Info (Di luar ZStack gambar)
             VStack(alignment: .leading, spacing: 4) {
                 Text(collection.name)
-                    .font(.custom("Merriweather-Bold", size: 16))
+                    .font(.merriweather(16, weight: .bold))
                     .foregroundColor(darkText)
-                    .lineLimit(1) // Maksimal 1 baris agar rapi
+                    .lineLimit(1)
                 
-                // Statis "You" sesuai desain UI
-                Text("Collection • You")
+                let visibilityText = collection.visibility == .publicVisibility ? "Public" : "Private"
+                Text("\(visibilityText) • \(recipeCount) \(recipeCount == 1 ? "Recipe" : "Recipes")")
                     .font(.caption)
                     .foregroundColor(.gray)
             }
@@ -62,16 +69,28 @@ struct CollectionCardView: View {
 // MARK: - Preview
 #Preview {
     ZStack {
+        // Warna background layar kuning
         Color(hex: "f8fae5").ignoresSafeArea()
         
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-            CollectionCardView(collection: RecipeCollection(
-                userId: "123",
-                name: "Weeknight Favorites",
-                description: "Quick dinners",
-                collectionImage: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=500&auto=format&fit=crop",
-                visibility: .publicVisibility
-            ))
+            
+            // 1. Kartu DENGAN Gambar (Mock data tidak punya base64 asli, jadi akan fallback ke Ikon otomatis)
+            CollectionCardView(
+                collection: RecipeCollection.mockCollections[0],
+                recipeCount: 5
+            )
+            
+            // 2. Kartu TANPA Gambar (Ikon tidak akan tembus)
+            CollectionCardView(
+                collection: RecipeCollection(
+                    userId: "123",
+                    name: "Secret Recipes",
+                    description: "My secret formulas",
+                    collectionImage: "", // Kosong untuk tes Ikon
+                    visibility: .privateVisibility
+                ),
+                recipeCount: 12
+            )
         }
         .padding(20)
     }

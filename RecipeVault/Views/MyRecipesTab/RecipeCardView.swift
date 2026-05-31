@@ -5,7 +5,6 @@
 //  Created by Wesley Goey on 28/05/26.
 //
 
-// MARK: - RecipeCardView
 import SwiftUI
 
 struct RecipeCardView: View {
@@ -13,8 +12,12 @@ struct RecipeCardView: View {
     // MARK: - Properties
     let recipe: Recipe
     
+    // INJEKSI VIEWMODEL UNTUK MENGAKSES FUNGSI FAVORITE & COLLECTION
+    @ObservedObject var viewModel: RecipeViewModel
+    
     // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
+    let mutedTeal = Color(hex: "43766c")
     
     // MARK: - Body
     var body: some View {
@@ -31,49 +34,57 @@ struct RecipeCardView: View {
 // MARK: - Subviews
 extension RecipeCardView {
     
-    // MARK: - Image Section
+    // MARK: - Image Section & Placeholder
     private var imageSection: some View {
-        AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
-            switch phase {
-            case .empty:
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .overlay(ProgressView())
-            case .success(let image):
-                image
+        Group {
+            // JIKA GAMBAR KOSONG: Tampilkan Placeholder Garpu Pisau Elegan
+            if recipe.recipeImage.isEmpty {
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 40))
+                        .foregroundColor(mutedTeal.opacity(0.5))
+                }
+            }
+            // 🚀 DECODE BASE64 LANGSUNG
+            else if let imageData = Data(base64Encoded: recipe.recipeImage),
+                    let uiImage = UIImage(data: imageData) {
+                
+                Image(uiImage: uiImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-            case .failure:
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .overlay(Image(systemName: "photo").foregroundColor(.gray))
-            @unknown default:
-                EmptyView()
+                
+            } else {
+                // FALLBACK JIKA BASE64 CORRUPT/GAGAL DIBACA
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 40))
+                        .foregroundColor(mutedTeal.opacity(0.5))
+                }
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity)
         .frame(height: 150)
-        .clipped()
+        .clipped() // Mencegah gambar meluap keluar dari batas 150
     }
     
     // MARK: - Info Section
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(recipe.title)
-                .font(.custom("Merriweather-Bold", size: 16, relativeTo: .headline))
+                .font(.merriweather(16, weight: .bold))
                 .foregroundColor(.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .frame(minHeight: 40, alignment: .topLeading)
             
-            // 🚀 Revisi: Kategori dihapus, diganti Tombol Aksi Kustom sepadan dengan DetailView
             HStack(spacing: 12) {
                 Spacer()
                 
-                // Tombol Plus (Gaya Bulat Transent ala RecipeDetailView)
+                // TOMBOL ADD TO COLLECTION
                 Button(action: {
-                    // TODO: Pemicu Bottom Sheet multi-select koleksi (Tugas Teman)
-                    print("Plus button tapped for: \(recipe.title)")
+                    Task { await viewModel.openCollectionSheet(for: recipe) }
                 }) {
                     Image(systemName: "plus")
                         .font(.system(size: 14, weight: .bold))
@@ -83,18 +94,18 @@ extension RecipeCardView {
                         .clipShape(Circle())
                 }
                 
-                // Tombol Heart (Gaya Bulat Solid ala RecipeDetailView)
+                // TOMBOL FAVORITE DENGAN LOGIKA NYATA
+                let isFav = viewModel.isFavorite(recipe: recipe)
                 Button(action: {
-                    // TODO: Pemicu logika atomik favorit toggle (Tugas Teman)
-                    print("Favorite button tapped for: \(recipe.title)")
+                    Task { await viewModel.toggleFavorite(recipe: recipe) }
                 }) {
-                    Image(systemName: "heart")
+                    Image(systemName: isFav ? "heart.fill" : "heart")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(isFav ? .white : burntOrange)
                         .padding(10)
-                        .background(burntOrange)
+                        .background(isFav ? burntOrange : burntOrange.opacity(0.15))
                         .clipShape(Circle())
-                        .shadow(color: burntOrange.opacity(0.3), radius: 6, x: 0, y: 3)
+                        .shadow(color: isFav ? burntOrange.opacity(0.3) : .clear, radius: 6, x: 0, y: 3)
                 }
             }
         }
@@ -106,29 +117,25 @@ extension RecipeCardView {
 // MARK: - Preview
 #Preview {
     ZStack {
-        Color(hex: "f8fae5").ignoresSafeArea() // bgYellow
+        Color(hex: "f8fae5").ignoresSafeArea()
         
-        // Simulasi Grid di Halaman utama/pencarian
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
-            RecipeCardView(recipe: Recipe(
-                userId: "user123",
-                title: "Lemon Herb Roast Chicken",
-                description: "A delicious and juicy roast chicken.",
-                ingredients: ["Chicken", "Lemon"],
-                steps: ["Roast it."],
-                category: "Dinner",
-                recipeImage: "https://images.unsplash.com/photo-1598103442097-8b74394b98c6?q=80&w=500&auto=format&fit=crop"
-            ))
             
-            RecipeCardView(recipe: Recipe(
-                userId: "user123",
-                title: "Mom's Sunday Pasta",
-                description: "Classic family recipe.",
-                ingredients: ["Pasta"],
-                steps: ["Boil it."],
-                category: "Italian",
-                recipeImage: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=500&auto=format&fit=crop"
-            ))
+            // 1. Kartu DENGAN Gambar (Mock Asli)
+            RecipeCardView(
+                recipe: Recipe.previewMockData[0],
+                viewModel: RecipeViewModel()
+            )
+            
+            // 2. Kartu TANPA Gambar (Modifikasi Mock instan)
+            RecipeCardView(
+                recipe: {
+                    var mock = Recipe.previewMockData[1]
+                    mock.recipeImage = "" // Sengaja dikosongkan
+                    return mock
+                }(),
+                viewModel: RecipeViewModel()
+            )
         }
         .padding(20)
     }

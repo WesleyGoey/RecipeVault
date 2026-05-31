@@ -1,6 +1,6 @@
 //
-// EditProfileView.swift
-// RecipeVault
+//  EditProfileView.swift
+//  RecipeVault
 //
 
 import SwiftUI
@@ -34,6 +34,7 @@ struct EditProfileView: View {
                                             }
                                         }
                                     } else {
+                                        // Menampilkan inisial jika tidak ada foto
                                         Text(initials())
                                             .font(.system(size: 40, weight: .bold))
                                             .foregroundColor(.white)
@@ -111,10 +112,15 @@ struct EditProfileView: View {
                 if vm.isLoading { ProgressView().padding() }
                 Button(action: {
                     Task {
+                        // Simpan Profil
                         await vm.saveProfileChanges()
+                        
+                        // Ubah password jika diisi
                         if !vm.oldPassword.isEmpty || !vm.newPassword.isEmpty || !vm.confirmNewPassword.isEmpty {
                             await vm.changePassword()
                         }
+                        
+                        // Tutup sheet jika sukses
                         if vm.operationError.isEmpty {
                             dismiss()
                         }
@@ -146,7 +152,8 @@ struct EditProfileView: View {
                 }
             }
         }
-        .onAppear { Task { await vm.initializeUserProfile() } }
+        // 🚀 DIBUANG: .onAppear { Task { await vm.initializeUserProfile() } } -> Agar tidak mereset inputan pengguna
+        
         .alert("Error", isPresented: Binding(get: { !vm.operationError.isEmpty }, set: { if !$0 { vm.operationError = "" } })) {
             Button("OK", role: .cancel) { vm.operationError = "" }
         } message: { Text(vm.operationError) }
@@ -155,7 +162,7 @@ struct EditProfileView: View {
     private func initials() -> String {
         let name = vm.name.isEmpty ? "AR" : vm.name
         let parts = name.split(separator: " ")
-        return parts.prefix(2).compactMap { $0.first }.map { String($0) }.joined()
+        return parts.prefix(2).compactMap { $0.first }.map { String($0) }.joined().uppercased()
     }
 }
 

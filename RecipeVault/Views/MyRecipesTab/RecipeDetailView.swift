@@ -7,9 +7,7 @@
 
 import SwiftUI
 
-// MARK: - RecipeDetailView
 struct RecipeDetailView: View {
-    // 🚀 Made recipe a @State variable so it can update when missing data is fetched
     @State private var recipe: Recipe
     @ObservedObject var viewModel: RecipeViewModel
     
@@ -17,15 +15,13 @@ struct RecipeDetailView: View {
     
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
-    @State private var isLoadingDetails = false // Loading state for missing ingredients
+    @State private var isLoadingDetails = false
     
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     let darkText = Color.primary
     
-    // 🚀 Custom init to allow passing data into a @State variable
     init(recipe: Recipe, viewModel: RecipeViewModel) {
         self._recipe = State(initialValue: recipe)
         self.viewModel = viewModel
@@ -33,7 +29,7 @@ struct RecipeDetailView: View {
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(spacing: 0) {
                 heroImageSection
                 attributionSection
                 
@@ -42,12 +38,8 @@ struct RecipeDetailView: View {
                     tagsSection
                     customPicker
                     
-                    // 🚀 Show loading spinner if fetching missing data
                     if isLoadingDetails {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 40)
+                        ProgressView().scaleEffect(1.5).frame(maxWidth: .infinity).padding(.top, 40)
                     } else {
                         if viewModel.currentTab == .ingredients {
                             ingredientsList
@@ -63,37 +55,41 @@ struct RecipeDetailView: View {
         .background(bgYellow.ignoresSafeArea())
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
+        .onChange(of: viewModel.myRecipes) { updatedRecipes in
+            if let latestRecipeData = updatedRecipes.first(where: { $0.id == recipe.id }) {
+                withAnimation {
+                    self.recipe = latestRecipeData
+                }
+            }
+        }
         .task {
-            await viewModel.checkIfFavorite(recipe: recipe)
-            // 🚀 If ingredients are empty (came from a category filter), fetch the full details!
+            // Ambil detail bahan jika kosong (dari TheMealDB)
             if recipe.ingredients.isEmpty, let mealId = recipe.id {
                 await fetchFullDetails(id: mealId)
             }
         }
         
-        // MARK: - Modals & Sheets
+        // BOTTOM SHEET KOLEKSI YANG SAMA DENGAN MYRECIPESVIEW
         .sheet(isPresented: $viewModel.showCollectionSheet) {
-            VStack {
-                Text("Save to Collection")
-                    .font(.headline)
-                    .padding()
-                Text("You have \(viewModel.userCollections.count) collections.")
-                
-                Button("Save") {
-                    Task { await viewModel.saveToSelectedCollections(recipe: recipe) }
-                }
-            }
-            .presentationDetents([.medium])
+            CollectionSelectionSheet(viewModel: viewModel)
         }
+        
         .sheet(isPresented: $showingEditSheet) {
-            Text("RecipeEditView Placeholder untuk: \(recipe.title)")
+            RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
         }
+        
+        // 🚀 REVISI FITUR DELETE: Dismiss halaman dulu baru hapus di latar belakang
         .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
+                // 1. Tutup halaman secara instan agar user merasakan transisi secepat kilat
+                dismiss()
+                
+                // 2. Eksekusi penghapusan di background agar main thread tidak patah-patah
                 Task {
+                    // Jeda sejenak demi kelancaran animasi pop out halaman dismiss
+                    try? await Task.sleep(nanoseconds: 250_000_000)
                     await viewModel.deleteRecipe(recipe: recipe)
-                    dismiss()
                 }
             }
         } message: {
@@ -101,7 +97,6 @@ struct RecipeDetailView: View {
         }
     }
     
-    // 🚀 NEW FUNCTION: Fetches the missing ingredients & steps using the recipe ID
     private func fetchFullDetails(id: String) async {
         isLoadingDetails = true
         guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/lookup.php?i=\(id)") else { return }
@@ -111,7 +106,6 @@ struct RecipeDetailView: View {
                let meals = json["meals"] as? [[String: Any]],
                let fullMeal = meals.first {
                 
-                // Parse Ingredients
                 var parsedIngredients: [String] = []
                 for i in 1...20 {
                     if let ingredient = fullMeal["strIngredient\(i)"] as? String,
@@ -122,14 +116,9 @@ struct RecipeDetailView: View {
                     }
                 }
                 
-                // Parse Steps
                 let instructions = fullMeal["strInstructions"] as? String ?? ""
-                let parsedSteps = instructions
-                    .components(separatedBy: .newlines)
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty }
+                let parsedSteps = instructions.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                 
-                // Update the state with animation
                 withAnimation {
                     recipe.ingredients = parsedIngredients
                     recipe.steps = parsedSteps
@@ -142,82 +131,59 @@ struct RecipeDetailView: View {
     }
 }
 
-// MARK: - Subviews
 extension RecipeDetailView {
     
+    // MARK: - Hero Image Section (Membaca Base64)
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
-            AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
-                switch phase {
-                case .empty:
-                    Rectangle().fill(Color.gray.opacity(0.3)).overlay(ProgressView())
-                case .success(let image):
-                    image.resizable().scaledToFill()
-                case .failure:
-                    Rectangle().fill(Color.gray.opacity(0.3)).overlay(Image(systemName: "photo").foregroundColor(.gray))
-                @unknown default:
-                    EmptyView()
+            if recipe.recipeImage.isEmpty {
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 60))
+                        .foregroundColor(mutedTeal.opacity(0.5))
                 }
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }
-            .frame(height: 300)
-            .frame(maxWidth: .infinity)
-            .clipped()
-            .overlay(
-                LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.6)]), startPoint: .center, endPoint: .bottom)
-            )
+            // 🚀 RENDER GAMBAR DARI TEXT BASE64
+            else if let imageData = Data(base64Encoded: recipe.recipeImage),
+                    let uiImage = UIImage(data: imageData) {
+                
+                Color.clear.overlay(
+                    Image(uiImage: uiImage).resizable().scaledToFill()
+                ).clipped()
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+                
+            } else {
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 60))
+                        .foregroundColor(mutedTeal.opacity(0.5))
+                }
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+            }
+            
+            // Overlay Gradient agar tombol back terlihat jelas
+            LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.6)]), startPoint: .center, endPoint: .bottom)
+                .frame(height: 300)
             
             HStack {
                 Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(12)
-                        .background(Color.black.opacity(0.4))
-                        .clipShape(Circle())
+                    Image(systemName: "chevron.left").font(.system(size: 16, weight: .bold)).foregroundColor(.white).frame(width: 44, height: 44).background(Color.black.opacity(0.4)).clipShape(Circle())
                 }
-                
                 Spacer()
-                
                 if viewModel.isOwner(recipe: recipe) {
                     Menu {
-                        Button {
-                            showingEditSheet = true
-                        } label: {
-                            Label("Edit Recipe", systemImage: "pencil")
-                        }
-                        
-                        Button(role: .destructive) {
-                            showingDeleteAlert = true
-                        } label: {
-                            Label("Delete Recipe", systemImage: "trash")
-                        }
+                        Button { showingEditSheet = true } label: { Label("Edit Recipe", systemImage: "pencil") }
+                        Button(role: .destructive) { showingDeleteAlert = true } label: { Label("Delete Recipe", systemImage: "trash") }
                     } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 21, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(15)
-                            .background(Color.black.opacity(0.4))
-                            .clipShape(Circle())
+                        Image(systemName: "ellipsis").font(.system(size: 18, weight: .bold)).foregroundColor(.white).frame(width: 44, height: 44).background(Color.black.opacity(0.4)).clipShape(Circle())
                     }
                 }
             }
-            .padding(.top, 50)
-            .padding(.horizontal, 20)
+            .padding(.top, 50).padding(.horizontal, 20)
         }
-    }
-    
-    private var attributionSection: some View {
-        HStack {
-            Circle().fill(mutedTeal).frame(width: 40, height: 40).overlay(Text("TM").foregroundColor(.white).font(.caption.bold()))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("TheMealDB").font(.merriweather(16, weight: .bold))
-                Text("@themealdb").font(.subheadline).foregroundColor(.gray)
-            }
-            Spacer()
-            Image(systemName: "chevron.right").foregroundColor(.gray)
-        }
-        .padding(20)
-        .background(bgYellow)
     }
     
     private var titleSection: some View {
@@ -226,13 +192,10 @@ extension RecipeDetailView {
                 .font(.merriweather(28, weight: .bold))
                 .foregroundColor(darkText)
                 .fixedSize(horizontal: false, vertical: true)
-            
             Spacer()
             
             HStack(spacing: 12) {
-                Button(action: {
-                    Task { await viewModel.openCollectionSheet() }
-                }) {
+                Button(action: { Task { await viewModel.openCollectionSheet(for: recipe) } }) {
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(burntOrange)
@@ -241,34 +204,50 @@ extension RecipeDetailView {
                         .clipShape(Circle())
                 }
                 
-                Button(action: {
-                    Task { await viewModel.toggleFavorite(recipe: recipe) }
-                }) {
-                    Image(systemName: viewModel.isFavorite ? "heart.fill" : "heart")
+                let isFav = viewModel.isFavorite(recipe: recipe)
+                Button(action: { Task { await viewModel.toggleFavorite(recipe: recipe) } }) {
+                    Image(systemName: isFav ? "heart.fill" : "heart")
                         .font(.system(size: 20))
-                        .foregroundColor(.white)
+                        .foregroundColor(isFav ? .white : burntOrange)
                         .padding(14)
-                        .background(burntOrange)
+                        .background(isFav ? burntOrange : burntOrange.opacity(0.15))
                         .clipShape(Circle())
-                        .shadow(color: burntOrange.opacity(0.4), radius: 8, x: 0, y: 4)
+                        .shadow(color: isFav ? burntOrange.opacity(0.4) : .clear, radius: 8, x: 0, y: 4)
                 }
             }
             .padding(.top, 4)
         }
     }
     
+    private var attributionSection: some View {
+        HStack {
+            Circle().fill(mutedTeal).frame(width: 40, height: 40).overlay(Text("TM").foregroundColor(.white).font(.caption.bold()))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("TheMealDB").font(.merriweather(16, weight: .bold))
+                Text("@themealdb").font(.merriweather(12, weight: .regular)).foregroundColor(.gray)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundColor(.gray)
+        }
+        .padding(20).background(bgYellow)
+    }
+    
     private var tagsSection: some View {
-        HStack(spacing: 10) {
-            let tags = [recipe.category]
-            ForEach(tags.filter { !$0.isEmpty }, id: \.self) { tag in
-                Text(tag)
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(burntOrange)
-                    .clipShape(Capsule())
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                let tags = recipe.category.components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+                
+                ForEach(tags, id: \.self) { tag in
+                    Text(tag)
+                        .font(.merriweather(12, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(burntOrange)
+                        .clipShape(Capsule())
+                }
             }
         }
     }
@@ -282,10 +261,7 @@ extension RecipeDetailView {
                 withAnimation(.easeInOut(duration: 0.2)) { viewModel.currentTab = .steps }
             }
         }
-        .padding(6)
-        .background(mutedTeal.opacity(0.15))
-        .clipShape(Capsule())
-        .padding(.vertical, 10)
+        .padding(6).background(mutedTeal.opacity(0.15)).clipShape(Capsule()).padding(.vertical, 10)
     }
     
     private var ingredientsList: some View {
@@ -293,7 +269,7 @@ extension RecipeDetailView {
             ForEach(recipe.ingredients, id: \.self) { ingredient in
                 HStack(spacing: 16) {
                     Circle().fill(mutedTeal.opacity(0.7)).frame(width: 10, height: 10).padding(6).background(mutedTeal.opacity(0.15)).clipShape(Circle())
-                    Text(ingredient).font(.merriweather(18, weight: .regular)).foregroundColor(darkText)
+                    Text(ingredient).font(.merriweather(16, weight: .regular)).foregroundColor(darkText)
                     Spacer()
                 }
                 .padding(16).background(Color.white).cornerRadius(16).shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)
@@ -305,8 +281,8 @@ extension RecipeDetailView {
         VStack(spacing: 12) {
             ForEach(Array(recipe.steps.enumerated()), id: \.element) { index, step in
                 HStack(alignment: .top, spacing: 16) {
-                    Text("\(index + 1)").font(.headline).foregroundColor(.white).frame(width: 32, height: 32).background(mutedTeal).clipShape(Circle())
-                    Text(step).font(.merriweather(18, weight: .regular)).foregroundColor(darkText).lineSpacing(4).padding(.top, 4)
+                    Text("\(index + 1)").font(.merriweather(14, weight: .bold)).foregroundColor(.white).frame(width: 32, height: 32).background(mutedTeal).clipShape(Circle())
+                    Text(step).font(.merriweather(16, weight: .regular)).foregroundColor(darkText).lineSpacing(4).padding(.top, 4)
                     Spacer()
                 }
                 .padding(16).background(Color.white).cornerRadius(16).shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)
@@ -315,27 +291,18 @@ extension RecipeDetailView {
     }
 }
 
-// MARK: - Helper Components
+// Struct penolong untuk Tab
 struct PickerTab: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.merriweather(16, weight: .bold))
-                .foregroundColor(isSelected ? .black : .gray)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(isSelected ? Color.white : Color.clear)
-                .clipShape(Capsule())
-                .shadow(color: isSelected ? .black.opacity(0.05) : .clear, radius: 4, x: 0, y: 2)
+            Text(title).font(.merriweather(16, weight: .bold)).foregroundColor(isSelected ? .black : .gray).frame(maxWidth: .infinity).padding(.vertical, 12).background(isSelected ? Color.white : Color.clear).clipShape(Capsule()).shadow(color: isSelected ? .black.opacity(0.05) : .clear, radius: 4, x: 0, y: 2)
         }
     }
 }
 
-// MARK: - Preview dengan LIVE TheMealDB Data
 #Preview {
     PreviewLiveWrapper()
 }

@@ -5,8 +5,6 @@
 //  Created by Wesley Goey on 28/05/26.
 //
 
-
-// MARK: - RecipeViewModel
 import Foundation
 import SwiftUI
 import Combine
@@ -17,16 +15,19 @@ class RecipeViewModel: ObservableObject {
     // MARK: - List State
     @Published var myRecipes: [Recipe] = []
     @Published var isLoading: Bool = false
-    @Published var errorMessage: String = ""
+    
+    // 🚀 REVISI: Ubah errorMessage menjadi operationError agar cocok dengan View
+    @Published var operationError: String = ""
     
     // MARK: - Detail UI State
-    @Published var isFavorite: Bool = false
     @Published var currentTab: DetailTab = .ingredients
+    @Published var favoriteRecipeIds: Set<String> = [] // State nyata untuk Favorites
     
     // MARK: - Collection Bottom Sheet State
     @Published var showCollectionSheet: Bool = false
     @Published var userCollections: [RecipeCollection] = []
     @Published var selectedCollectionIds: Set<String> = []
+    @Published var selectedRecipeForCollection: Recipe? = nil // Melacak resep mana yang akan disimpan
     @Published var isSavingToCollections: Bool = false
     
     enum DetailTab {
@@ -34,7 +35,7 @@ class RecipeViewModel: ObservableObject {
         case steps
     }
     
-    private let firestoreRepo = FirestoreRepository.shared
+    private let recipeService = RecipeService.shared
     private let collectionService = CollectionService.shared
     private let authService = AuthService.shared
     
@@ -42,47 +43,116 @@ class RecipeViewModel: ObservableObject {
     func loadMyRecipes() async {
         guard let uid = authService.getCurrentUID() else { return }
         isLoading = true
+        operationError = ""
+        do {
+            myRecipes = try await recipeService.getUserRecipes(userId: uid)
+            await loadFavoriteIds() // Muat juga data favorit saat memuat resep
+        } catch {
+            self.operationError = error.localizedDescription
+        }
+        isLoading = false
+    }
+    
+    func createRecipe(title: String, description: String, category: String, ingredients: [String], steps: [String], imageData: Data?) async -> Bool {
+        isLoading = true
+        operationError = ""
+        guard let uid = authService.getCurrentUID() else { return false }
+        
+        let cleanedIngredients = ingredients.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let cleanedSteps = steps.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let newRecipe = Recipe(userId: uid, title: title, description: description, ingredients: cleanedIngredients, steps: cleanedSteps, category: category, recipeImage: "")
         
         do {
-            // MOCK DATA SEMENTARA UNTUK PREVIEW
-            myRecipes = Recipe.mockRecipes
+            try await recipeService.createRecipe(recipe: newRecipe, imageData: imageData)
+            await loadMyRecipes()
+            isLoading = false
+            return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
+            isLoading = false
+            return false
         }
+    }
+    
+    func updateRecipe(recipeId: String, title: String, description: String, category: String, ingredients: [String], steps: [String], oldImageURL: String, newImageData: Data?, isImageDeleted: Bool) async -> Bool {
+        isLoading = true
+        operationError = ""
+        guard let uid = authService.getCurrentUID() else { return false }
         
-        isLoading = false
+        let cleanedIngredients = ingredients.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let cleanedSteps = steps.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let finalImageURL = isImageDeleted ? "" : oldImageURL
+        
+        var updatedRecipe = Recipe(userId: uid, title: title, description: description, ingredients: cleanedIngredients, steps: cleanedSteps, category: category, recipeImage: finalImageURL)
+        updatedRecipe.id = recipeId
+        
+        do {
+            try await recipeService.updateRecipe(recipe: updatedRecipe, newImageData: newImageData)
+            await loadMyRecipes()
+            isLoading = false
+            return true
+        } catch {
+            self.operationError = error.localizedDescription
+            isLoading = false
+            return false
+        }
     }
     
     func deleteRecipe(recipe: Recipe) async {
         guard let recipeId = recipe.id else { return }
         do {
-            // TODO: Panggil Service untuk hapus data di server
-            // try await RecipeService.shared.deleteRecipe(id: recipeId)
-            
-            // Hapus dari list lokal agar UI langsung hilang tanpa perlu reload
+            try await recipeService.deleteRecipe(recipeId: recipeId)
             myRecipes.removeAll { $0.id == recipeId }
-            print("Recipe Deleted Successfully!")
         } catch {
             print("Error deleting recipe: \(error.localizedDescription)")
         }
     }
     
-    // MARK: - Ownership & Interaction
+    // MARK: - Ownership
     func isOwner(recipe: Recipe) -> Bool {
         return recipe.userId == authService.getCurrentUID()
     }
     
+    // MARK: - 🌟 FAVORITES LOGIC
+    func loadFavoriteIds() async {
+        guard let uid = authService.getCurrentUID() else { return }
+        do {
+            let ids = try await recipeService.getFavoriteRecipeIds(userId: uid)
+            self.favoriteRecipeIds = Set(ids)
+        } catch {
+            print("Error loading favorites: \(error.localizedDescription)")
+        }
+    }
+    
+    func isFavorite(recipe: Recipe) -> Bool {
+        guard let recipeId = recipe.id else { return false }
+        return favoriteRecipeIds.contains(recipeId)
+    }
+    
     func toggleFavorite(recipe: Recipe) async {
-        isFavorite.toggle()
-        // TODO: Call FavoriteService to add/remove favorite
+        guard let uid = authService.getCurrentUID(), let recipeId = recipe.id else { return }
+        
+        let isCurrentlyFavorite = favoriteRecipeIds.contains(recipeId)
+        let willBeFavorite = !isCurrentlyFavorite
+        
+        // Optimistic UI Update: Langsung ubah warna UI sebelum server membalas
+        if willBeFavorite { favoriteRecipeIds.insert(recipeId) }
+        else { favoriteRecipeIds.remove(recipeId) }
+        
+        do {
+            try await recipeService.toggleFavorite(userId: uid, recipeId: recipeId, isFavorite: willBeFavorite)
+        } catch {
+            // Jika Firebase gagal, kembalikan warna hati seperti semula
+            if isCurrentlyFavorite { favoriteRecipeIds.insert(recipeId) }
+            else { favoriteRecipeIds.remove(recipeId) }
+            print("Error toggling favorite: \(error.localizedDescription)")
+        }
     }
     
-    func checkIfFavorite(recipe: Recipe) async {
-        // TODO: Check Firestore if this is already favorited
-    }
-    
-    // MARK: - Collection Sheet Methods
-    func openCollectionSheet() async {
+    // MARK: - 🌟 COLLECTION SHEET LOGIC
+    func openCollectionSheet(for recipe: Recipe) async {
+        selectedRecipeForCollection = recipe
+        selectedCollectionIds.removeAll()
         showCollectionSheet = true
         await fetchUserCollections()
     }
@@ -90,7 +160,7 @@ class RecipeViewModel: ObservableObject {
     func fetchUserCollections() async {
         guard let uid = authService.getCurrentUID() else { return }
         do {
-            userCollections = try await firestoreRepo.getUserCollections(userId: uid)
+            userCollections = try await collectionService.getUserCollections(userId: uid)
         } catch {
             print("Error fetching collections: \(error.localizedDescription)")
         }
@@ -104,20 +174,19 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
-    func saveToSelectedCollections(recipe: Recipe) async {
-        guard let recipeId = recipe.id else { return }
+    func saveToSelectedCollections() async {
+        guard let recipeId = selectedRecipeForCollection?.id else { return }
         isSavingToCollections = true
-        
         do {
             for collectionId in selectedCollectionIds {
                 try await collectionService.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
             }
             showCollectionSheet = false
             selectedCollectionIds.removeAll()
+            selectedRecipeForCollection = nil
         } catch {
-            print("Error saving to collections: \(error.localizedDescription)")
+            self.operationError = error.localizedDescription
         }
-        
         isSavingToCollections = false
     }
 }

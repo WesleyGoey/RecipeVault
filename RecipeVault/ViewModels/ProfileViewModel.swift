@@ -1,6 +1,8 @@
 //
-// ProfileViewModel.swift
-// RecipeVault
+//  RecipeViewModel.swift
+//  RecipeVault
+//
+//  Created by Kristoforus Bertrand Wahyudi on 29/05/26.
 //
 
 import Foundation
@@ -11,55 +13,52 @@ import FirebaseFirestore
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
-    // user/profile
+    // MARK: - User State
     @Published var userId: String = ""
     @Published var name: String = ""
     @Published var email: String = ""
     @Published var profilePictureURL: String = ""
     @Published var selectedUIImage: UIImage? = nil
     @Published var selectedImageData: Data? = nil
-
-    // collections & favorites
-    @Published var collections: [RecipeCollection] = []
-    @Published var collectionCounts: [String: Int] = [:] // key: collectionId
+    
+    // MARK: - Content State
+    @Published var publicCollections: [RecipeCollection] = [] // 🚀 Hanya menyimpan yang public
+    @Published var collectionCounts: [String: Int] = [:]
     @Published var favoriteRecipes: [Recipe] = []
-
-    // create collection sheet state used by ProfileView.swift
-    @Published var showingCreateSheet: Bool = false
-    @Published var newCollectionName: String = ""
-    @Published var newCollectionDescription: String = ""
-    @Published var newVisibility: Visibility = .publicVisibility
-
-    // UI state
+    @Published var authorNamesCache: [String: String] = [:]
+    
+    // MARK: - UI & Form State
     @Published var isLoading: Bool = false
     @Published var operationError: String = ""
     @Published var showingEditProfile: Bool = false
-
-    // password fields (for change)
+    
     @Published var oldPassword: String = ""
     @Published var newPassword: String = ""
     @Published var confirmNewPassword: String = ""
-
-    private let db = Firestore.firestore()
-
+    
+    // MARK: - Services
+    private let profileService = ProfileService.shared
+    private let collectionService = CollectionService.shared
+    private let recipeService = RecipeService.shared
+    
     init() {
         Task { await initializeUserProfile() }
     }
-
+    
     func initializeUserProfile() async {
         if let uid = Auth.auth().currentUser?.uid {
-            userId = uid
+            self.userId = uid
             await loadUserProfile(uid: uid)
-            await loadCollections()
-            await loadFavorites()
+            await loadPublicCollections() // 🚀 Panggil nama fungsi yang baru
+            await loadFavoriteRecipes()   // 🚀 Panggil nama fungsi yang baru
         }
     }
-
-    // MARK: - User profile
+    
+    // MARK: - 👤 Profile CRUD Methods
     func loadUserProfile(uid: String) async {
         do {
-            let doc = try await db.collection("users").document(uid).getDocument()
-            if let data = doc.data() {
+            // 🚀 SEKARANG MEMANGGIL PROFILE SERVICE
+            if let data = try await profileService.getUserProfile(userId: uid) {
                 self.name = data["name"] as? String ?? ""
                 self.email = data["email"] as? String ?? ""
                 self.profilePictureURL = data["profilePicture"] as? String ?? ""
@@ -68,33 +67,38 @@ final class ProfileViewModel: ObservableObject {
             print("Failed loading user profile:", error)
         }
     }
-
+    
     func saveProfileChanges() async {
         guard !userId.isEmpty else { return }
         isLoading = true
         operationError = ""
-        var uploadedURL = profilePictureURL
-
+        
         do {
-            if let data = selectedImageData {
-                // CloudStorageRepository.shared.uploadImage(...) is expected to exist
-                uploadedURL = try await CloudStorageRepository.shared.uploadImage(image: data, path: "profiles")
-            }
-            try await FirestoreRepository.shared.saveUserProfile(userId: userId, name: name, email: email, profilePicture: uploadedURL)
-            profilePictureURL = uploadedURL
+            // 🚀 LOGIKA UPLOAD & SAVE SEKARANG DIURUS OLEH SERVICE
+            let updatedURL = try await profileService.saveUserProfile(
+                userId: userId,
+                name: name,
+                email: email,
+                currentImageURL: profilePictureURL,
+                newImageData: selectedImageData
+            )
+            
+            self.profilePictureURL = updatedURL
+            self.showingEditProfile = false
         } catch {
-            operationError = "Gagal menyimpan profil: \(error.localizedDescription)"
+            self.operationError = "Gagal menyimpan profil: \(error.localizedDescription)"
         }
+        
         isLoading = false
     }
-
+    
     // MARK: - Password
     func changePassword() async {
         guard let user = Auth.auth().currentUser else {
             operationError = "Tidak ada user yang login."
             return
         }
-
+        
         if newPassword != confirmNewPassword {
             operationError = "Password baru dan konfirmasi tidak cocok."
             return
@@ -103,10 +107,10 @@ final class ProfileViewModel: ObservableObject {
             operationError = "Password baru minimal 8 karakter."
             return
         }
-
+        
         isLoading = true
         operationError = ""
-
+        
         do {
             guard let email = user.email, !oldPassword.isEmpty else {
                 operationError = "Masukkan password lama untuk verifikasi."
@@ -119,117 +123,73 @@ final class ProfileViewModel: ObservableObject {
         } catch {
             operationError = "Gagal mengganti password: \(error.localizedDescription)"
         }
-
+        
         isLoading = false
     }
-
-    // MARK: - Collections
-    func loadCollections() async {
+    
+    // 🚀 Hanya mengambil koleksi yang Public
+    func loadPublicCollections() async {
         guard !userId.isEmpty else { return }
         isLoading = true
         operationError = ""
+        
         do {
-            let docs = try await FirestoreRepository.shared.getUserCollections(userId: userId)
-            self.collections = docs // docs is [RecipeCollection]
-            // fetch counts for each collection
-            for col in docs {
+            // Mengambil semua koleksi milik user ini
+            let allUserCollections = try await collectionService.getUserCollections(userId: userId)
+            // Memfilter hanya yang public
+            self.publicCollections = allUserCollections.filter { $0.visibility == .publicVisibility }
+            
+            // Menghitung jumlah resep untuk setiap koleksi public
+            for col in self.publicCollections {
                 if let cid = col.id {
-                    Task { await self.loadRecipeCount(for: cid) }
+                    let count = (try? await collectionService.getRecipeCountInCollection(collectionId: cid)) ?? 0
+                    self.collectionCounts[cid] = count
                 }
             }
         } catch {
-            operationError = "Gagal memuat koleksi: \(error.localizedDescription)"
+            self.operationError = "Gagal memuat koleksi: \(error.localizedDescription)"
         }
         isLoading = false
     }
-
-    func loadRecipeCount(for collectionId: String) async {
-        do {
-            let query = try await db.collection("collection_recipes")
-                .whereField("collectionId", isEqualTo: collectionId)
-                .getDocuments()
-            let count = query.documents.count
-            DispatchQueue.main.async {
-                self.collectionCounts[collectionId] = count
-            }
-        } catch {
-            print("Failed loading count for \(collectionId):", error)
-        }
-    }
-
-    func createCollection() async {
-        guard !userId.isEmpty else { return }
-        let nameTrimmed = newCollectionName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !nameTrimmed.isEmpty else {
-            operationError = "Nama koleksi tidak boleh kosong."
-            return
-        }
-
-        isLoading = true
-        operationError = ""
-        do {
-            let newCol = RecipeCollection(
-                id: nil,
-                userId: userId,
-                name: nameTrimmed,
-                description: newCollectionDescription,
-                collectionImage: "",
-                visibility: newVisibility,
-                createdAt: nil
-            )
-            try await FirestoreRepository.shared.createCollection(collection: newCol)
-            // reset input
-            newCollectionName = ""
-            newCollectionDescription = ""
-            newVisibility = .publicVisibility
-            showingCreateSheet = false
-            await loadCollections()
-        } catch {
-            operationError = "Gagal membuat koleksi: \(error.localizedDescription)"
-        }
-        isLoading = false
-    }
-
-    // MARK: - Favorites
-    func loadFavorites() async {
+    
+    // 🚀 Mengambil resep favorit
+    func loadFavoriteRecipes() async {
         guard !userId.isEmpty else { return }
         isLoading = true
         operationError = ""
+        
         do {
-            let favSnap = try await db.collection("favorites").whereField("userId", isEqualTo: userId).getDocuments()
-            let recipeIds = favSnap.documents.compactMap { $0["recipeId"] as? String }
-            var recipes: [Recipe] = []
-            let chunkSize = 10
-            for chunkStart in stride(from: 0, to: recipeIds.count, by: chunkSize) {
-                let chunk = Array(recipeIds[chunkStart..<min(chunkStart+chunkSize, recipeIds.count)])
-                if chunk.isEmpty { continue }
-                let q = try await db.collection("recipes").whereField(FieldPath.documentID(), in: chunk).getDocuments()
-                for d in q.documents {
-                    if let r = try? d.data(as: Recipe.self) {
-                        recipes.append(r)
-                    } else {
-                        let data = d.data()
-                        let id = d.documentID
-                        let recipe = Recipe(
-                            id: id,
-                            userId: data["userId"] as? String ?? "",
-                            title: data["title"] as? String ?? "",
-                            description: data["description"] as? String ?? "",
-                            ingredients: data["ingredients"] as? [String] ?? [],
-                            steps: data["steps"] as? [String] ?? [],
-                            category: data["category"] as? String ?? "",
-                            recipeImage: data["recipeImage"] as? String ?? "",
-                            createdAt: nil
-                        )
-                        recipes.append(recipe)
-                    }
-                }
-            }
-            self.favoriteRecipes = recipes
+            self.favoriteRecipes = try await recipeService.getFavoriteRecipes(userId: userId)
         } catch {
-            print("Failed loading favorites:", error)
+            self.operationError = "Gagal memuat favorit: \(error.localizedDescription)"
             self.favoriteRecipes = []
         }
         isLoading = false
+    }
+    
+    func fetchAuthorName(for recipeUserId: String) async -> String {
+        // 1. Cek aturan statis (TheMealDB)
+        if recipeUserId == "themealdb" { return "TheMealDB" }
+        
+        // 2. Cek apakah itu diri kita sendiri
+        if recipeUserId == Auth.auth().currentUser?.uid { return "Me" }
+        
+        // 3. Cek apakah namanya sudah ada di Cache memori kita
+        if let cachedName = authorNamesCache[recipeUserId] {
+            return cachedName
+        }
+        
+        // 4. Jika belum ada, baru kita tarik dari Firestore (HANYA 1X PER USER)
+        do {
+            let doc = try await Firestore.firestore().collection("users").document(recipeUserId).getDocument()
+            if let name = doc.data()?["name"] as? String {
+                self.authorNamesCache[recipeUserId] = name // Simpan ke cache
+                return name
+            }
+        } catch {
+            print("Gagal mengambil nama author: \(error)")
+        }
+        
+        return "Community User"
     }
 }

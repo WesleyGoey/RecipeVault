@@ -68,3 +68,72 @@ struct FeedCardView: View {
         .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
     }
 }
+
+// MARK: - Preview
+#Preview {
+    ZStack {
+        // Menggunakan warna background cream khas RecipeVault
+        Color(hex: "FBF9EC").ignoresSafeArea()
+        
+        ScrollView {
+            // Simulasi Staggered Grid (Zig-Zag Effect) dengan 2 Kolom
+            HStack(alignment: .top, spacing: 16) {
+                
+                // --- KOLOM KIRI ---
+                VStack(spacing: 16) {
+                    FeedCardView(
+                        recipe: Recipe(
+                            userId: "123",
+                            title: "Blueberry Pavlova",
+                            description: "Kue meringue renyah dengan topping berry melimpah.",
+                            ingredients: [], steps: [],
+                            category: "Dessert",
+                            recipeImage: "https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?q=80&w=500&auto=format&fit=crop"
+                        ),
+                        cardHeight: 280 // 🚀 Lebih Tinggi
+                    )
+                    
+                    FeedCardView(
+                        recipe: Recipe(
+                            userId: "123",
+                            title: "Classic Creamy Ramen",
+                            description: "Mi kuah kaldu kental gurih ala Kopitiam.",
+                            ingredients: [], steps: [],
+                            category: "Noodles",
+                            recipeImage: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=500&auto=format&fit=crop"
+                        ),
+                        cardHeight: 200 // 🚀 Lebih Pendek
+                    )
+                }
+                
+                // --- KOLOM KANAN ---
+                VStack(spacing: 16) {
+                    FeedCardView(
+                        recipe: Recipe(
+                            userId: "123",
+                            title: "Mom's Sunday Pasta",
+                            description: "Resep pasta turun temurun hari minggu.",
+                            ingredients: [], steps: [],
+                            category: "Italian",
+                            recipeImage: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=500&auto=format&fit=crop"
+                        ),
+                        cardHeight: 210 // 🚀 Lebih Pendek
+                    )
+                    
+                    FeedCardView(
+                        recipe: Recipe(
+                            userId: "123",
+                            title: "Lemon Herb Roast Chicken",
+                            description: "Ayam panggang juicy dengan perasan lemon segar.",
+                            ingredients: [], steps: [],
+                            category: "Dinner",
+                            recipeImage: "https://images.unsplash.com/photo-1598103442097-8b74394b98c6?q=80&w=500&auto=format&fit=crop"
+                        ),
+                        cardHeight: 300 // 🚀 Lebih Tinggi
+                    )
+                }
+            }
+            .padding(16)
+        }
+    }
+}

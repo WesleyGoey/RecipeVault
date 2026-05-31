@@ -2,49 +2,33 @@
 //  MyRecipesView.swift
 //  RecipeVault
 //
-//  Created by Wesley Goey on 28/05/26.
-//
 
-
-// MARK: - MyRecipesView
 import SwiftUI
 
 struct MyRecipesView: View {
-    
-    // MARK: - Properties
     @StateObject private var viewModel = RecipeViewModel()
     
-    // State untuk Modals (Create, Edit, Delete)
     @State private var showingCreateSheet = false
     @State private var recipeToEdit: Recipe? = nil
     @State private var recipeToDelete: Recipe? = nil
     @State private var showingDeleteAlert = false
     
-    private let columns = [
-        GridItem(.flexible(), spacing: 16),
-        GridItem(.flexible(), spacing: 16)
-    ]
+    private let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
     
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let mutedTeal = Color(hex: "43766c")
     
-    // MARK: - Body
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
-                // Background Utama
                 bgYellow.ignoresSafeArea()
                 
-                // Header dan Grid
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         headerSection
                         gridSection
                     }
                 }
-                
-                // Tombol aksi melayang (FAB)
                 floatingActionButton
             }
             .navigationBarHidden(true)
@@ -56,24 +40,21 @@ struct MyRecipesView: View {
                 }
             }
             
-            // MARK: - Overlays & Modals
-            // 1. Sheet untuk Create Recipe Baru
+            // SHEET UNTUK MENAMBAH KE KOLEKSI DARI HALAMAN UTAMA
+            .sheet(isPresented: $viewModel.showCollectionSheet) {
+                CollectionSelectionSheet(viewModel: viewModel)
+            }
+            
             .sheet(isPresented: $showingCreateSheet) {
-                RecipeCreateView()
+                RecipeCreateView(viewModel: viewModel)
             }
-            // 2. 🚀 Sheet dinamis untuk Edit Recipe yang dipilih dari Context Menu
             .sheet(item: $recipeToEdit) { recipe in
-                // Pastikan RecipeEditView menerima parameter (recipe: Recipe)
-                Text("RecipeEditView Placeholder untuk: \(recipe.title)")
-                // RecipeEditView(recipe: recipe)
+                RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
             }
-            // 3. 🚀 Alert Konfirmasi Delete dari Context Menu
             .alert("Delete Recipe", isPresented: $showingDeleteAlert, presenting: recipeToDelete) { recipe in
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
-                    Task {
-                        await viewModel.deleteRecipe(recipe: recipe)
-                    }
+                    Task { await viewModel.deleteRecipe(recipe: recipe) }
                 }
             } message: { recipe in
                 Text("Are you sure you want to delete '\(recipe.title)'? This action cannot be undone.")
@@ -82,17 +63,15 @@ struct MyRecipesView: View {
     }
 }
 
-// MARK: - Subviews
 extension MyRecipesView {
-    
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("My Recipes")
-                .font(.custom("Merriweather-Bold", size: 36))
+                .font(.merriweather(36, weight: .bold))
                 .foregroundColor(Color.primary)
             
             Text("\(viewModel.myRecipes.count) created")
-                .font(.subheadline)
+                .font(.merriweather(14, weight: .regular))
                 .foregroundColor(.gray)
         }
         .padding(.horizontal, 20)
@@ -104,26 +83,16 @@ extension MyRecipesView {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(viewModel.myRecipes, id: \.title) { recipe in
                 NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: viewModel)) {
-                    RecipeCardView(recipe: recipe)
+                    RecipeCardView(recipe: recipe, viewModel: viewModel)
                 }
                 .buttonStyle(PlainButtonStyle())
-                // 🚀 FITUR BARU: Context Menu saat kartu di-hold/tahan
                 .contextMenu {
                     if viewModel.isOwner(recipe: recipe) {
-                        Button {
-                            // Memasukkan resep ke dalam state memicu terbukanya Edit Sheet
-                            recipeToEdit = recipe
-                        } label: {
-                            Label("Edit Recipe", systemImage: "pencil")
-                        }
-                        
+                        Button { recipeToEdit = recipe } label: { Label("Edit Recipe", systemImage: "pencil") }
                         Button(role: .destructive) {
-                            // Menyimpan data resep sementara dan memunculkan Alert Hapus
                             recipeToDelete = recipe
                             showingDeleteAlert = true
-                        } label: {
-                            Label("Delete Recipe", systemImage: "trash")
-                        }
+                        } label: { Label("Delete Recipe", systemImage: "trash") }
                     }
                 }
             }
@@ -133,9 +102,7 @@ extension MyRecipesView {
     }
     
     private var floatingActionButton: some View {
-        Button(action: {
-            showingCreateSheet = true
-        }) {
+        Button(action: { showingCreateSheet = true }) {
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundColor(.white)
@@ -146,6 +113,65 @@ extension MyRecipesView {
         }
         .padding(.trailing, 20)
         .padding(.bottom, 24)
+    }
+}
+
+// MARK: - Komponen UI Bottom Sheet
+struct CollectionSelectionSheet: View {
+    @ObservedObject var viewModel: RecipeViewModel
+    
+    var body: some View {
+        NavigationStack {
+            List(viewModel.userCollections, id: \.id) { collection in
+                Button(action: {
+                    if let id = collection.id { viewModel.toggleCollectionSelection(collectionId: id) }
+                }) {
+                    HStack {
+                        Text(collection.name)
+                            .font(.merriweather(16, weight: .bold))
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if let id = collection.id, viewModel.selectedCollectionIds.contains(id) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(Color(hex: "cd4b12"))
+                                .font(.system(size: 20))
+                        } else {
+                            Image(systemName: "circle")
+                                .foregroundColor(.gray)
+                                .font(.system(size: 20))
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .navigationTitle("Save to Collection")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { viewModel.showCollectionSheet = false }
+                        .foregroundColor(Color(hex: "cd4b12"))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        Task { await viewModel.saveToSelectedCollections() }
+                    }
+                    .font(.merriweather(16, weight: .bold))
+                    .foregroundColor(Color(hex: "43766c"))
+                    .disabled(viewModel.selectedCollectionIds.isEmpty || viewModel.isSavingToCollections)
+                }
+            }
+            .overlay {
+                if viewModel.isSavingToCollections {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                    ProgressView().padding().background(Color.white).cornerRadius(12)
+                } else if viewModel.userCollections.isEmpty {
+                    Text("You don't have any collections yet.")
+                        .font(.merriweather(14))
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 

@@ -2,7 +2,7 @@
 //  CollectionDetailView.swift
 //  RecipeVault
 //
-//  Created by Wesley Goey on 29/05/26.
+//  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
 
 import SwiftUI
@@ -30,15 +30,17 @@ struct CollectionDetailView: View {
                     headerInfoSection
                     authorSection
                     
-                    // 🚀 Deskripsi langsung di sini (Tanpa Tabs)
+                    // Deskripsi langsung di sini (Tanpa Tabs)
                     Text(collection.description)
-                        .font(.custom("Merriweather-Regular", size: 15))
+                        // 🚀 Font Fix
+                        .font(.merriweather(15, weight: .regular))
                         .foregroundColor(.gray)
                         .lineSpacing(4)
                         .padding(.top, -8)
                     
                     Text("Recipes (\(viewModel.recipesInCollection.count))")
-                        .font(.custom("Merriweather-Bold", size: 20))
+                        // 🚀 Font Fix
+                        .font(.merriweather(20, weight: .bold))
                         .padding(.top, 10)
                     
                     recipesListSection
@@ -135,7 +137,8 @@ extension CollectionDetailView {
                 .clipShape(Capsule())
                 
                 Text(collection.name)
-                    .font(.custom("Merriweather-Bold", size: 32))
+                    // 🚀 Font Fix
+                    .font(.merriweather(32, weight: .bold))
                     .foregroundColor(.white)
                 
                 Text("\(viewModel.recipesInCollection.count) recipes")
@@ -151,65 +154,82 @@ extension CollectionDetailView {
         EmptyView() // Ruang ini digantikan oleh teks di atas gambar
     }
     
+    // 🚀 FITUR BARU: Pembuat koleksi bisa ditekan untuk melihat profilnya
     private var authorSection: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(mutedTeal)
-                .frame(width: 46, height: 46)
-                .overlay(Text("ME").font(.system(size: 14, weight: .bold)).foregroundColor(.white))
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("You").font(.headline).fontWeight(.bold)
-                Text("Your collection").font(.subheadline).foregroundColor(.gray)
+        NavigationLink(destination: Text("User Profile Placeholder for: \(collection.userId)")) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(mutedTeal)
+                    .frame(width: 46, height: 46)
+                    .overlay(
+                        Text(viewModel.isOwner(collection: collection) ? "ME" : "USR")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                    )
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(viewModel.isOwner(collection: collection) ? "You" : "Collection Creator")
+                        .font(.merriweather(16, weight: .bold))
+                        .foregroundColor(darkText)
+                    
+                    Text(viewModel.isOwner(collection: collection) ? "Your collection" : "Public Creator")
+                        .font(.merriweather(14, weight: .regular))
+                        .foregroundColor(.gray)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundColor(.gray)
             }
-            Spacer()
-            Image(systemName: "chevron.right").foregroundColor(.gray)
+            .padding(.vertical, 10)
         }
-        .padding(.vertical, 10)
+        .buttonStyle(PlainButtonStyle())
     }
     
+    // 🚀 FITUR BARU: Resep di dalam koleksi sekarang bisa ditekan
     private var recipesListSection: some View {
         LazyVStack(spacing: 16) {
             ForEach(viewModel.recipesInCollection, id: \.title) { recipe in
-                // 🚀 Custom List Row Sesuai Screenshot Detail
-                HStack(spacing: 16) {
-                    AsyncImage(url: URL(string: recipe.recipeImage)) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        Color.gray.opacity(0.2)
-                    }
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(recipe.title)
-                            .font(.custom("Merriweather-Bold", size: 16))
-                            .foregroundColor(darkText)
-                            .lineLimit(1)
-                        
-                        HStack(spacing: 8) {
-                            Text(recipe.category)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 10).padding(.vertical, 4)
-                                .background(burntOrange).clipShape(Capsule())
-                            
-                            // Placeholder Cooking Time karena dihapus dari model
-                            HStack(spacing: 4) {
-                                Image(systemName: "clock")
-                                Text("30 min")
-                            }
-                            .font(.caption)
-                            .foregroundColor(.gray)
+                NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
+                    HStack(spacing: 16) {
+                        AsyncImage(url: URL(string: recipe.recipeImage)) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            Color.gray.opacity(0.2)
                         }
+                        .frame(width: 80, height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(recipe.title)
+                                // 🚀 Font Fix
+                                .font(.merriweather(16, weight: .bold))
+                                .foregroundColor(darkText)
+                                .lineLimit(1)
+                                .multilineTextAlignment(.leading)
+                            
+                            HStack(spacing: 8) {
+                                Text(recipe.category)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(burntOrange).clipShape(Capsule())
+                                
+                                HStack(spacing: 4) {
+                                    Image(systemName: "clock")
+                                    Text("30 min")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            }
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundColor(.gray.opacity(0.5))
                     }
-                    Spacer()
-                    Image(systemName: "chevron.right").foregroundColor(.gray.opacity(0.5))
+                    .padding(12)
+                    .background(Color.white)
+                    .cornerRadius(20)
+                    .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
                 }
-                .padding(12)
-                .background(Color.white)
-                .cornerRadius(20)
-                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+                .buttonStyle(PlainButtonStyle()) // Menghilangkan highlight biru
             }
         }
     }

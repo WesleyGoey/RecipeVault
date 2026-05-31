@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SearchView: View {
     @StateObject private var viewModel = SearchViewModel()
+    @StateObject private var recipeViewModel = RecipeViewModel()
     @FocusState private var isSearchFocused: Bool
     
     // Theme Colors
@@ -203,7 +204,7 @@ extension SearchView {
                         } else {
                             ForEach(viewModel.mealDBRecipes.prefix(5)) { recipe in
                                 NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
-                                    RecipeCardView(recipe: recipe)
+                                    RecipeCardView(recipe: recipe, viewModel: recipeViewModel)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
@@ -235,7 +236,7 @@ extension SearchView {
             } else {
                 ForEach(viewModel.mealDBRecipes) { recipe in
                     NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
-                        RecipeCardView(recipe: recipe)
+                        RecipeCardView(recipe: recipe, viewModel: recipeViewModel)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }

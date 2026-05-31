@@ -7,26 +7,47 @@
 
 
 // MARK: - CloudStorageRepository
+//import Foundation
+//import FirebaseStorage
+//
+//class CloudStorageRepository: CloudStorageRepositoryProtocol {
+//    
+//    // MARK: - Properties
+//    static let shared = CloudStorageRepository()
+//    private let storage = Storage.storage().reference()
+//    
+//    // MARK: - Initializer
+//    private init() {}
+//    
+//    // MARK: - Methods
+//    func uploadImage(image: Data, path: String) async throws -> String {
+//        let fileName = UUID().uuidString
+//        let fileRef = storage.child("\(path)/\(fileName).jpg")
+//        
+//        _ = try await fileRef.putDataAsync(image, metadata: nil)
+//        let downloadURL = try await fileRef.downloadURL()
+//        
+//        return downloadURL.absoluteString
+//    }
+//}
 import Foundation
 import FirebaseStorage
 
 class CloudStorageRepository: CloudStorageRepositoryProtocol {
-    
-    // MARK: - Properties
     static let shared = CloudStorageRepository()
     private let storage = Storage.storage().reference()
     
-    // MARK: - Initializer
     private init() {}
     
-    // MARK: - Methods
     func uploadImage(image: Data, path: String) async throws -> String {
-        let fileName = UUID().uuidString
-        let fileRef = storage.child("\(path)/\(fileName).jpg")
+        let filename = UUID().uuidString + ".jpg"
+        let ref = storage.child(path).child(filename)
         
-        _ = try await fileRef.putDataAsync(image, metadata: nil)
-        let downloadURL = try await fileRef.downloadURL()
+        // 🚀 Proses upload ke Firebase Storage
+        let _ = try await ref.putDataAsync(image, metadata: nil)
         
-        return downloadURL.absoluteString
+        // 🚀 Mengambil URL publik setelah sukses upload
+        let url = try await ref.downloadURL()
+        return url.absoluteString
     }
 }

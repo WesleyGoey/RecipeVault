@@ -8,68 +8,52 @@
 import SwiftUI
 import PhotosUI
 
-// MARK: - RecipeEditView
 struct RecipeEditView: View {
-    
-    // MARK: - Properties
     @Environment(\.dismiss) var dismiss
-    
-    // Parameter resep yang akan diedit
     let recipeToEdit: Recipe
     
-    // State UI
+    @ObservedObject var viewModel: RecipeViewModel
+    
     @State private var title: String
     @State private var description: String
     @State private var selectedCategories: Set<String>
     @State private var ingredients: [String]
     @State private var steps: [String]
     
-    // State PhotosPicker
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    // 🚀 STATE BARU
+    @State private var rawImageData: Data?
+    
+    @State private var isImageDeleted: Bool = false
     
     let categories = ["Beef", "Chicken", "Lamb", "Seafood", "Pasta", "Vegetarian", "Dessert", "Vegan", "Pork", "Side", "Starter", "Breakfast", "Soup", "Spicy", "Gluten-Free", "Dairy-Free", "Miscellaneous"]
     
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     
-    // MARK: - Initializer
-    init(recipe: Recipe) {
-        self.recipeToEdit = recipe
-        
-        // Mengisi State form dengan data dari resep yang dilempar
-        _title = State(initialValue: recipe.title)
-        _description = State(initialValue: recipe.description)
-        
-        // Konversi String kategori menjadi Set untuk multi-select
-        let cats = recipe.category.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    init(recipeToEdit: Recipe, viewModel: RecipeViewModel) {
+        self.recipeToEdit = recipeToEdit
+        self.viewModel = viewModel
+        _title = State(initialValue: recipeToEdit.title)
+        _description = State(initialValue: recipeToEdit.description)
+        let cats = recipeToEdit.category.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         _selectedCategories = State(initialValue: Set(cats))
-        
-        // Mencegah array kosong agar list tidak hilang
-        _ingredients = State(initialValue: recipe.ingredients.isEmpty ? [""] : recipe.ingredients)
-        _steps = State(initialValue: recipe.steps.isEmpty ? [""] : recipe.steps)
+        _ingredients = State(initialValue: recipeToEdit.ingredients.isEmpty ? [""] : recipeToEdit.ingredients)
+        _steps = State(initialValue: recipeToEdit.steps.isEmpty ? [""] : recipeToEdit.steps)
     }
     
-    // MARK: - Body
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    
                     photoUploadSection
-                    
                     inputSection(title: "RECIPE TITLE", placeholder: "e.g. Grandma's Lasagna", text: $title)
-                    
                     descriptionSection
-                    
                     categorySection
-                    
                     dynamicListSection(title: "INGREDIENTS", items: $ingredients, addPlaceholder: "Add Ingredient", isNumbered: false)
-                    
                     dynamicListSection(title: "STEPS", items: $steps, addPlaceholder: "Add Step", isNumbered: true)
-                    
                     Spacer().frame(height: 100)
                 }
                 .padding(20)
@@ -81,160 +65,131 @@ struct RecipeEditView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                         .foregroundColor(burntOrange)
-                        .fontWeight(.bold)
+                        .font(.merriweather(16, weight: .bold))
                 }
             }
             .overlay(alignment: .bottom) {
                 updateButton
             }
+            // 🚀 TAMBAHAN: MUNCULKAN ERROR FIREBASE AGAR KAMU TAHU JIKA GAGAL
+            .alert("Update Failed", isPresented: Binding(
+                get: { !viewModel.operationError.isEmpty },
+                set: { if !$0 { viewModel.operationError = "" } }
+            )) {
+                Button("OK", role: .cancel) { viewModel.operationError = "" }
+            } message: {
+                Text(viewModel.operationError)
+            }
         }
     }
 }
 
-// MARK: - Subviews
 extension RecipeEditView {
     
-    // 🚀 Perbaikan Utama: Logika Gambar Lama vs Gambar Baru
     private var photoUploadSection: some View {
-        PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
-            // 1. Jika ada gambar baru yang dipilih dari galeri
-            if let selectedImage {
-                Image(uiImage: selectedImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(height: 180)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-            }
-            // 2. Jika belum pilih gambar baru, tapi resep sudah punya gambar dari internet/database
-            else if !recipeToEdit.recipeImage.isEmpty {
-                AsyncImage(url: URL(string: recipeToEdit.recipeImage)) { phase in
-                    switch phase {
-                    case .empty:
-                        Rectangle().fill(Color.gray.opacity(0.2)).overlay(ProgressView())
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    case .failure:
-                        placeholderView
-                    @unknown default:
+        ZStack(alignment: .topTrailing) {
+            
+            PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
+                if let selectedImage {
+                    Image(uiImage: selectedImage).resizable().scaledToFill().frame(height: 180).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                else if !recipeToEdit.recipeImage.isEmpty && !isImageDeleted {
+                    // 🚀 DECODE BASE64 LANGSUNG
+                    if let imageData = Data(base64Encoded: recipeToEdit.recipeImage),
+                       let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 180)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    } else {
                         placeholderView
                     }
+                } else {
+                    placeholderView
                 }
-                .frame(height: 180)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
             }
-            // 3. Jika resep sama sekali tidak punya gambar
-            else {
-                placeholderView
-            }
-        }
-        .onChange(of: photoItem) { newItem in
-            Task {
-                if let data = try? await newItem?.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    selectedImage = image
+            .onChange(of: photoItem) { newItem in
+                Task {
+                    if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                        self.selectedImage = image
+                        self.isImageDeleted = false
+                        // Kompres langsung di latar belakang
+                        self.rawImageData = image.jpegData(compressionQuality: 0.2)
+                    }
                 }
+            }
+            
+            if selectedImage != nil || (!recipeToEdit.recipeImage.isEmpty && !isImageDeleted) {
+                Button(action: {
+                    withAnimation {
+                        selectedImage = nil
+                        photoItem = nil
+                        rawImageData = nil
+                        isImageDeleted = true
+                    }
+                }) {
+                    Image(systemName: "trash.circle.fill")
+                        .resizable()
+                        .frame(width: 32, height: 32)
+                        .foregroundColor(.red)
+                        .background(Circle().fill(Color.white))
+                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                }
+                .padding(12)
             }
         }
     }
     
     private var placeholderView: some View {
         VStack(spacing: 12) {
-            Image(systemName: "photo.badge.plus")
-                .font(.system(size: 32))
-            Text("Change Recipe Photo")
-                .font(.custom("Merriweather-Bold", size: 16))
-            Text("Tap to upload a new photo")
-                .font(.caption)
+            Image(systemName: "photo.badge.plus").font(.system(size: 32))
+            Text("Add Recipe Photo").font(.merriweather(16, weight: .bold))
+            Text("Tap to upload an image").font(.merriweather(12, weight: .regular))
         }
-        .foregroundColor(mutedTeal)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-        .background(Color.white)
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(mutedTeal.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8]))
-        )
+        .foregroundColor(mutedTeal).frame(maxWidth: .infinity).padding(.vertical, 40).background(Color.white).cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(mutedTeal.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8])))
     }
     
     private func inputSection(title: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.gray)
-            
-            TextField(placeholder, text: text)
-                .padding(16)
-                .background(Color.white)
-                .cornerRadius(12)
+            Text(title).font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
+            TextField(placeholder, text: text).padding(16).background(Color.white).cornerRadius(12).font(.merriweather(14, weight: .regular))
         }
     }
     
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("DESCRIPTION")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.gray)
-            
+            Text("DESCRIPTION").font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
             ZStack(alignment: .topLeading) {
                 if description.isEmpty {
                     Text("e.g. Share the story behind this recipe...")
-                        .foregroundColor(Color(UIColor.placeholderText))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 16)
+                        .foregroundColor(Color(UIColor.placeholderText)).font(.merriweather(14, weight: .regular))
+                        .padding(.horizontal, 16).padding(.vertical, 16)
                 }
-                
-                TextEditor(text: $description)
-                    .padding(8)
-                    .scrollContentBackground(.hidden)
+                TextEditor(text: $description).font(.merriweather(14, weight: .regular)).padding(8).scrollContentBackground(.hidden)
             }
-            .frame(minHeight: 120)
-            .background(Color.white)
-            .cornerRadius(12)
+            .frame(minHeight: 120).background(Color.white).cornerRadius(12)
         }
     }
     
-    // 🚀 Menggunakan komponen FlowLayout kustom yang sudah kamu definisikan di modulmu
     private var categorySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("CATEGORY")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.gray)
+                Text("CATEGORY").font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
                 Spacer()
-                Text("\(selectedCategories.count) selected")
-                    .font(.caption)
-                    .foregroundColor(.gray)
+                Text("\(selectedCategories.count) selected").font(.merriweather(12, weight: .regular)).foregroundColor(.gray)
             }
-            
-            // Catatan: Pastikan struct FlowLayout: Layout ada di dalam proyekmu (biasanya sudah ada dari RecipeCreateView)
             FlowLayout(spacing: 10) {
                 ForEach(categories, id: \.self) { category in
                     let isSelected = selectedCategories.contains(category)
-                    
                     Button(action: {
-                        if isSelected {
-                            selectedCategories.remove(category)
-                        } else {
-                            selectedCategories.insert(category)
-                        }
+                        if isSelected { selectedCategories.remove(category) } else { selectedCategories.insert(category) }
                     }) {
-                        Text(category)
-                            .font(.subheadline)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(isSelected ? burntOrange : Color.white)
-                            .foregroundColor(isSelected ? .white : burntOrange)
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule().stroke(burntOrange.opacity(0.3), lineWidth: 1)
-                            )
+                        Text(category).font(.merriweather(14, weight: .bold)).padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(isSelected ? burntOrange : Color.white).foregroundColor(isSelected ? .white : burntOrange).clipShape(Capsule())
+                            .overlay(Capsule().stroke(burntOrange.opacity(0.3), lineWidth: 1))
                     }
                 }
             }
@@ -243,91 +198,69 @@ extension RecipeEditView {
     
     private func dynamicListSection(title: String, items: Binding<[String]>, addPlaceholder: String, isNumbered: Bool) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.gray)
-            
+            Text(title).font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
             VStack(spacing: 0) {
                 ForEach(0..<items.wrappedValue.count, id: \.self) { index in
                     HStack(spacing: 16) {
                         if isNumbered {
-                            Circle()
-                                .fill(mutedTeal)
-                                .frame(width: 32, height: 32)
-                                .overlay(Text("\(index + 1)").font(.caption.bold()).foregroundColor(.white))
+                            Circle().fill(mutedTeal).frame(width: 32, height: 32).overlay(Text("\(index + 1)").font(.merriweather(12, weight: .bold)).foregroundColor(.white))
                         } else {
-                            Circle()
-                                .stroke(mutedTeal.opacity(0.5), lineWidth: 2)
-                                .frame(width: 20, height: 20)
-                                .overlay(Circle().fill(mutedTeal).frame(width: 8, height: 8))
+                            Circle().stroke(mutedTeal.opacity(0.5), lineWidth: 2).frame(width: 20, height: 20).overlay(Circle().fill(mutedTeal).frame(width: 8, height: 8))
                         }
-                        
-                        TextField(isNumbered ? "Describe step \(index + 1)..." : "Ingredient \(index + 1)", text: items[index])
-                        
-                        Button(action: {
-                            items.wrappedValue.remove(at: index)
-                        }) {
-                            Image(systemName: "trash")
-                                .foregroundColor(.red.opacity(0.7))
-                                .padding(8)
-                                .background(Color.red.opacity(0.1))
-                                .clipShape(Circle())
+                        TextField(isNumbered ? "Describe step \(index + 1)..." : "Ingredient \(index + 1)", text: items[index]).font(.merriweather(14, weight: .regular))
+                        Button(action: { items.wrappedValue.remove(at: index) }) {
+                            Image(systemName: "trash").foregroundColor(.red.opacity(0.7)).padding(8).background(Color.red.opacity(0.1)).clipShape(Circle())
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    
+                    .padding(.horizontal, 16).padding(.vertical, 12)
                     Divider().padding(.horizontal, 16)
                 }
-                
-                Button(action: {
-                    items.wrappedValue.append("")
-                }) {
+                Button(action: { items.wrappedValue.append("") }) {
                     HStack(spacing: 16) {
-                        Circle()
-                            .fill(mutedTeal.opacity(0.1))
-                            .frame(width: 32, height: 32)
-                            .overlay(Image(systemName: "plus").foregroundColor(mutedTeal))
-                        
-                        Text(addPlaceholder)
-                            .font(.custom("Merriweather-Bold", size: 14))
-                            .foregroundColor(mutedTeal)
+                        Circle().fill(mutedTeal.opacity(0.1)).frame(width: 32, height: 32).overlay(Image(systemName: "plus").foregroundColor(mutedTeal))
+                        Text(addPlaceholder).font(.merriweather(14, weight: .bold)).foregroundColor(mutedTeal)
                         Spacer()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16).padding(.vertical, 12)
                 }
             }
-            .background(Color.white)
-            .cornerRadius(16)
+            .background(Color.white).cornerRadius(16)
         }
     }
     
     private var updateButton: some View {
         Button(action: {
-            // TODO: Memanggil fungsi update di RecipeViewModel
-            // viewModel.updateRecipe(recipeId: recipeToEdit.id, title: title, ... dll)
-            print("Update ditekan untuk resep: \(title)")
-            dismiss()
+            Task {
+                let catString = selectedCategories.joined(separator: ", ")
+                guard let recipeId = recipeToEdit.id else { return }
+                
+                let success = await viewModel.updateRecipe(
+                    recipeId: recipeId,
+                    title: title,
+                    description: description,
+                    category: catString,
+                    ingredients: ingredients,
+                    steps: steps,
+                    oldImageURL: recipeToEdit.recipeImage,
+                    newImageData: rawImageData, // 🚀 Tidak macet lagi!
+                    isImageDeleted: isImageDeleted
+                )
+                
+                if success { dismiss() }
+            }
         }) {
-            Text("Update Recipe")
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(mutedTeal)
-                .cornerRadius(16)
+            HStack {
+                if viewModel.isLoading { ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white)).padding(.trailing, 8) }
+                Text(viewModel.isLoading ? "Updating..." : "Update Recipe").font(.merriweather(16, weight: .bold)).foregroundColor(.white)
+            }
+            .frame(maxWidth: .infinity).padding(.vertical, 16).background(mutedTeal).cornerRadius(16)
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 10)
-        .background(
-            LinearGradient(gradient: Gradient(colors: [bgYellow.opacity(0), bgYellow]), startPoint: .top, endPoint: .bottom)
-        )
+        .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isLoading)
+        .padding(.horizontal, 20).padding(.bottom, 10)
+        .background(LinearGradient(gradient: Gradient(colors: [bgYellow.opacity(0), bgYellow]), startPoint: .top, endPoint: .bottom))
     }
 }
 
-// MARK: - Preview
 #Preview {
-    RecipeEditView(recipe: Recipe.mockRecipes[0])
+    RecipeEditView(recipeToEdit: Recipe.mockRecipes[0], viewModel: RecipeViewModel())
 }
