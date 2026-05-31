@@ -146,8 +146,13 @@ extension CollectionCreateView {
     private var saveButton: some View {
         Button(action: {
             Task {
-                // 🚀 PANGGIL FUNGSI CREATE DENGAN DATA MENTAH
-                let success = await viewModel.createCollection(name: name, description: description, visibility: visibility, imageData: rawImageData)
+                // 🚀 Mengirimkan data gambar mentah (Data?) ke ViewModel
+                let success = await viewModel.createCollection(
+                    name: name,
+                    description: description,
+                    visibility: visibility,
+                    imageData: rawImageData // Ini didapat dari PhotosPicker
+                )
                 if success { dismiss() }
             }
         }) {

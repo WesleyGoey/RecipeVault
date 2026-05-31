@@ -43,11 +43,38 @@ class CloudStorageRepository: CloudStorageRepositoryProtocol {
         let filename = UUID().uuidString + ".jpg"
         let ref = storage.child(path).child(filename)
         
-        // 🚀 Proses upload ke Firebase Storage
-        let _ = try await ref.putDataAsync(image, metadata: nil)
+        // 🚀 1. Tambahkan Metadata agar Firebase tahu ini adalah file gambar (JPEG)
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
         
-        // 🚀 Mengambil URL publik setelah sukses upload
-        let url = try await ref.downloadURL()
-        return url.absoluteString
+        // 🚀 2. Gunakan Continuation untuk menghindari bug race-condition pada putDataAsync bawaan SDK
+        return try await withCheckedThrowingContinuation { continuation in
+            
+            // Menggunakan putData konvensional (closure) yang lebih dijamin keakuratannya
+            ref.putData(image, metadata: metadata) { returnedMetadata, error in
+                
+                // Jika proses upload gagal (misal karena jaringan atau rules), lemparkan error
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                // Jika upload dipastikan SUKSES, baru kita minta URL Download-nya
+                ref.downloadURL { url, downloadError in
+                    if let downloadError = downloadError {
+                        continuation.resume(throwing: downloadError)
+                        return
+                    }
+                    
+                    guard let downloadURL = url?.absoluteString else {
+                        continuation.resume(throwing: URLError(.badURL))
+                        return
+                    }
+                    
+                    // Kembalikan URL string ke Service Layer
+                    continuation.resume(returning: downloadURL)
+                }
+            }
+        }
     }
 }
