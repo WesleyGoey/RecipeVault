@@ -39,26 +39,30 @@ struct CollectionsView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         headerSection
                         
-                        // 🚀 3. LOGIKA PENGECEKAN LOGIN
-                        if profileVM.userId.isEmpty {
+                        // 🚀 3. LOGIKA PENGECEKAN LOGIN DENGAN AUTHVM
+                        if !authVM.isLoggedIn {
                             unauthenticatedArea
                         } else {
-                            gridSection
+                            if viewModel.myCollections.isEmpty {
+                                emptyStateView
+                            } else {
+                                gridSection
+                            }
                         }
                     }
                 }
                 
                 // 🚀 4. Sembunyikan tombol + jika belum login
-                if !profileVM.userId.isEmpty {
+                if authVM.isLoggedIn {
                     floatingActionButton
                 }
             }
             .navigationBarHidden(true)
             .task {
-                // Saat layar dibuka, pastikan status login terbaru ditarik
-                await profileVM.initializeUserProfile()
-                
-                if !profileVM.userId.isEmpty {
+                // Saat layar dibuka, tarik profil (jika login)
+                if authVM.isLoggedIn {
+                    await profileVM.initializeUserProfile()
+                    
                     if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
                         viewModel.myCollections = RecipeCollection.mockCollections
                     } else {
@@ -66,10 +70,18 @@ struct CollectionsView: View {
                     }
                 }
             }
-            // 🚀 Jika user berhasil login, langsung muat koleksinya
-            .onChange(of: profileVM.userId) { newId in
-                if !newId.isEmpty {
-                    Task { await viewModel.loadMyCollections() }
+            // 🚀 5. PANTAU LOGOUT/LOGIN SECARA REAL-TIME
+            .onChange(of: authVM.isLoggedIn) { isLoggedIn in
+                if isLoggedIn {
+                    // Jika baru login, muat data
+                    Task {
+                        await profileVM.initializeUserProfile()
+                        await viewModel.loadMyCollections()
+                    }
+                } else {
+                    // Jika logout, bersihkan layar secara instan
+                    viewModel.myCollections.removeAll()
+                    profileVM.userId = ""
                 }
             }
             // 🚀 INJEKSI VIEWMODEL KE SHEET LOGIN
@@ -102,8 +114,8 @@ extension CollectionsView {
                 .font(.merriweather(36, weight: .bold)) // 🚀 FONT
                 .foregroundColor(darkText)
             
-            // Filter controls (Hanya relevan jika ada koleksi yang ditampilkan)
-            if !profileVM.userId.isEmpty {
+            // Filter controls (Hanya relevan jika user login)
+            if authVM.isLoggedIn {
                 HStack {
                     Button(action: {}) {
                         Label("Alphabetical", systemImage: "arrow.up.arrow.down").font(.merriweather(14, weight: .bold)).foregroundColor(darkText)
@@ -173,8 +185,10 @@ extension CollectionsView {
     private var gridSection: some View {
         LazyVGrid(columns: columns, spacing: 20) {
             ForEach(viewModel.myCollections, id: \.name) { collection in
+                let recipeCount = viewModel.collectionCounts[collection.id ?? ""] ?? 0
+                
                 NavigationLink(destination: CollectionDetailView(collection: collection, viewModel: viewModel)) {
-                    CollectionCardView(collection: collection) // Pastikan file ini ada
+                    CollectionCardView(collection: collection, recipeCount: recipeCount)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .contextMenu {
@@ -190,6 +204,26 @@ extension CollectionsView {
         }.padding(.horizontal, 20).padding(.bottom, 120)
     }
     
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "square.grid.2x2.fill")
+                .font(.system(size: 64))
+                .foregroundColor(mutedTeal.opacity(0.4))
+            
+            Text("No Collections Yet")
+                .font(.merriweather(24, weight: .bold))
+                .foregroundColor(darkText)
+            
+            Text("Organize your favorite recipes into custom folders. Tap the + button to create one.")
+                .font(.merriweather(14))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
+    }
+    
     private var floatingActionButton: some View {
         Button(action: { showingCreateSheet = true }) {
             Image(systemName: "plus").font(.system(size: 24, weight: .semibold)).foregroundColor(.white)
@@ -198,9 +232,8 @@ extension CollectionsView {
     }
 }
 
-// CollectionCardView is managed in CollectionCardView.swift
-
+// MARK: - Preview
 #Preview {
     CollectionsView()
-        .environmentObject(AuthViewModel()) // 🚀 Wajib ada di preview
+        .environmentObject(AuthViewModel())
 }
