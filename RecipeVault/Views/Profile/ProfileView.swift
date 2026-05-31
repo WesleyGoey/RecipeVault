@@ -276,8 +276,11 @@ struct ProfileView: View {
             } else {
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(vm.collections) { col in
-                        ProfileCollectionCardView(collection: col, recipeCount: vm.collectionCounts[col.id ?? ""] ?? 0)
-                            .frame(height: 170)
+                        NavigationLink(destination: CollectionDetailView(collection: col, viewModel: CollectionViewModel())) {
+                            ProfileCollectionCardView(collection: col, recipeCount: vm.collectionCounts[col.id ?? ""] ?? 0)
+                                .frame(height: 170)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
             }

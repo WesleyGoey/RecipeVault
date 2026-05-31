@@ -28,20 +28,19 @@ struct SearchView: View {
             VStack(spacing: 0) {
                 
                 // MARK: - FIXED HEADER AREA
-                // Header statis di luar ScrollView agar tidak ikut tergulir
                 VStack(alignment: .leading, spacing: 0) {
                     
-                    // 1. Title (Hanya muncul jika TIDAK sedang mencari)
+                    // 1. Title
                     if !viewModel.isSearching {
                         Text("Discover")
-                            .font(.custom("Merriweather-Bold", size: 36))
+                            // 🚀 Font Fix
+                            .font(.merriweather(36, weight: .bold))
                             .foregroundColor(darkText)
                             .padding(.horizontal, 24)
                             .padding(.top, 20)
                             .padding(.bottom, 16)
                             .transition(.move(edge: .top).combined(with: .opacity))
                     } else {
-                        // Ruang kosong untuk margin atas saat searching
                         Spacer().frame(height: 20)
                     }
                     
@@ -54,11 +53,12 @@ struct SearchView: View {
                             
                             TextField("Search recipes & collections", text: $viewModel.searchText)
                                 .focused($isSearchFocused)
+                                // 🚀 Font Fix
+                                .font(.merriweather(16, weight: .regular))
                                 .submitLabel(.search)
                                 .onSubmit {
                                     Task { await viewModel.performSearch() }
                                 }
-                                // Memicu animasi secara otomatis saat search bar ditekan/mendapat fokus
                                 .onChange(of: isSearchFocused) { isFocused in
                                     if isFocused {
                                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -80,7 +80,6 @@ struct SearchView: View {
                         .cornerRadius(16)
                         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
                         
-                        // Cancel Button dengan animasi muncul dari kanan
                         if viewModel.isSearching {
                             Button("Cancel") {
                                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -89,14 +88,15 @@ struct SearchView: View {
                                     isSearchFocused = false
                                 }
                             }
-                            .font(.custom("Merriweather-Bold", size: 16))
+                            // 🚀 Font Fix
+                            .font(.merriweather(16, weight: .bold))
                             .foregroundColor(mutedTeal)
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                         }
                     }
                     .padding(.horizontal, 24)
                     
-                    // 3. Segmented Tabs (Hanya muncul saat searching)
+                    // 3. Segmented Tabs
                     if viewModel.isSearching {
                         HStack(spacing: 0) {
                             SearchPickerTab(title: "TheMealDB", isSelected: viewModel.selectedTab == .theMealDB) {
@@ -117,15 +117,13 @@ struct SearchView: View {
                 }
                 .padding(.bottom, 10)
                 .background(bgYellow)
-                .zIndex(1) // Memastikan header selalu di atas ScrollView saat animasi
+                .zIndex(1)
                 
                 // MARK: - SCROLLABLE CONTENT AREA
                 ScrollView {
                     if !viewModel.isSearching {
-                        // Memanggil UI Feed Utama (Default State)
                         discoveryFeed
                     } else {
-                        // Memanggil Tampilan berdasarkan Tab yang dipilih saat pencarian aktif
                         if viewModel.selectedTab == .theMealDB {
                             mealDBGrid
                         } else {
@@ -136,6 +134,10 @@ struct SearchView: View {
                 .background(bgYellow)
             }
             .background(bgYellow.ignoresSafeArea())
+            // 🚀 Refresh Public Collections setiap kali layar Search dibuka
+            .onAppear {
+                Task { await viewModel.fetchPublicCollections() }
+            }
         }
     }
 }
@@ -147,7 +149,7 @@ extension SearchView {
     private var discoveryFeed: some View {
         VStack(alignment: .leading, spacing: 32) {
             
-            // SECTION 1: EDITOR'S PICK (Featured Collections)
+            // SECTION 1: EDITOR'S PICK
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("EDITOR'S PICK")
@@ -155,13 +157,13 @@ extension SearchView {
                         .tracking(1.5)
                         .foregroundColor(burntOrange)
                     Text("Featured Collections")
-                        .font(.custom("Merriweather-Bold", size: 24))
+                        // 🚀 Font Fix
+                        .font(.merriweather(24, weight: .bold))
                         .foregroundColor(darkText)
                 }
                 .padding(.horizontal, 24)
                 
                 VStack(spacing: 20) {
-                    // Menggunakan DiscoverCardView buatanmu
                     DiscoverCardView(
                         title: "Quick Weeknight Dinners",
                         author: "@CHEF_MARIA",
@@ -179,7 +181,7 @@ extension SearchView {
                 .padding(.horizontal, 24)
             }
             
-            // SECTION 2: WHAT'S HOT (Trending Recipes)
+            // SECTION 2: WHAT'S HOT
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("WHAT'S HOT")
@@ -187,19 +189,18 @@ extension SearchView {
                         .tracking(1.5)
                         .foregroundColor(mutedTeal)
                     Text("Trending Recipes")
-                        .font(.custom("Merriweather-Bold", size: 24))
+                        // 🚀 Font Fix
+                        .font(.merriweather(24, weight: .bold))
                         .foregroundColor(darkText)
                 }
                 .padding(.horizontal, 24)
                 
-                // Horizontal Scroll untuk Resep Trending
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
                         if viewModel.mealDBRecipes.isEmpty {
                             ProgressView()
                                 .padding(.leading, 24)
                         } else {
-                            // Menampilkan 5 resep pertama dari MealDB sebagai "Trending"
                             ForEach(viewModel.mealDBRecipes.prefix(5)) { recipe in
                                 NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
                                     RecipeCardView(recipe: recipe)
@@ -214,7 +215,7 @@ extension SearchView {
             }
         }
         .padding(.top, 16)
-        .padding(.bottom, 120) // Ruang ekstra di bawah agar tidak tertutup Custom Tab Bar
+        .padding(.bottom, 120)
     }
     
     // MARK: - Search Results Grid
@@ -227,17 +228,16 @@ extension SearchView {
                     .padding(.top, 40)
             } else if viewModel.mealDBRecipes.isEmpty {
                 Text("No recipes found.")
-                    .font(.custom("Merriweather-Regular", size: 16))
+                    // 🚀 Font Fix
+                    .font(.merriweather(16, weight: .regular))
                     .foregroundColor(.gray)
                     .padding(.top, 40)
             } else {
                 ForEach(viewModel.mealDBRecipes) { recipe in
-                    // 🚀 NavigationLink untuk setiap hasil pencarian
-
                     NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
                         RecipeCardView(recipe: recipe)
                     }
-                    .buttonStyle(PlainButtonStyle()) // Menghapus highlight biru saat ditekan
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
@@ -246,33 +246,59 @@ extension SearchView {
         .padding(.bottom, 120)
     }
     
-    // MARK: - Collections Grid (Empty State)
+    // MARK: - Collections Grid (🚀 PERBAIKAN UTAMA DI SINI)
     private var collectionsGrid: some View {
         VStack {
-            if viewModel.collections.isEmpty {
+            if viewModel.isLoadingCollections {
+                ProgressView()
+                    .scaleEffect(1.5)
+                    .padding(.top, 40)
+            }
+            else if viewModel.collections.isEmpty {
+                // Layar Kosong jika belum ada koleksi publik
                 Spacer().frame(height: 80)
                 Image(systemName: "folder.badge.questionmark")
                     .font(.system(size: 50))
                     .foregroundColor(mutedTeal.opacity(0.5))
                 
                 Text("No Public Collection Yet")
-                    .font(.custom("Merriweather-Bold", size: 20))
+                    .font(.merriweather(20, weight: .bold))
                     .foregroundColor(darkText)
                     .padding(.top, 16)
                 
                 Text("When users create public collections, they will appear here.")
-                    .font(.custom("Merriweather-Regular", size: 14))
+                    .font(.merriweather(14, weight: .regular))
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
                     .padding(.top, 4)
                     .padding(.horizontal, 40)
+            }
+            else {
+                // 🚀 JIKA ADA DATA KOLEKSI: Tampilkan Grid Kartu!
+                LazyVGrid(columns: columns, spacing: 20) {
+                    ForEach(viewModel.collections) { collection in
+                        // 🚀 TAMBAHKAN NAVIGATION LINK INI
+                        NavigationLink(destination: CollectionDetailView(collection: collection, viewModel: CollectionViewModel())) {
+                            DiscoverCardView(
+                                title: collection.name,
+                                author: "PUBLIC",
+                                recipeCount: 0,
+                                imageUrl: collection.collectionImage
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 10)
+                .padding(.bottom, 120)
             }
         }
         .frame(maxWidth: .infinity)
     }
 }
 
-// MARK: - Helper Component (Fileprivate agar tidak bentrok dengan RecipeDetailView)
+// MARK: - Helper Component
 fileprivate struct SearchPickerTab: View {
     let title: String
     let isSelected: Bool
@@ -281,7 +307,8 @@ fileprivate struct SearchPickerTab: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.custom("Merriweather-Bold", size: 16, relativeTo: .headline))
+                // 🚀 Font Fix
+                .font(.merriweather(16, weight: .bold))
                 .foregroundColor(isSelected ? .black : .gray)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
