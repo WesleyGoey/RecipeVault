@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AuthView: View {
-    @StateObject private var authVM = AuthViewModel()
+    @EnvironmentObject var authVM: AuthViewModel
     
     @ObservedObject var vm: ProfileViewModel
     var initialMode: AuthMode = .login
