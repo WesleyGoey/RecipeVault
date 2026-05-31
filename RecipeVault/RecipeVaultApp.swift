@@ -11,7 +11,7 @@ import FirebaseAppCheck // 🚀 1. WAJIB IMPORT INI
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
-                   didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         
         #if DEBUG
         // 🚀 2. Tukar provider menjadi DEBUG khusus saat dijalankan di Simulator/Xcode Development
@@ -31,10 +31,8 @@ struct RecipeVaultApp: App {
 
     var body: some Scene {
         WindowGroup {
-            NavigationView {
-                MainTabView()
-            }
-            .environmentObject(authVM)
+            MainTabView()
+                .environmentObject(authVM)
         }
     }
 }
