@@ -29,20 +29,30 @@ class CollectionViewModel: ObservableObject {
         guard let uid = authService.getCurrentUID() else { return }
         isLoading = true
         operationError = ""
+        
         do {
-            myCollections = try await collectionService.getUserCollections(userId: uid)
+            // 1. Ambil data koleksi dari Firebase
+            let fetchedCollections = try await collectionService.getUserCollections(userId: uid)
+            
+            // 2. Buat dictionary sementara untuk menghindari render berulang yang menyebabkan bug angka 0
+            var tempCounts: [String: Int] = [:]
             
             // Ambil jumlah resep untuk setiap koleksi
-            for collection in myCollections {
+            for collection in fetchedCollections {
                 if let colId = collection.id {
                     let count = (try? await collectionService.getRecipeCountInCollection(collectionId: colId)) ?? 0
-                    collectionCounts[colId] = count
+                    tempCounts[colId] = count
                 }
             }
+            
+            // 3. Update State secara serentak. Ini akan memaksa UI (CollectionsView) untuk refresh dengan akurat
+            self.myCollections = fetchedCollections
+            self.collectionCounts = tempCounts
             
         } catch {
             self.operationError = error.localizedDescription
         }
+        
         isLoading = false
     }
     

@@ -69,7 +69,7 @@ struct RecipeDetailView: View {
             }
         }
         
-        // BOTTOM SHEET KOLEKSI YANG SAMA DENGAN MYRECIPESVIEW
+        // BOTTOM SHEET KOLEKSI
         .sheet(isPresented: $viewModel.showCollectionSheet) {
             CollectionSelectionSheet(viewModel: viewModel)
         }
@@ -78,7 +78,7 @@ struct RecipeDetailView: View {
             RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
         }
         
-        // 🚀 REVISI FITUR DELETE: Dismiss halaman dulu baru hapus di latar belakang
+        // REVISI FITUR DELETE: Dismiss halaman dulu baru hapus di latar belakang
         .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -133,7 +133,7 @@ struct RecipeDetailView: View {
 
 extension RecipeDetailView {
     
-    // MARK: - Hero Image Section (Membaca Base64)
+    // MARK: - Hero Image Section (Membaca Base64 & URL)
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
             if recipe.recipeImage.isEmpty {
@@ -145,7 +145,26 @@ extension RecipeDetailView {
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }
-            // 🚀 RENDER GAMBAR DARI TEXT BASE64
+            // RENDER GAMBAR DARI THEMEALDB URL
+            else if recipe.recipeImage.starts(with: "http") {
+                AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else if phase.error != nil {
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            Image(systemName: "fork.knife").font(.system(size: 60)).foregroundColor(mutedTeal.opacity(0.5))
+                        }
+                    } else {
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            ProgressView()
+                        }
+                    }
+                }
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+            }
+            // RENDER GAMBAR DARI TEXT BASE64
             else if let imageData = Data(base64Encoded: recipe.recipeImage),
                     let uiImage = UIImage(data: imageData) {
                 
@@ -195,6 +214,8 @@ extension RecipeDetailView {
             Spacer()
             
             HStack(spacing: 12) {
+                
+                // TOMBOL ADD TO COLLECTION
                 Button(action: { Task { await viewModel.openCollectionSheet(for: recipe) } }) {
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .bold))
@@ -204,6 +225,7 @@ extension RecipeDetailView {
                         .clipShape(Circle())
                 }
                 
+                // TOMBOL FAVORITE
                 let isFav = viewModel.isFavorite(recipe: recipe)
                 Button(action: { Task { await viewModel.toggleFavorite(recipe: recipe) } }) {
                     Image(systemName: isFav ? "heart.fill" : "heart")
@@ -223,8 +245,8 @@ extension RecipeDetailView {
         HStack {
             Circle().fill(mutedTeal).frame(width: 40, height: 40).overlay(Text("TM").foregroundColor(.white).font(.caption.bold()))
             VStack(alignment: .leading, spacing: 2) {
-                Text("TheMealDB").font(.merriweather(16, weight: .bold))
-                Text("@themealdb").font(.merriweather(12, weight: .regular)).foregroundColor(.gray)
+                Text(recipe.userId == "themealdb" ? "TheMealDB" : "Personal Recipe").font(.merriweather(16, weight: .bold))
+                Text(recipe.userId == "themealdb" ? "@themealdb" : "User Creation").font(.merriweather(12, weight: .regular)).foregroundColor(.gray)
             }
             Spacer()
             Image(systemName: "chevron.right").foregroundColor(.gray)
