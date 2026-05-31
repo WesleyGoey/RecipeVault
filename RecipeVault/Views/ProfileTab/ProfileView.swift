@@ -149,8 +149,14 @@ struct ProfileView: View {
                             }
                             
                             Button(action: {
-                                authVM.logout()
-                                Task { await vm.initializeUserProfile() }
+                                // 🚀 PERBAIKAN: Paksa putus sesi dari Firebase menggunakan 'do-catch'
+                                do {
+                                    try AuthService.shared.logout() // 1. Putus sesi dari server Firebase
+                                    authVM.logout()                 // 2. Beri tahu global state bahwa user keluar
+                                    Task { await vm.initializeUserProfile() } // 3. Refresh halaman Profil agar kosong
+                                } catch {
+                                    vm.operationError = "Gagal log out: \(error.localizedDescription)"
+                                }
                             }) {
                                 Text("Log out")
                                     .font(.merriweather(12, weight: .bold))
