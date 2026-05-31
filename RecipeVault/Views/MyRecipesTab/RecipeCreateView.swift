@@ -5,20 +5,12 @@
 //  Created by Wesley Goey on 28/05/26.
 //
 
-
-// MARK: - RecipeCreateView
-//
-//  RecipeCreateView.swift
-//  RecipeVault
-//
-
 import SwiftUI
 import PhotosUI
 
 struct RecipeCreateView: View {
     @Environment(\.dismiss) var dismiss
     
-    // 🚀 Diterima dari layar sebelumnya
     @ObservedObject var viewModel: RecipeViewModel
     
     @State private var title = ""
@@ -29,6 +21,8 @@ struct RecipeCreateView: View {
     
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    // 🚀 STATE BARU: Menyimpan data mentah agar HP tidak freeze saat disave
+    @State private var rawImageData: Data?
     
     let categories = ["Beef", "Chicken", "Lamb", "Seafood", "Pasta", "Vegetarian", "Dessert", "Vegan", "Pork", "Side", "Starter", "Breakfast", "Soup", "Spicy", "Gluten-Free", "Dairy-Free", "Miscellaneous"]
     
@@ -63,6 +57,15 @@ struct RecipeCreateView: View {
             .overlay(alignment: .bottom) {
                 saveButton
             }
+            // 🚀 TAMBAHAN: MUNCULKAN ERROR FIREBASE AGAR KAMU TAHU JIKA GAGAL
+            .alert("Upload Failed", isPresented: Binding(
+                get: { !viewModel.operationError.isEmpty },
+                set: { if !$0 { viewModel.operationError = "" } }
+            )) {
+                Button("OK", role: .cancel) { viewModel.operationError = "" }
+            } message: {
+                Text(viewModel.operationError)
+            }
         }
     }
 }
@@ -85,7 +88,11 @@ extension RecipeCreateView {
         .onChange(of: photoItem) { newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                    selectedImage = image
+                    self.selectedImage = image
+                    
+                    // 🚀 KOMPRESI DILAKUKAN DI SINI, BUKAN DI TOMBOL SAVE
+                    // Gunakan 0.2 agar aman dari limit 1MB Firestore. Jika pakai 1.0 pasti akan error!
+                    self.rawImageData = image.jpegData(compressionQuality: 0.2)
                 }
             }
         }
@@ -172,8 +179,10 @@ extension RecipeCreateView {
         Button(action: {
             Task {
                 let catString = selectedCategories.joined(separator: ", ")
-                let imgData = selectedImage?.jpegData(compressionQuality: 0.8)
-                let success = await viewModel.createRecipe(title: title, description: description, category: catString, ingredients: ingredients, steps: steps, imageData: imgData)
+                
+                // 🚀 Data gambar langsung dipakai, UI tidak akan macet/freeze lagi!
+                let success = await viewModel.createRecipe(title: title, description: description, category: catString, ingredients: ingredients, steps: steps, imageData: rawImageData)
+                
                 if success { dismiss() }
             }
         }) {
@@ -189,42 +198,31 @@ extension RecipeCreateView {
     }
 }
 
-// MARK: - FlowLayout Component (iOS 16+)
-/// Komponen kustom untuk menyusun item menyamping dan otomatis turun ke baris bawah jika tidak muat.
+// MARK: - FlowLayout Component
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
-
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let result = FlowResult(in: proposal.width ?? 0, subviews: subviews, spacing: spacing)
         return result.size
     }
-
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let result = FlowResult(in: bounds.width, subviews: subviews, spacing: spacing)
         for (index, subview) in subviews.enumerated() {
             subview.place(at: CGPoint(x: bounds.minX + result.points[index].x, y: bounds.minY + result.points[index].y), proposal: .unspecified)
         }
     }
-
     struct FlowResult {
         var size: CGSize = .zero
         var points: [CGPoint] = []
-
         init(in maxWidth: CGFloat, subviews: Subviews, spacing: CGFloat) {
-            var currentX: CGFloat = 0
-            var currentY: CGFloat = 0
-            var lineHeight: CGFloat = 0
-
+            var currentX: CGFloat = 0; var currentY: CGFloat = 0; var lineHeight: CGFloat = 0
             for subview in subviews {
                 let size = subview.sizeThatFits(.unspecified)
                 if currentX + size.width > maxWidth && currentX != 0 {
-                    currentX = 0
-                    currentY += lineHeight + spacing
-                    lineHeight = 0
+                    currentX = 0; currentY += lineHeight + spacing; lineHeight = 0
                 }
                 points.append(CGPoint(x: currentX, y: currentY))
-                currentX += size.width + spacing
-                lineHeight = max(lineHeight, size.height)
+                currentX += size.width + spacing; lineHeight = max(lineHeight, size.height)
             }
             self.size = CGSize(width: maxWidth, height: currentY + lineHeight)
         }

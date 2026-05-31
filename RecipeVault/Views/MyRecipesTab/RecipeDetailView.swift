@@ -29,7 +29,7 @@ struct RecipeDetailView: View {
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(spacing: 0) {
                 heroImageSection
                 attributionSection
                 
@@ -69,7 +69,7 @@ struct RecipeDetailView: View {
             }
         }
         
-        // 🚀 BOTTOM SHEET KOLEKSI YANG SAMA DENGAN MYRECIPESVIEW
+        // BOTTOM SHEET KOLEKSI YANG SAMA DENGAN MYRECIPESVIEW
         .sheet(isPresented: $viewModel.showCollectionSheet) {
             CollectionSelectionSheet(viewModel: viewModel)
         }
@@ -77,12 +77,19 @@ struct RecipeDetailView: View {
         .sheet(isPresented: $showingEditSheet) {
             RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
         }
+        
+        // 🚀 REVISI FITUR DELETE: Dismiss halaman dulu baru hapus di latar belakang
         .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
+                // 1. Tutup halaman secara instan agar user merasakan transisi secepat kilat
+                dismiss()
+                
+                // 2. Eksekusi penghapusan di background agar main thread tidak patah-patah
                 Task {
+                    // Jeda sejenak demi kelancaran animasi pop out halaman dismiss
+                    try? await Task.sleep(nanoseconds: 250_000_000)
                     await viewModel.deleteRecipe(recipe: recipe)
-                    dismiss()
                 }
             }
         } message: {
@@ -126,11 +133,10 @@ struct RecipeDetailView: View {
 
 extension RecipeDetailView {
     
-    // MARK: - Hero Image Section (Diperbarui dengan Placeholder KONSISTEN)
+    // MARK: - Hero Image Section (Membaca Base64)
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
             if recipe.recipeImage.isEmpty {
-                // 🚀 Placeholder jika string URL kosong dari awal
                 ZStack {
                     mutedTeal.opacity(0.15)
                     Image(systemName: "fork.knife")
@@ -138,24 +144,22 @@ extension RecipeDetailView {
                         .foregroundColor(mutedTeal.opacity(0.5))
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
+            }
+            // 🚀 RENDER GAMBAR DARI TEXT BASE64
+            else if let imageData = Data(base64Encoded: recipe.recipeImage),
+                    let uiImage = UIImage(data: imageData) {
+                
+                Color.clear.overlay(
+                    Image(uiImage: uiImage).resizable().scaledToFill()
+                ).clipped()
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+                
             } else {
-                AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
-                    switch phase {
-                    case .empty:
-                        Rectangle().fill(Color.gray.opacity(0.15)).overlay(ProgressView())
-                    case .success(let image):
-                        Color.clear.overlay(image.resizable().scaledToFill()).clipped()
-                    case .failure:
-                        // 🚀 Placeholder jika URL ada tapi gagal ditarik (error link)
-                        ZStack {
-                            mutedTeal.opacity(0.15)
-                            Image(systemName: "fork.knife")
-                                .font(.system(size: 60))
-                                .foregroundColor(mutedTeal.opacity(0.5))
-                        }
-                    @unknown default:
-                        EmptyView()
-                    }
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 60))
+                        .foregroundColor(mutedTeal.opacity(0.5))
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }

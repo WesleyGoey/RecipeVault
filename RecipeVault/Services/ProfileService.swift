@@ -7,6 +7,7 @@
 
 
 import Foundation
+import UIKit
 
 class ProfileService: ProfileServiceProtocol {
     
@@ -30,23 +31,13 @@ class ProfileService: ProfileServiceProtocol {
     
     // MARK: - UPDATE
     func saveUserProfile(userId: String, name: String, email: String, currentImageURL: String, newImageData: Data?) async throws -> String {
-        var finalImageURL = currentImageURL
+        var finalBase64String = currentImageURL
         
-        // 1. Jika ada gambar baru yang dipilih, unggah dulu ke Storage
-        if let data = newImageData {
-            // Validasi ukuran gambar maksimal 5MB (Opsional tapi disarankan)
-            let sizeInMB = Double(data.count) / (1024.0 * 1024.0)
-            if sizeInMB > 5.0 {
-                throw NSError(domain: "ProfileService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Ukuran gambar maksimal 5MB."])
-            }
-            
-            finalImageURL = try await storageRepo.uploadImage(image: data, path: "profiles")
+        if let data = newImageData, let uiImage = UIImage(data: data) {
+            finalBase64String = Base64Helper.encode(uiImage) ?? ""
         }
         
-        // 2. Simpan data profil beserta URL gambar (baru/lama) ke Firestore
-        try await firestoreRepo.saveUserProfile(userId: userId, name: name, email: email, profilePicture: finalImageURL)
-        
-        // 3. Kembalikan URL terakhir agar ViewModel bisa memperbarui UI
-        return finalImageURL
+        try await firestoreRepo.saveUserProfile(userId: userId, name: name, email: email, profilePicture: finalBase64String)
+        return finalBase64String
     }
 }

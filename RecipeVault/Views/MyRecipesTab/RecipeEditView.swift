@@ -5,7 +5,6 @@
 //  Created by Wesley Goey on 28/05/26.
 //
 
-
 import SwiftUI
 import PhotosUI
 
@@ -23,8 +22,9 @@ struct RecipeEditView: View {
     
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
+    // 🚀 STATE BARU
+    @State private var rawImageData: Data?
     
-    // 🚀 STATE BARU: Menyimpan status apakah gambar dihapus
     @State private var isImageDeleted: Bool = false
     
     let categories = ["Beef", "Chicken", "Lamb", "Seafood", "Pasta", "Vegetarian", "Dessert", "Vegan", "Pork", "Side", "Starter", "Breakfast", "Soup", "Spicy", "Gluten-Free", "Dairy-Free", "Miscellaneous"]
@@ -71,31 +71,41 @@ struct RecipeEditView: View {
             .overlay(alignment: .bottom) {
                 updateButton
             }
+            // 🚀 TAMBAHAN: MUNCULKAN ERROR FIREBASE AGAR KAMU TAHU JIKA GAGAL
+            .alert("Update Failed", isPresented: Binding(
+                get: { !viewModel.operationError.isEmpty },
+                set: { if !$0 { viewModel.operationError = "" } }
+            )) {
+                Button("OK", role: .cancel) { viewModel.operationError = "" }
+            } message: {
+                Text(viewModel.operationError)
+            }
         }
     }
 }
 
 extension RecipeEditView {
     
-    // 🚀 REVISI: ZStack dengan tombol Trash melayang
     private var photoUploadSection: some View {
         ZStack(alignment: .topTrailing) {
             
-            // Area Picker (Foto atau Placeholder)
             PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
                 if let selectedImage {
                     Image(uiImage: selectedImage).resizable().scaledToFill().frame(height: 180).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
                 }
-                // Cek isImageDeleted agar foto lama hilang jika didelete
                 else if !recipeToEdit.recipeImage.isEmpty && !isImageDeleted {
-                    AsyncImage(url: URL(string: recipeToEdit.recipeImage)) { phase in
-                        switch phase {
-                        case .empty: Rectangle().fill(Color.gray.opacity(0.2)).overlay(ProgressView())
-                        case .success(let image): image.resizable().scaledToFill()
-                        case .failure: placeholderView
-                        @unknown default: placeholderView
-                        }
-                    }.frame(height: 180).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
+                    // 🚀 DECODE BASE64 LANGSUNG
+                    if let imageData = Data(base64Encoded: recipeToEdit.recipeImage),
+                       let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 180)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    } else {
+                        placeholderView
+                    }
                 } else {
                     placeholderView
                 }
@@ -103,19 +113,21 @@ extension RecipeEditView {
             .onChange(of: photoItem) { newItem in
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                        selectedImage = image
-                        isImageDeleted = false // Reset status delete jika user pilih foto baru
+                        self.selectedImage = image
+                        self.isImageDeleted = false
+                        // Kompres langsung di latar belakang
+                        self.rawImageData = image.jpegData(compressionQuality: 0.2)
                     }
                 }
             }
             
-            // 🚀 TOMBOL TRASH KANAN ATAS (Hanya muncul jika ada gambar)
             if selectedImage != nil || (!recipeToEdit.recipeImage.isEmpty && !isImageDeleted) {
                 Button(action: {
                     withAnimation {
-                        selectedImage = nil // Buang gambar baru
-                        photoItem = nil // Reset picker
-                        isImageDeleted = true // Tandai gambar lama sudah dihapus
+                        selectedImage = nil
+                        photoItem = nil
+                        rawImageData = nil
+                        isImageDeleted = true
                     }
                 }) {
                     Image(systemName: "trash.circle.fill")
@@ -125,7 +137,7 @@ extension RecipeEditView {
                         .background(Circle().fill(Color.white))
                         .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
                 }
-                .padding(12) // Jarak dari pojok
+                .padding(12)
             }
         }
     }
@@ -220,10 +232,8 @@ extension RecipeEditView {
         Button(action: {
             Task {
                 let catString = selectedCategories.joined(separator: ", ")
-                let imgData = selectedImage?.jpegData(compressionQuality: 0.8)
                 guard let recipeId = recipeToEdit.id else { return }
                 
-                // 🚀 PANGGIL FUNGSI UPDATE DENGAN isImageDeleted
                 let success = await viewModel.updateRecipe(
                     recipeId: recipeId,
                     title: title,
@@ -232,8 +242,8 @@ extension RecipeEditView {
                     ingredients: ingredients,
                     steps: steps,
                     oldImageURL: recipeToEdit.recipeImage,
-                    newImageData: imgData,
-                    isImageDeleted: isImageDeleted // <-- Lempar statusnya
+                    newImageData: rawImageData, // 🚀 Tidak macet lagi!
+                    isImageDeleted: isImageDeleted
                 )
                 
                 if success { dismiss() }

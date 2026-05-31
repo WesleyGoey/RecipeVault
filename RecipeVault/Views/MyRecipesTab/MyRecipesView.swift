@@ -40,7 +40,7 @@ struct MyRecipesView: View {
                 }
             }
             
-            // 🚀 SHEET UNTUK MENAMBAH KE KOLEKSI DARI HALAMAN UTAMA
+            // SHEET UNTUK MENAMBAH KE KOLEKSI DARI HALAMAN UTAMA
             .sheet(isPresented: $viewModel.showCollectionSheet) {
                 CollectionSelectionSheet(viewModel: viewModel)
             }
@@ -83,7 +83,6 @@ extension MyRecipesView {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(viewModel.myRecipes, id: \.title) { recipe in
                 NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: viewModel)) {
-                    // 🚀 LEMPAR VIEWMODEL KE CARD
                     RecipeCardView(recipe: recipe, viewModel: viewModel)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -117,7 +116,7 @@ extension MyRecipesView {
     }
 }
 
-// MARK: - Komponen UI Bottom Sheet (Bisa digunakan di MyRecipes & RecipeDetail)
+// MARK: - Komponen UI Bottom Sheet
 struct CollectionSelectionSheet: View {
     @ObservedObject var viewModel: RecipeViewModel
     
@@ -134,7 +133,7 @@ struct CollectionSelectionSheet: View {
                         Spacer()
                         if let id = collection.id, viewModel.selectedCollectionIds.contains(id) {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(Color(hex: "cd4b12")) // burntOrange
+                                .foregroundColor(Color(hex: "cd4b12"))
                                 .font(.system(size: 20))
                         } else {
                             Image(systemName: "circle")
@@ -157,7 +156,7 @@ struct CollectionSelectionSheet: View {
                         Task { await viewModel.saveToSelectedCollections() }
                     }
                     .font(.merriweather(16, weight: .bold))
-                    .foregroundColor(Color(hex: "43766c")) // mutedTeal
+                    .foregroundColor(Color(hex: "43766c"))
                     .disabled(viewModel.selectedCollectionIds.isEmpty || viewModel.isSavingToCollections)
                 }
             }

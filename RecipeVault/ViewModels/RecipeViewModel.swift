@@ -15,17 +15,19 @@ class RecipeViewModel: ObservableObject {
     // MARK: - List State
     @Published var myRecipes: [Recipe] = []
     @Published var isLoading: Bool = false
-    @Published var errorMessage: String = ""
+    
+    // 🚀 REVISI: Ubah errorMessage menjadi operationError agar cocok dengan View
+    @Published var operationError: String = ""
     
     // MARK: - Detail UI State
     @Published var currentTab: DetailTab = .ingredients
-    @Published var favoriteRecipeIds: Set<String> = [] // 🚀 State nyata untuk Favorites
+    @Published var favoriteRecipeIds: Set<String> = [] // State nyata untuk Favorites
     
     // MARK: - Collection Bottom Sheet State
     @Published var showCollectionSheet: Bool = false
     @Published var userCollections: [RecipeCollection] = []
     @Published var selectedCollectionIds: Set<String> = []
-    @Published var selectedRecipeForCollection: Recipe? = nil // 🚀 Melacak resep mana yang akan disimpan
+    @Published var selectedRecipeForCollection: Recipe? = nil // Melacak resep mana yang akan disimpan
     @Published var isSavingToCollections: Bool = false
     
     enum DetailTab {
@@ -37,23 +39,23 @@ class RecipeViewModel: ObservableObject {
     private let collectionService = CollectionService.shared
     private let authService = AuthService.shared
     
-    // MARK: - Core CRUD Methods (Tetap sama)
+    // MARK: - Core CRUD Methods
     func loadMyRecipes() async {
         guard let uid = authService.getCurrentUID() else { return }
         isLoading = true
-        errorMessage = ""
+        operationError = ""
         do {
             myRecipes = try await recipeService.getUserRecipes(userId: uid)
-            await loadFavoriteIds() // 🚀 Muat juga data favorit saat memuat resep
+            await loadFavoriteIds() // Muat juga data favorit saat memuat resep
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
         }
         isLoading = false
     }
     
     func createRecipe(title: String, description: String, category: String, ingredients: [String], steps: [String], imageData: Data?) async -> Bool {
         isLoading = true
-        errorMessage = ""
+        operationError = ""
         guard let uid = authService.getCurrentUID() else { return false }
         
         let cleanedIngredients = ingredients.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -66,7 +68,7 @@ class RecipeViewModel: ObservableObject {
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
             isLoading = false
             return false
         }
@@ -74,7 +76,7 @@ class RecipeViewModel: ObservableObject {
     
     func updateRecipe(recipeId: String, title: String, description: String, category: String, ingredients: [String], steps: [String], oldImageURL: String, newImageData: Data?, isImageDeleted: Bool) async -> Bool {
         isLoading = true
-        errorMessage = ""
+        operationError = ""
         guard let uid = authService.getCurrentUID() else { return false }
         
         let cleanedIngredients = ingredients.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -90,7 +92,7 @@ class RecipeViewModel: ObservableObject {
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
             isLoading = false
             return false
         }
@@ -133,7 +135,7 @@ class RecipeViewModel: ObservableObject {
         let isCurrentlyFavorite = favoriteRecipeIds.contains(recipeId)
         let willBeFavorite = !isCurrentlyFavorite
         
-        // 🚀 Optimistic UI Update: Langsung ubah warna UI sebelum server membalas
+        // Optimistic UI Update: Langsung ubah warna UI sebelum server membalas
         if willBeFavorite { favoriteRecipeIds.insert(recipeId) }
         else { favoriteRecipeIds.remove(recipeId) }
         
@@ -183,7 +185,7 @@ class RecipeViewModel: ObservableObject {
             selectedCollectionIds.removeAll()
             selectedRecipeForCollection = nil
         } catch {
-            self.errorMessage = error.localizedDescription
+            self.operationError = error.localizedDescription
         }
         isSavingToCollections = false
     }

@@ -45,35 +45,28 @@ extension RecipeCardView {
                         .font(.system(size: 40))
                         .foregroundColor(mutedTeal.opacity(0.5))
                 }
+            }
+            // 🚀 DECODE BASE64 LANGSUNG
+            else if let imageData = Data(base64Encoded: recipe.recipeImage),
+                    let uiImage = UIImage(data: imageData) {
+                
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                
             } else {
-                // JIKA ADA URL: Gunakan AsyncImage dengan Fallback Loading/Error
-                AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
-                    switch phase {
-                    case .empty:
-                        ZStack {
-                            mutedTeal.opacity(0.05)
-                            ProgressView()
-                        }
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        ZStack {
-                            mutedTeal.opacity(0.15)
-                            Image(systemName: "fork.knife")
-                                .font(.system(size: 40))
-                                .foregroundColor(mutedTeal.opacity(0.5))
-                        }
-                    @unknown default:
-                        EmptyView()
-                    }
+                // FALLBACK JIKA BASE64 CORRUPT/GAGAL DIBACA
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 40))
+                        .foregroundColor(mutedTeal.opacity(0.5))
                 }
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity)
         .frame(height: 150)
-        .clipped()
+        .clipped() // Mencegah gambar meluap keluar dari batas 150
     }
     
     // MARK: - Info Section

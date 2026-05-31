@@ -5,49 +5,32 @@
 //  Created by Wesley Goey on 28/05/26.
 //
 
-
-// MARK: - CollectionService
 import Foundation
+import UIKit
 
 class CollectionService: CollectionServiceProtocol {
     
-    static let shared = CollectionService(
-        firestoreRepo: FirestoreRepository.shared,
-        storageRepo: CloudStorageRepository.shared // 🚀 TAMBAHKAN STORAGE
-    )
+    // 🚀 EFISIENSI: Buang storageRepo karena Base64 hanya butuh Firestore
+    static let shared = CollectionService(firestoreRepo: FirestoreRepository.shared)
     
     private let firestoreRepo: FirestoreRepositoryProtocol
-    private let storageRepo: CloudStorageRepositoryProtocol
-    
     private let maxCollectionsPerUser = 50 // NFR-04
     
-    init(firestoreRepo: FirestoreRepositoryProtocol, storageRepo: CloudStorageRepositoryProtocol) {
+    init(firestoreRepo: FirestoreRepositoryProtocol) {
         self.firestoreRepo = firestoreRepo
-        self.storageRepo = storageRepo
     }
     
-    private func validateSize(image: Data, maxMB: Int = 5) -> Bool {
-        let sizeInMB = Double(image.count) / (1024.0 * 1024.0)
-        return sizeInMB <= Double(maxMB)
-    }
-    
-    // 1. CREATE
+    // MARK: - 1. CREATE
     func createCollection(collection: RecipeCollection, imageData: Data?) async throws {
-        let existingCollections = try await firestoreRepo.getUserCollections(userId: collection.userId)
-        guard existingCollections.count < maxCollectionsPerUser else {
-            throw NSError(domain: "CollectionService", code: 403, userInfo: [NSLocalizedDescriptionKey: "Batas maksimal \(maxCollectionsPerUser) koleksi tercapai."])
-        }
-        
         var newCollection = collection
-        if let data = imageData {
-            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Image > 5MB"]) }
-            newCollection.collectionImage = try await storageRepo.uploadImage(image: data, path: "collection_images")
-        }
         
+        if let data = imageData, let uiImage = UIImage(data: data) {
+            newCollection.collectionImage = Base64Helper.encode(uiImage) ?? ""
+        }
         try await firestoreRepo.createCollection(collection: newCollection)
     }
     
-    // 2. READ
+    // MARK: - 2. READ
     func getUserCollections(userId: String) async throws -> [RecipeCollection] {
         return try await firestoreRepo.getUserCollections(userId: userId)
     }
@@ -60,21 +43,22 @@ class CollectionService: CollectionServiceProtocol {
         return try await firestoreRepo.getRecipeCountInCollection(collectionId: collectionId)
     }
     
-    // 3. UPDATE (Ubah Nama, Deskripsi, Visibilitas, Gambar)
+    // MARK: - 3. UPDATE (Ubah Nama, Deskripsi, Visibilitas, Gambar)
     func updateCollection(collection: RecipeCollection, newImageData: Data?) async throws {
         var updatedCollection = collection
-        if let data = newImageData {
-            guard validateSize(image: data) else { throw NSError(domain: "", code: 400, userInfo: [NSLocalizedDescriptionKey: "Image > 5MB"]) }
-            updatedCollection.collectionImage = try await storageRepo.uploadImage(image: data, path: "collection_images")
+        
+        if let data = newImageData, let uiImage = UIImage(data: data) {
+            updatedCollection.collectionImage = Base64Helper.encode(uiImage) ?? ""
         }
         try await firestoreRepo.updateCollection(collection: updatedCollection)
     }
     
-    // 4. DELETE
+    // MARK: - 4. DELETE
     func deleteCollection(collectionId: String) async throws {
         try await firestoreRepo.deleteCollection(collectionId: collectionId)
     }
     
+    // MARK: - MANAGE RECIPES IN COLLECTION
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws {
         try await firestoreRepo.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
     }
