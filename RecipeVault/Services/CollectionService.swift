@@ -6,30 +6,23 @@
 //
 
 import Foundation
-// 🚀 Hapus import UIKit karena kita tidak lagi membutuhkan konversi ke UIImage untuk Base64
+import UIKit // 🚀 Wajib di-import agar bisa menggunakan UIImage
 
 class CollectionService: CollectionServiceProtocol {
     
-    // 🚀 EFISIENSI: Kembalikan storageRepo untuk mengelola gambar via Firebase Storage
-    static let shared = CollectionService(
-        firestoreRepo: FirestoreRepository.shared,
-        storageRepo: CloudStorageRepository.shared
-    )
+    // 🚀 Hapus semua dependensi ke CloudStorageRepository, kita hanya pakai Firestore
+    static let shared = CollectionService(firestoreRepo: FirestoreRepository.shared)
     
     private let firestoreRepo: FirestoreRepositoryProtocol
-    private let storageRepo: CloudStorageRepositoryProtocol
-    
     private let maxCollectionsPerUser = 50 // NFR-04
     
-    // MARK: - Initializer (Dependency Injection)
-    init(firestoreRepo: FirestoreRepositoryProtocol, storageRepo: CloudStorageRepositoryProtocol) {
+    init(firestoreRepo: FirestoreRepositoryProtocol) {
         self.firestoreRepo = firestoreRepo
-        self.storageRepo = storageRepo
     }
     
     // MARK: - 1. CREATE
     func createCollection(collection: RecipeCollection, imageData: Data?) async throws {
-        // 🚀 Validasi Batas Koleksi (NFR-04)
+        // Cek NFR-04 Batas Koleksi
         let existingCollections = try await firestoreRepo.getUserCollections(userId: collection.userId)
         guard existingCollections.count < maxCollectionsPerUser else {
             throw NSError(
@@ -41,12 +34,11 @@ class CollectionService: CollectionServiceProtocol {
         
         var newCollection = collection
         
-        // 🚀 Jika ada gambar, upload ke Firebase Storage dan simpan URL-nya
-        if let data = imageData {
-            let imageURL = try await storageRepo.uploadImage(image: data, path: "collection_covers")
-            newCollection.collectionImage = imageURL
+        // 🚀 MENGGUNAKAN BASE64HELPER UNTUK MENYIMPAN GAMBAR
+        if let data = imageData, let uiImage = UIImage(data: data) {
+            // Encode menjadi Base64 string dengan kualitas 30% dan ukuran 400x400 (sesuai helper-mu)
+            newCollection.collectionImage = Base64Helper.encode(uiImage) ?? ""
         } else {
-            // Fallback jika tidak ada gambar (biarkan string kosong sesuai inisialisasi)
             newCollection.collectionImage = ""
         }
         
@@ -66,14 +58,13 @@ class CollectionService: CollectionServiceProtocol {
         return try await firestoreRepo.getRecipeCountInCollection(collectionId: collectionId)
     }
     
-    // MARK: - 3. UPDATE (Ubah Nama, Deskripsi, Visibilitas, Gambar)
+    // MARK: - 3. UPDATE
     func updateCollection(collection: RecipeCollection, newImageData: Data?) async throws {
         var updatedCollection = collection
         
-        // 🚀 Jika user mengganti gambar, upload yang baru ke Firebase Storage
-        if let data = newImageData {
-            let imageURL = try await storageRepo.uploadImage(image: data, path: "collection_covers")
-            updatedCollection.collectionImage = imageURL
+        // 🚀 MENGGUNAKAN BASE64HELPER JIKA USER MENGUBAH GAMBAR
+        if let data = newImageData, let uiImage = UIImage(data: data) {
+            updatedCollection.collectionImage = Base64Helper.encode(uiImage) ?? ""
         }
         
         try await firestoreRepo.updateCollection(collection: updatedCollection)
