@@ -37,31 +37,38 @@ extension RecipeCardView {
     // MARK: - Image Section & Placeholder
     private var imageSection: some View {
         Group {
-            // JIKA GAMBAR KOSONG: Tampilkan Placeholder Garpu Pisau Elegan
+            // 1. JIKA GAMBAR KOSONG
             if recipe.recipeImage.isEmpty {
-                ZStack {
-                    mutedTeal.opacity(0.15)
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 40))
-                        .foregroundColor(mutedTeal.opacity(0.5))
+                placeholderImage
+            }
+            // 🚀 2. JIKA BERUPA URL (Data dari TheMealDB)
+            else if recipe.recipeImage.starts(with: "http") {
+                AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else if phase.error != nil {
+                        placeholderImage
+                    } else {
+                        // Sedang loading
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            ProgressView()
+                        }
+                    }
                 }
             }
-            // 🚀 DECODE BASE64 LANGSUNG
+            // 🚀 3. JIKA BERUPA BASE64 (Data buatan User dari Firebase)
             else if let imageData = Data(base64Encoded: recipe.recipeImage),
                     let uiImage = UIImage(data: imageData) {
-                
                 Image(uiImage: uiImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                
-            } else {
-                // FALLBACK JIKA BASE64 CORRUPT/GAGAL DIBACA
-                ZStack {
-                    mutedTeal.opacity(0.15)
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 40))
-                        .foregroundColor(mutedTeal.opacity(0.5))
-                }
+            }
+            // 4. FALLBACK JIKA SEMUA GAGAL
+            else {
+                placeholderImage
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity)
@@ -69,10 +76,21 @@ extension RecipeCardView {
         .clipped() // Mencegah gambar meluap keluar dari batas 150
     }
     
+    // Tampilan garpu pisau default yang diekstrak agar tidak berulang
+    private var placeholderImage: some View {
+        ZStack {
+            mutedTeal.opacity(0.15)
+            Image(systemName: "fork.knife")
+                .font(.system(size: 40))
+                .foregroundColor(mutedTeal.opacity(0.5))
+        }
+    }
+    
     // MARK: - Info Section
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(recipe.title)
+                // 🚀 Font Fix menggunakan extension-mu
                 .font(.merriweather(16, weight: .bold))
                 .foregroundColor(.primary)
                 .lineLimit(2)
@@ -121,19 +139,31 @@ extension RecipeCardView {
         
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
             
-            // 1. Kartu DENGAN Gambar (Mock Asli)
+            // 1. Kartu DENGAN Gambar URL (TheMealDB)
             RecipeCardView(
-                recipe: Recipe.previewMockData[0],
+                recipe: Recipe(
+                    userId: "themealdb",
+                    title: "Spicy Arrabiata",
+                    description: "",
+                    ingredients: [],
+                    steps: [],
+                    category: "Vegetarian",
+                    recipeImage: "https://www.themealdb.com/images/media/meals/ustsqw1468250014.jpg"
+                ),
                 viewModel: RecipeViewModel()
             )
             
-            // 2. Kartu TANPA Gambar (Modifikasi Mock instan)
+            // 2. Kartu TANPA Gambar (Fallback)
             RecipeCardView(
-                recipe: {
-                    var mock = Recipe.previewMockData[1]
-                    mock.recipeImage = "" // Sengaja dikosongkan
-                    return mock
-                }(),
+                recipe: Recipe(
+                    userId: "123",
+                    title: "Mom's Secret Recipe",
+                    description: "",
+                    ingredients: [],
+                    steps: [],
+                    category: "Secret",
+                    recipeImage: "" // Sengaja dikosongkan
+                ),
                 viewModel: RecipeViewModel()
             )
         }
