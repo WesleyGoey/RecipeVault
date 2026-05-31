@@ -2,13 +2,16 @@
 //  CollectionsView.swift
 //  RecipeVault
 //
-//  Created by NicholasaGerwin Mawardjiwin Mawardji on 29/05/26.
+//  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
-
 
 import SwiftUI
 
 struct CollectionsView: View {
+    // 🚀 1. Injeksi ViewModel Autentikasi dan Profil
+    @EnvironmentObject var authVM: AuthViewModel
+    @StateObject private var profileVM = ProfileViewModel()
+    
     @StateObject private var viewModel = CollectionViewModel()
     
     @State private var showingCreateSheet = false
@@ -16,8 +19,13 @@ struct CollectionsView: View {
     @State private var collectionToDelete: RecipeCollection? = nil
     @State private var showingDeleteAlert = false
     
+    // 🚀 2. State untuk mengontrol kemunculan halaman Login/Register
+    @State private var showAuthView = false
+    @State private var authInitialMode: AuthMode = .login
+    
     let bgYellow = Color(hex: "f8fae5")
     let mutedTeal = Color(hex: "43766c")
+    let burntOrange = Color(hex: "cd4b12")
     let darkText = Color.primary
     
     let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
@@ -30,20 +38,44 @@ struct CollectionsView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         headerSection
-                        gridSection
+                        
+                        // 🚀 3. LOGIKA PENGECEKAN LOGIN
+                        if profileVM.userId.isEmpty {
+                            unauthenticatedArea
+                        } else {
+                            gridSection
+                        }
                     }
                 }
-                floatingActionButton
+                
+                // 🚀 4. Sembunyikan tombol + jika belum login
+                if !profileVM.userId.isEmpty {
+                    floatingActionButton
+                }
             }
             .navigationBarHidden(true)
             .task {
-                if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
-                    viewModel.myCollections = RecipeCollection.mockCollections
-                } else {
-                    await viewModel.loadMyCollections()
+                // Saat layar dibuka, pastikan status login terbaru ditarik
+                await profileVM.initializeUserProfile()
+                
+                if !profileVM.userId.isEmpty {
+                    if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+                        viewModel.myCollections = RecipeCollection.mockCollections
+                    } else {
+                        await viewModel.loadMyCollections()
+                    }
                 }
             }
-            // 🚀 INJEKSI VIEWMODEL KE SHEET
+            // 🚀 Jika user berhasil login, langsung muat koleksinya
+            .onChange(of: profileVM.userId) { newId in
+                if !newId.isEmpty {
+                    Task { await viewModel.loadMyCollections() }
+                }
+            }
+            // 🚀 INJEKSI VIEWMODEL KE SHEET LOGIN
+            .sheet(isPresented: $showAuthView) {
+                AuthView(vm: profileVM, initialMode: authInitialMode)
+            }
             .sheet(isPresented: $showingCreateSheet) {
                 CollectionCreateView(viewModel: viewModel)
             }
@@ -62,6 +94,7 @@ struct CollectionsView: View {
     }
 }
 
+// MARK: - Subviews
 extension CollectionsView {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -69,15 +102,72 @@ extension CollectionsView {
                 .font(.merriweather(36, weight: .bold)) // 🚀 FONT
                 .foregroundColor(darkText)
             
-            HStack {
-                Button(action: {}) {
-                    Label("Alphabetical", systemImage: "arrow.up.arrow.down").font(.merriweather(14, weight: .bold)).foregroundColor(darkText)
+            // Filter controls (Hanya relevan jika ada koleksi yang ditampilkan)
+            if !profileVM.userId.isEmpty {
+                HStack {
+                    Button(action: {}) {
+                        Label("Alphabetical", systemImage: "arrow.up.arrow.down").font(.merriweather(14, weight: .bold)).foregroundColor(darkText)
+                    }
+                    Spacer()
+                    Button(action: {}) { Image(systemName: "square.grid.2x2").font(.system(size: 20)).foregroundColor(darkText) }
                 }
-                Spacer()
-                Button(action: {}) { Image(systemName: "square.grid.2x2").font(.system(size: 20)).foregroundColor(darkText) }
             }
         }
         .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 16)
+    }
+    
+    // 🚀 TAMPILAN JIKA USER BELUM LOGIN
+    private var unauthenticatedArea: some View {
+        VStack(spacing: 24) {
+            Spacer().frame(height: 40)
+            
+            Image(systemName: "lock.rectangle.stack")
+                .font(.system(size: 60))
+                .foregroundColor(mutedTeal.opacity(0.5))
+            
+            Text("Login Required")
+                .font(.merriweather(24, weight: .bold))
+                .foregroundColor(darkText)
+            
+            Text("In order to view and create your personal collections, you need to log in or register first.")
+                .font(.merriweather(15, weight: .regular))
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            HStack(spacing: 12) {
+                Button(action: {
+                    authInitialMode = .login
+                    showAuthView = true
+                }) {
+                    Text("Login")
+                        .font(.merriweather(16, weight: .bold))
+                        .frame(minWidth: 120, maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.white)
+                        .foregroundColor(Color(hex: "2F6B5E"))
+                        .cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "EDEFE3"), lineWidth: 1))
+                }
+
+                Button(action: {
+                    authInitialMode = .register
+                    showAuthView = true
+                }) {
+                    Text("Register")
+                        .font(.merriweather(16, weight: .bold))
+                        .frame(minWidth: 120, maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(hex: "2F6B5E"))
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+            }
+            .frame(maxWidth: 420)
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+        }
+        .frame(maxWidth: .infinity)
     }
     
     private var gridSection: some View {
@@ -112,4 +202,5 @@ extension CollectionsView {
 
 #Preview {
     CollectionsView()
+        .environmentObject(AuthViewModel()) // 🚀 Wajib ada di preview
 }
