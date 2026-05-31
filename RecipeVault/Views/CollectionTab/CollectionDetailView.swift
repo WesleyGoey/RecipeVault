@@ -2,28 +2,24 @@
 //  CollectionDetailView.swift
 //  RecipeVault
 //
-//  Created by Wesley Goey on 29/05/26.
+//  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
 
 import SwiftUI
 
 struct CollectionDetailView: View {
-    @State private var collection: RecipeCollection
+    let collection: RecipeCollection
     @ObservedObject var viewModel: CollectionViewModel
     @Environment(\.dismiss) private var dismiss
     
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     
+    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let mutedTeal = Color(hex: "43766c")
     let burntOrange = Color(hex: "cd4b12")
     let darkText = Color.primary
-    
-    init(collection: RecipeCollection, viewModel: CollectionViewModel) {
-        self._collection = State(initialValue: collection)
-        self.viewModel = viewModel
-    }
     
     var body: some View {
         ScrollView {
@@ -31,15 +27,19 @@ struct CollectionDetailView: View {
                 heroImageSection
                 
                 VStack(alignment: .leading, spacing: 20) {
+                    headerInfoSection
                     authorSection
                     
+                    // Deskripsi langsung di sini (Tanpa Tabs)
                     Text(collection.description)
-                        .font(.merriweather(15))
+                        // 🚀 Font Fix
+                        .font(.merriweather(15, weight: .regular))
                         .foregroundColor(.gray)
                         .lineSpacing(4)
                         .padding(.top, -8)
                     
                     Text("Recipes (\(viewModel.recipesInCollection.count))")
+                        // 🚀 Font Fix
                         .font(.merriweather(20, weight: .bold))
                         .padding(.top, 10)
                     
@@ -52,29 +52,24 @@ struct CollectionDetailView: View {
         .background(bgYellow.ignoresSafeArea())
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
-        
-        // MENDENGARKAN PERUBAHAN DATA UNTUK REAL-TIME UPDATE DI HALAMAN DETAIL
-        .onChange(of: viewModel.myCollections) { updatedCollections in
-            if let latest = updatedCollections.first(where: { $0.id == collection.id }) {
-                withAnimation { self.collection = latest }
+        .task {
+            // Load resep saat view dibuka
+            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+                viewModel.recipesInCollection = Recipe.mockRecipes
+            } else {
+                guard let id = collection.id else { return }
+                await viewModel.loadRecipesForCollection(collectionId: id)
             }
         }
-        
-        .task {
-            guard let id = collection.id else { return }
-            await viewModel.loadRecipesForCollection(collectionId: id)
-        }
         .sheet(isPresented: $showingEditSheet) {
-            CollectionEditView(collectionToEdit: collection, viewModel: viewModel)
+            Text("Edit Sheet for \(collection.name)")
         }
         .alert("Delete Collection", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
-                // 🚀 Tutup halaman instan baru hapus data di background
-                dismiss()
                 Task {
-                    try? await Task.sleep(nanoseconds: 250_000_000)
                     await viewModel.deleteCollection(collection: collection)
+                    dismiss()
                 }
             }
         } message: {
@@ -86,48 +81,28 @@ struct CollectionDetailView: View {
 // MARK: - Subviews
 extension CollectionDetailView {
     
-    // MARK: - Hero Image Section (Membaca Base64)
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
-            
-            if collection.collectionImage.isEmpty {
-                // 🚀 Placeholder jika URL gambar Koleksi kosong
-                ZStack {
-                    mutedTeal.opacity(0.15)
-                    Image(systemName: "square.stack.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(mutedTeal.opacity(0.5))
-                }
-                .frame(height: 320).frame(maxWidth: .infinity).clipped()
-            }
-            // 🚀 BACA TEKS BASE64 LANGSUNG
-            else if let imageData = Data(base64Encoded: collection.collectionImage),
-                    let uiImage = UIImage(data: imageData) {
-                
-                Color.clear.overlay(
-                    Image(uiImage: uiImage).resizable().scaledToFill()
-                ).clipped()
-                .frame(height: 320).frame(maxWidth: .infinity).clipped()
-                
-            } else {
-                // 🚀 Placeholder jika data Base64 error/corrupt
-                ZStack {
-                    mutedTeal.opacity(0.15)
-                    Image(systemName: "square.stack.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(mutedTeal.opacity(0.5))
-                }
-                .frame(height: 320).frame(maxWidth: .infinity).clipped()
-            }
-            
-            // Gradient overlay
-            LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.7)]), startPoint: .center, endPoint: .bottom)
+            Color.clear
                 .frame(height: 320)
+                .overlay(
+                    AsyncImage(url: URL(string: collection.collectionImage)) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        Rectangle().fill(Color.gray.opacity(0.3)).overlay(ProgressView())
+                    }
+                )
+                .clipped()
+                .overlay(LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.7)]), startPoint: .center, endPoint: .bottom))
             
-            // Nav Bar Area
             HStack {
                 Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left").font(.system(size: 16, weight: .bold)).foregroundColor(.white).frame(width: 44, height: 44).background(Color.black.opacity(0.4)).clipShape(Circle())
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Color.black.opacity(0.4))
+                        .clipShape(Circle())
                 }
                 Spacer()
                 if viewModel.isOwner(collection: collection) {
@@ -135,101 +110,131 @@ extension CollectionDetailView {
                         Button { showingEditSheet = true } label: { Label("Edit Collection", systemImage: "pencil") }
                         Button(role: .destructive) { showingDeleteAlert = true } label: { Label("Delete Collection", systemImage: "trash") }
                     } label: {
-                        Image(systemName: "ellipsis").font(.system(size: 18, weight: .bold)).foregroundColor(.white).frame(width: 44, height: 44).background(Color.black.opacity(0.4)).clipShape(Circle())
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Color.black.opacity(0.4))
+                            .clipShape(Circle())
                     }
                 }
             }
-            .padding(.top, 50).padding(.horizontal, 20)
+            .padding(.top, 50)
+            .padding(.horizontal, 20)
             
-            // Text Details on Image
+            // Text Over Image Overlay
             VStack(alignment: .leading, spacing: 8) {
                 Spacer()
                 HStack {
                     Image(systemName: collection.visibility == .publicVisibility ? "globe" : "lock.fill")
                     Text(collection.visibility.rawValue.uppercased())
                 }
-                .font(.system(size: 10, weight: .bold)).foregroundColor(.white).padding(.horizontal, 12).padding(.vertical, 6).background(mutedTeal.opacity(0.8)).clipShape(Capsule())
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(mutedTeal.opacity(0.8))
+                .clipShape(Capsule())
                 
-                Text(collection.name).font(.merriweather(32, weight: .bold)).foregroundColor(.white)
-                Text("\(viewModel.recipesInCollection.count) recipes").font(.merriweather(14)).foregroundColor(.white.opacity(0.8))
+                Text(collection.name)
+                    // 🚀 Font Fix
+                    .font(.merriweather(32, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text("\(viewModel.recipesInCollection.count) recipes")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.8))
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 320) // Memastikan text ada di bawah gambar
         }
     }
     
-    private var authorSection: some View {
-        HStack(spacing: 12) {
-            Circle().fill(mutedTeal).frame(width: 46, height: 46).overlay(Text("ME").font(.merriweather(14, weight: .bold)).foregroundColor(.white))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("You").font(.merriweather(16, weight: .bold))
-                Text("Your collection").font(.merriweather(14)).foregroundColor(.gray)
-            }
-            Spacer()
-        }.padding(.vertical, 10)
+    private var headerInfoSection: some View {
+        EmptyView() // Ruang ini digantikan oleh teks di atas gambar
     }
     
-    // MARK: - Daftar Resep di Dalam Koleksi (Membaca Base64)
+    // 🚀 FITUR BARU: Pembuat koleksi bisa ditekan untuk melihat profilnya
+    private var authorSection: some View {
+        NavigationLink(destination: Text("User Profile Placeholder for: \(collection.userId)")) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(mutedTeal)
+                    .frame(width: 46, height: 46)
+                    .overlay(
+                        Text(viewModel.isOwner(collection: collection) ? "ME" : "USR")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                    )
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(viewModel.isOwner(collection: collection) ? "You" : "Collection Creator")
+                        .font(.merriweather(16, weight: .bold))
+                        .foregroundColor(darkText)
+                    
+                    Text(viewModel.isOwner(collection: collection) ? "Your collection" : "Public Creator")
+                        .font(.merriweather(14, weight: .regular))
+                        .foregroundColor(.gray)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundColor(.gray)
+            }
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // 🚀 FITUR BARU: Resep di dalam koleksi sekarang bisa ditekan
     private var recipesListSection: some View {
         LazyVStack(spacing: 16) {
             ForEach(viewModel.recipesInCollection, id: \.title) { recipe in
-                HStack(spacing: 16) {
-                    Group {
-                        if recipe.recipeImage.isEmpty {
-                            // 🚀 Placeholder jika Resep ini tak punya gambar
-                            ZStack {
-                                mutedTeal.opacity(0.15)
-                                Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
+                NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
+                    HStack(spacing: 16) {
+                        AsyncImage(url: URL(string: recipe.recipeImage)) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            Color.gray.opacity(0.2)
+                        }
+                        .frame(width: 80, height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(recipe.title)
+                                // 🚀 Font Fix
+                                .font(.merriweather(16, weight: .bold))
+                                .foregroundColor(darkText)
+                                .lineLimit(1)
+                                .multilineTextAlignment(.leading)
+                            
+                            HStack(spacing: 8) {
+                                Text(recipe.category)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(burntOrange).clipShape(Capsule())
+                                
+                                HStack(spacing: 4) {
+                                    Image(systemName: "clock")
+                                    Text("30 min")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.gray)
                             }
                         }
-                        // 🚀 BACA GAMBAR RESEP DARI TEKS BASE64
-                        else if let imageData = Data(base64Encoded: recipe.recipeImage),
-                                let uiImage = UIImage(data: imageData) {
-                            
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                            
-                        } else {
-                            // 🚀 Fallback jika Base64 error
-                            ZStack {
-                                mutedTeal.opacity(0.15)
-                                Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
-                            }
-                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundColor(.gray.opacity(0.5))
                     }
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(recipe.title).font(.merriweather(16, weight: .bold)).foregroundColor(darkText).lineLimit(1)
-                        HStack(spacing: 8) {
-                            Text(recipe.category).font(.system(size: 10, weight: .bold)).foregroundColor(.white).padding(.horizontal, 10).padding(.vertical, 4).background(burntOrange).clipShape(Capsule())
-                            HStack(spacing: 4) { Image(systemName: "clock"); Text("30 min") }.font(.caption).foregroundColor(.gray)
-                        }
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").foregroundColor(.gray.opacity(0.5))
+                    .padding(12)
+                    .background(Color.white)
+                    .cornerRadius(20)
+                    .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
                 }
-                .padding(12)
-                .background(Color.white)
-                .cornerRadius(20)
-                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+                .buttonStyle(PlainButtonStyle()) // Menghilangkan highlight biru
             }
         }
     }
 }
 
 #Preview {
-    CollectionDetailView(
-        collection: RecipeCollection(
-            userId: "123",
-            name: "Weeknight Favorites",
-            description: "Quick dinners",
-            collectionImage: "", // Kosong untuk mengetes Icon
-            visibility: .publicVisibility
-        ),
-        viewModel: CollectionViewModel()
-    )
+    CollectionDetailView(collection: RecipeCollection.mockCollections[0], viewModel: CollectionViewModel())
 }
