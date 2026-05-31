@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseFirestore // Diperlukan untuk fetch User
 
 struct CollectionDetailView: View {
     let collection: RecipeCollection
@@ -14,6 +15,9 @@ struct CollectionDetailView: View {
     
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
+    
+    // 🚀 State untuk menampung nama pembuat koleksi (Real Data)
+    @State private var creatorName: String = "Loading..."
     
     // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
@@ -27,19 +31,15 @@ struct CollectionDetailView: View {
                 heroImageSection
                 
                 VStack(alignment: .leading, spacing: 20) {
-                    headerInfoSection
                     authorSection
                     
-                    // Deskripsi langsung di sini (Tanpa Tabs)
                     Text(collection.description)
-                        // 🚀 Font Fix
                         .font(.merriweather(15, weight: .regular))
                         .foregroundColor(.gray)
                         .lineSpacing(4)
                         .padding(.top, -8)
                     
                     Text("Recipes (\(viewModel.recipesInCollection.count))")
-                        // 🚀 Font Fix
                         .font(.merriweather(20, weight: .bold))
                         .padding(.top, 10)
                     
@@ -53,12 +53,26 @@ struct CollectionDetailView: View {
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
         .task {
-            // Load resep saat view dibuka
-            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
-                viewModel.recipesInCollection = Recipe.mockRecipes
+            // 1. Tarik resep asli dari Firebase
+            guard let id = collection.id else { return }
+            await viewModel.loadRecipesForCollection(collectionId: id)
+            
+            // 2. SELALU FETCH REAL USER DATA DARI FIREBASE (Mock/Preview check dihapus)
+            if viewModel.isOwner(collection: collection) {
+                creatorName = "You"
             } else {
-                guard let id = collection.id else { return }
-                await viewModel.loadRecipesForCollection(collectionId: id)
+                do {
+                    let db = Firestore.firestore()
+                    let doc = try await db.collection("users").document(collection.userId).getDocument()
+                    if let name = doc.data()?["name"] as? String {
+                        creatorName = name
+                    } else {
+                        // Jika userId "mockUser123" tidak ada di tabel users, ini yang muncul
+                        creatorName = "Unknown Chef"
+                    }
+                } catch {
+                    creatorName = "Unknown Chef"
+                }
             }
         }
         .sheet(isPresented: $showingEditSheet) {
@@ -86,10 +100,14 @@ extension CollectionDetailView {
             Color.clear
                 .frame(height: 320)
                 .overlay(
-                    AsyncImage(url: URL(string: collection.collectionImage)) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        Rectangle().fill(Color.gray.opacity(0.3)).overlay(ProgressView())
+                    Group {
+                        let validUrl = collection.collectionImage.isEmpty ? "https://images.unsplash.com/photo-1495195134817-a165d4292816?q=80&w=800&auto=format&fit=crop" : collection.collectionImage
+                        
+                        AsyncImage(url: URL(string: validUrl.trimmingCharacters(in: .whitespacesAndNewlines))) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            Rectangle().fill(Color.gray.opacity(0.3)).overlay(ProgressView())
+                        }
                     }
                 )
                 .clipped()
@@ -122,7 +140,6 @@ extension CollectionDetailView {
             .padding(.top, 50)
             .padding(.horizontal, 20)
             
-            // Text Over Image Overlay
             VStack(alignment: .leading, spacing: 8) {
                 Spacer()
                 HStack {
@@ -137,7 +154,6 @@ extension CollectionDetailView {
                 .clipShape(Capsule())
                 
                 Text(collection.name)
-                    // 🚀 Font Fix
                     .font(.merriweather(32, weight: .bold))
                     .foregroundColor(.white)
                 
@@ -150,25 +166,22 @@ extension CollectionDetailView {
         }
     }
     
-    private var headerInfoSection: some View {
-        EmptyView() // Ruang ini digantikan oleh teks di atas gambar
-    }
-    
-    // 🚀 FITUR BARU: Pembuat koleksi bisa ditekan untuk melihat profilnya
+    // 🚀 BISA DI-KLIK & MENGGUNAKAN DATA ASLI (Real Data)
     private var authorSection: some View {
-        NavigationLink(destination: Text("User Profile Placeholder for: \(collection.userId)")) {
+        NavigationLink(destination: Text("Welcome to \(creatorName)'s Profile!")) {
             HStack(spacing: 12) {
                 Circle()
                     .fill(mutedTeal)
                     .frame(width: 46, height: 46)
                     .overlay(
-                        Text(viewModel.isOwner(collection: collection) ? "ME" : "USR")
+                        // Menggunakan 2 huruf pertama dari nama asli kreator
+                        Text(String(creatorName.prefix(2)).uppercased())
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.white)
                     )
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(viewModel.isOwner(collection: collection) ? "You" : "Collection Creator")
+                    Text(creatorName)
                         .font(.merriweather(16, weight: .bold))
                         .foregroundColor(darkText)
                     
@@ -180,58 +193,82 @@ extension CollectionDetailView {
                 Image(systemName: "chevron.right").foregroundColor(.gray)
             }
             .padding(.vertical, 10)
+            .background(Color.white.opacity(0.001))
         }
         .buttonStyle(PlainButtonStyle())
     }
     
-    // 🚀 FITUR BARU: Resep di dalam koleksi sekarang bisa ditekan
+    // 🚀 List memanggil Struct Terpisah agar Xcode tidak lambat
     private var recipesListSection: some View {
         LazyVStack(spacing: 16) {
-            ForEach(viewModel.recipesInCollection, id: \.title) { recipe in
-                NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
-                    HStack(spacing: 16) {
-                        AsyncImage(url: URL(string: recipe.recipeImage)) { image in
-                            image.resizable().scaledToFill()
-                        } placeholder: {
-                            Color.gray.opacity(0.2)
-                        }
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(recipe.title)
-                                // 🚀 Font Fix
-                                .font(.merriweather(16, weight: .bold))
-                                .foregroundColor(darkText)
-                                .lineLimit(1)
-                                .multilineTextAlignment(.leading)
-                            
-                            HStack(spacing: 8) {
-                                Text(recipe.category)
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 10).padding(.vertical, 4)
-                                    .background(burntOrange).clipShape(Capsule())
-                                
-                                HStack(spacing: 4) {
-                                    Image(systemName: "clock")
-                                    Text("30 min")
-                                }
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            }
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").foregroundColor(.gray.opacity(0.5))
-                    }
-                    .padding(12)
-                    .background(Color.white)
-                    .cornerRadius(20)
-                    .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
-                }
-                .buttonStyle(PlainButtonStyle()) // Menghilangkan highlight biru
+            ForEach(viewModel.recipesInCollection, id: \.id) { recipe in
+                CollectionRecipeRow(recipe: recipe)
             }
         }
+    }
+}
+
+// MARK: - 🚀 STRUCT TERPISAH (Meringankan beban kompilasi Xcode)
+struct CollectionRecipeRow: View {
+    let recipe: Recipe
+    
+    // Theme Colors
+    let burntOrange = Color(hex: "cd4b12")
+    let darkText = Color.primary
+    
+    var body: some View {
+        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
+            HStack(spacing: 16) {
+                
+                // 🚀 Fallback Gambar Tanpa PercentEncoding yang merusak URL
+                let rawUrl = recipe.recipeImage.isEmpty ? "https://images.unsplash.com/photo-1495195134817-a165d4292816?q=80&w=800&auto=format&fit=crop" : recipe.recipeImage
+                
+                AsyncImage(url: URL(string: rawUrl.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else if phase.error != nil {
+                        // Jika URL gagal di-load
+                        Color.gray.opacity(0.3)
+                            .overlay(Image(systemName: "photo").foregroundColor(.gray))
+                    } else {
+                        // Sedang loading
+                        Color.gray.opacity(0.2).overlay(ProgressView())
+                    }
+                }
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(recipe.title)
+                        .font(.merriweather(16, weight: .bold))
+                        .foregroundColor(darkText)
+                        .lineLimit(1)
+                        .multilineTextAlignment(.leading)
+                    
+                    HStack(spacing: 8) {
+                        Text(recipe.category)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10).padding(.vertical, 4)
+                            .background(burntOrange).clipShape(Capsule())
+                        
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                            Text("30 min")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    }
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundColor(.gray.opacity(0.5))
+            }
+            .padding(12)
+            .background(Color.white)
+            .cornerRadius(20)
+            .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

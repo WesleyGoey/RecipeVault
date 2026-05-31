@@ -12,16 +12,18 @@ import FirebaseFirestore
 
 @MainActor
 class SearchViewModel: ObservableObject {
-    // MARK: - Search States
     @Published var searchText: String = ""
     @Published var isSearching: Bool = false
     @Published var selectedTab: SearchTab = .theMealDB
     @Published var isLoading: Bool = false
     
-    // MARK: - Data Sources
     @Published var mealDBRecipes: [Recipe] = []
+    
     @Published var collections: [RecipeCollection] = []
     @Published var isLoadingCollections: Bool = false
+    
+    // 🚀 Dictionary untuk menyimpan nama pembuat koleksi (userId : Nama)
+    @Published var creatorNames: [String: String] = [:]
     
     enum SearchTab {
         case theMealDB
@@ -30,27 +32,19 @@ class SearchViewModel: ObservableObject {
     
     init() {
         Task {
-            // Tarik data awal untuk mengisi layar "Trending/Discover"
             await performSearch(query: "Chicken")
-            // Tarik koleksi publik dari Firebase
             await fetchPublicCollections()
         }
     }
     
-    // MARK: - API TheMealDB Search
-    // 🚀 Ini adalah fungsi yang dicari-cari oleh Xcode!
     func performSearch(query: String? = nil) async {
-        // Gunakan parameter query jika ada (untuk default), jika tidak gunakan searchText dari user
         let searchQuery = query ?? searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Jangan mencari jika kosong
         guard !searchQuery.isEmpty else { return }
         
         isLoading = true
-        mealDBRecipes = [] // Bersihkan hasil pencarian sebelumnya
+        mealDBRecipes = []
         
         do {
-            // Encode query agar aman untuk URL (misal: spasi menjadi %20)
             let safeQuery = searchQuery.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/search.php?s=\(safeQuery)") else { return }
             
@@ -63,33 +57,43 @@ class SearchViewModel: ObservableObject {
         } catch {
             print("Failed to search recipes: \(error.localizedDescription)")
         }
-        
         isLoading = false
     }
     
-    // MARK: - Firebase Public Collections
     func fetchPublicCollections() async {
         isLoadingCollections = true
-        collections = [] // Bersihkan data lama sebelum mengambil yang baru
+        collections = []
         
         do {
             let db = Firestore.firestore()
-            // 🚀 Ambil semua koleksi di mana visibility-nya diset "PUBLIC"
             let snapshot = try await db.collection("collections")
                 .whereField("visibility", isEqualTo: "PUBLIC")
                 .getDocuments()
             
-            self.collections = snapshot.documents.compactMap { doc in
+            let fetchedCollections = snapshot.documents.compactMap { doc in
                 try? doc.data(as: RecipeCollection.self)
             }
+            self.collections = fetchedCollections
+            
+            // 🚀 FETCH NAMA USER PEMBUAT KOLEKSI
+            var namesDict: [String: String] = [:]
+            let uniqueUserIds = Array(Set(fetchedCollections.map { $0.userId }))
+            
+            for uid in uniqueUserIds {
+                if let userDoc = try? await db.collection("users").document(uid).getDocument(),
+                   let userData = userDoc.data(),
+                   let userName = userData["name"] as? String {
+                    namesDict[uid] = userName
+                }
+            }
+            self.creatorNames = namesDict
+            
         } catch {
             print("Error fetching public collections: \(error.localizedDescription)")
         }
-        
         isLoadingCollections = false
     }
     
-    // MARK: - Helper (Parse API Response)
     private func parseMeal(_ meal: [String: Any]) -> Recipe {
         let id = meal["idMeal"] as? String ?? UUID().uuidString
         let title = meal["strMeal"] as? String ?? "Unknown"
