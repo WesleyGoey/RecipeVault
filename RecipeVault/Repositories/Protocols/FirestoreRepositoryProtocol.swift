@@ -28,6 +28,7 @@ protocol FirestoreRepositoryProtocol {
     func getRecipeCountInCollection(collectionId: String) async throws -> Int
     func updateCollection(collection: RecipeCollection) async throws   
     func deleteCollection(collectionId: String) async throws
+    func getCollectionIdsForRecipe(recipeId: String) async throws -> [String]
 
     /// 🚀 FAVORITES
     func toggleFavorite(userId: String, recipeId: String, isFavorite: Bool) async throws
