@@ -74,7 +74,7 @@ class SearchViewModel: ObservableObject {
         do {
             // 🚀 CUKUP PANGGIL COLLECTION SERVICE (Tanpa Firestore.firestore()!)
             let fetchedCollections = try await collectionService.getPublicCollections()
-            self.collections = fetchedCollectionsValue
+            self.collections = fetchedCollections
             
             // FETCH NAMA USER PEMBUAT KOLEKSI MENGGUNAKAN PROFILE SERVICE
             var namesDict: [String: String] = [:]

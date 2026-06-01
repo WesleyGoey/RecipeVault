@@ -14,7 +14,7 @@ struct DiscoverCardView: View {
     var imageUrl: String?
     var badgeText: String = "COLLECTION"
     
-    var isCompact: Bool = false // Flag for 2-column grid layout
+    var isCompact: Bool = false
     
     let mutedTeal = Color(hex: "43766c")
     
@@ -40,8 +40,6 @@ extension DiscoverCardView {
     private var backgroundSection: some View {
         let urlStr = (imageUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Color.clear acts as a strict, invisible frame.
-        // It prevents the image's native width from pushing the layout boundaries!
         return Color.clear
             .overlay(
                 Group {
@@ -52,7 +50,7 @@ extension DiscoverCardView {
                             if let image = phase.image {
                                 image
                                     .resizable()
-                                    .scaledToFill() // Fill the frame while preserving aspect ratio
+                                    .scaledToFill()
                             } else {
                                 placeholderView
                             }
@@ -67,7 +65,7 @@ extension DiscoverCardView {
                 }
             )
             .frame(height: 240)
-            .clipped() // 🚀 Safely crops any overflowing width without stretching
+            .clipped()
     }
     
     private var gradientOverlay: some View {
