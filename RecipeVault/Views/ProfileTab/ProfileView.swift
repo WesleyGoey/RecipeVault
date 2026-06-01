@@ -8,11 +8,17 @@
 import SwiftUI
 
 struct ProfileView: View {
+    // 🚀 TERIMA BINDING TAB
+    @Binding var selectedTab: Int
+    @State private var navResetID = UUID()
+
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var recipeVM: RecipeViewModel
     @StateObject private var vm = ProfileViewModel()
 
-    @State private var selectedTab: Int = 0  // 0 = Collections, 1 = Favorites
+    // 🚀 UBAH NAMA JADI selectedSegment agar tidak bentrok dengan selectedTab dari MainTabView
+    @State private var selectedSegment: Int = 0  // 0 = Collections, 1 = Favorites
+
     @State private var showAuthView: Bool = false
     @State private var authInitialMode: AuthMode = .login
 
@@ -34,7 +40,6 @@ struct ProfileView: View {
                         headerSection
                             .padding(.horizontal)
 
-                        // 🚀 PERBAIKAN UTAMA: Dengarkan Global State authVM!
                         if !authVM.isLoggedIn {
                             unauthenticatedSingleArea
                                 .padding(.horizontal)
@@ -43,7 +48,8 @@ struct ProfileView: View {
                             segmentedControl
                                 .padding(.horizontal)
 
-                            if selectedTab == 0 {
+                            // Gunakan selectedSegment
+                            if selectedSegment == 0 {
                                 collectionsSection
                                     .padding(.horizontal)
                                     .padding(.top, 6)
@@ -62,21 +68,19 @@ struct ProfileView: View {
             .navigationBarHidden(true)
             .sheet(isPresented: $showAuthView) {
                 AuthView(vm: vm, initialMode: authInitialMode)
-                    // 🚀 PERBAIKAN 2: Teruskan Global State ke dalam Pop-up!
                     .environmentObject(authVM)
             }
             .sheet(isPresented: $vm.showingEditProfile) {
                 EditProfileView(vm: vm)
             }
             .task { await vm.initializeUserProfile() }
-            .onChange(of: selectedTab) { new in
+            .onChange(of: selectedSegment) { new in
                 if new == 1 {
                     Task { await vm.loadFavoriteRecipes() }
                 } else {
                     Task { await vm.loadPublicCollections() }
                 }
             }
-            // 🚀 Otomatis refresh data profil saat login berhasil
             .onChange(of: authVM.isLoggedIn) { loggedIn in
                 if loggedIn { Task { await vm.initializeUserProfile() } }
             }
@@ -94,9 +98,16 @@ struct ProfileView: View {
             .onReceive(
                 NotificationCenter.default.publisher(for: .favoritesUpdated)
             ) { _ in
-                if selectedTab == 1 {  // Jika user sedang membuka tab Favorites
+                if selectedSegment == 1 {  // Jika user sedang membuka tab Favorites
                     Task { await vm.loadFavoriteRecipes() }
                 }
+            }
+        }
+        .id(navResetID)  // 🚀 RESET LOGIC
+        .onChange(of: selectedTab) { newTab in
+            // Jika keluar dari tab Profile (index 4), reset halamannya!
+            if newTab != 4 {
+                navResetID = UUID()
             }
         }
     }
@@ -104,7 +115,6 @@ struct ProfileView: View {
     // MARK: - Header
     private var headerSection: some View {
         Group {
-            // 🚀 PERBAIKAN KEDUA: Dengarkan Global State authVM di Header
             if !authVM.isLoggedIn {
                 VStack(spacing: 12) {
                     ZStack {
@@ -196,9 +206,8 @@ struct ProfileView: View {
                                     .clipShape(Capsule())
                             }
 
-                            // 🚀 TOMBOL LOGOUT SEKARANG SANGAT SEDERHANA
                             Button(action: {
-                                authVM.logout()  // Ini akan seketika mengubah status UI di seluruh aplikasi!
+                                authVM.logout()
                             }) {
                                 Text("Log out")
                                     .font(.merriweather(12, weight: .bold))
@@ -278,24 +287,26 @@ struct ProfileView: View {
     // MARK: - Segmented control
     private var segmentedControl: some View {
         HStack(spacing: 0) {
-            Button(action: { withAnimation { selectedTab = 0 } }) {
+            // Gunakan selectedSegment
+            Button(action: { withAnimation { selectedSegment = 0 } }) {
                 Text("Public Collections")
                     .font(
                         .merriweather(
                             15,
-                            weight: selectedTab == 0 ? .bold : .regular
+                            weight: selectedSegment == 0 ? .bold : .regular
                         )
                     )
                     .foregroundColor(
-                        selectedTab == 0 ? .white : Color(hex: "163A2B")
+                        selectedSegment == 0 ? .white : Color(hex: "163A2B")
                     )
                     .padding(.vertical, 10).frame(maxWidth: .infinity)
                     .background(
-                        selectedTab == 0 ? Color(hex: "2F6B5E") : Color.clear
+                        selectedSegment == 0
+                            ? Color(hex: "2F6B5E") : Color.clear
                     )
                     .cornerRadius(12)
                     .shadow(
-                        color: selectedTab == 0
+                        color: selectedSegment == 0
                             ? Color.black.opacity(0.06) : Color.clear,
                         radius: 6,
                         x: 0,
@@ -303,24 +314,25 @@ struct ProfileView: View {
                     )
             }.buttonStyle(PlainButtonStyle())
 
-            Button(action: { withAnimation { selectedTab = 1 } }) {
+            Button(action: { withAnimation { selectedSegment = 1 } }) {
                 Text("Favorites")
                     .font(
                         .merriweather(
                             15,
-                            weight: selectedTab == 1 ? .bold : .regular
+                            weight: selectedSegment == 1 ? .bold : .regular
                         )
                     )
                     .foregroundColor(
-                        selectedTab == 1 ? .white : Color(hex: "163A2B")
+                        selectedSegment == 1 ? .white : Color(hex: "163A2B")
                     )
                     .padding(.vertical, 10).frame(maxWidth: .infinity)
                     .background(
-                        selectedTab == 1 ? Color(hex: "2F6B5E") : Color.clear
+                        selectedSegment == 1
+                            ? Color(hex: "2F6B5E") : Color.clear
                     )
                     .cornerRadius(12)
                     .shadow(
-                        color: selectedTab == 1
+                        color: selectedSegment == 1
                             ? Color.black.opacity(0.06) : Color.clear,
                         radius: 6,
                         x: 0,
@@ -332,6 +344,7 @@ struct ProfileView: View {
         .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
     }
 
+    // MARK: - Collections Section
     // MARK: - Collections Section
     private var collectionsSection: some View {
         Group {
@@ -352,11 +365,23 @@ struct ProfileView: View {
             } else {
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(vm.publicCollections) { col in
-                        ProfileCollectionCardView(
-                            collection: col,
-                            recipeCount: vm.collectionCounts[col.id ?? ""] ?? 0
-                        )
-                        .frame(height: 170)
+
+                        // 🚀 PERBAIKAN: Bungkus dengan NavigationLink agar bisa diklik!
+                        NavigationLink(
+                            destination: CollectionDetailView(
+                                collection: col,
+                                viewModel: CollectionViewModel()
+                            )
+                        ) {
+                            ProfileCollectionCardView(
+                                collection: col,
+                                recipeCount: vm.collectionCounts[col.id ?? ""]
+                                    ?? 0
+                            )
+                            .frame(height: 170)
+                        }
+                        .buttonStyle(PlainButtonStyle())  // Agar warna teks tidak berubah biru
+
                     }
                 }
             }
@@ -406,6 +431,6 @@ struct ProfileView: View {
 
 // MARK: - Preview
 #Preview {
-    ProfileView()
+    ProfileView(selectedTab: .constant(4))
         .environmentObject(AuthViewModel())
 }

@@ -8,7 +8,11 @@
 import SwiftUI
 
 struct CollectionsView: View {
-    // 🚀 1. Injeksi ViewModel Autentikasi dan Profil
+    // 🚀 TERIMA BINDING TAB
+    @Binding var selectedTab: Int
+    @State private var navResetID = UUID()
+    
+    // 1. Injeksi ViewModel Autentikasi dan Profil
     @EnvironmentObject var authVM: AuthViewModel
     @StateObject private var profileVM = ProfileViewModel()
     
@@ -19,7 +23,7 @@ struct CollectionsView: View {
     @State private var collectionToDelete: RecipeCollection? = nil
     @State private var showingDeleteAlert = false
     
-    // 🚀 2. State untuk mengontrol kemunculan halaman Login/Register
+    // 2. State untuk mengontrol kemunculan halaman Login/Register
     @State private var showAuthView = false
     @State private var authInitialMode: AuthMode = .login
     
@@ -39,7 +43,7 @@ struct CollectionsView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         headerSection
                         
-                        // 🚀 3. LOGIKA PENGECEKAN LOGIN DENGAN AUTHVM
+                        // 3. LOGIKA PENGECEKAN LOGIN DENGAN AUTHVM
                         if !authVM.isLoggedIn {
                             unauthenticatedArea
                         } else {
@@ -52,7 +56,7 @@ struct CollectionsView: View {
                     }
                 }
                 
-                // 🚀 4. Sembunyikan tombol + jika belum login
+                // 4. Sembunyikan tombol + jika belum login
                 if authVM.isLoggedIn {
                     floatingActionButton
                 }
@@ -70,7 +74,7 @@ struct CollectionsView: View {
                     }
                 }
             }
-            // 🚀 5. PANTAU LOGOUT/LOGIN SECARA REAL-TIME
+            // 5. PANTAU LOGOUT/LOGIN SECARA REAL-TIME
             .onChange(of: authVM.isLoggedIn) { isLoggedIn in
                 if isLoggedIn {
                     // Jika baru login, muat data
@@ -84,7 +88,7 @@ struct CollectionsView: View {
                     profileVM.userId = ""
                 }
             }
-            // 🚀 INJEKSI VIEWMODEL KE SHEET LOGIN
+            // INJEKSI VIEWMODEL KE SHEET LOGIN
             .sheet(isPresented: $showAuthView) {
                 AuthView(vm: profileVM, initialMode: authInitialMode)
             }
@@ -101,6 +105,13 @@ struct CollectionsView: View {
                 }
             } message: { collection in
                 Text("Are you sure you want to delete '\(collection.name)'? Recipes inside will not be deleted.")
+            }
+        }
+        .id(navResetID) // 🚀 RESET LOGIC
+        .onChange(of: selectedTab) { newTab in
+            // Jika keluar dari tab Collections (index 3), reset halamannya!
+            if newTab != 3 {
+                navResetID = UUID()
             }
         }
     }
@@ -128,7 +139,7 @@ extension CollectionsView {
         .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 16)
     }
     
-    // 🚀 TAMPILAN JIKA USER BELUM LOGIN
+    // TAMPILAN JIKA USER BELUM LOGIN
     private var unauthenticatedArea: some View {
         VStack(spacing: 24) {
             Spacer().frame(height: 40)
@@ -234,6 +245,6 @@ extension CollectionsView {
 
 // MARK: - Preview
 #Preview {
-    CollectionsView()
+    CollectionsView(selectedTab: .constant(3))
         .environmentObject(AuthViewModel())
 }

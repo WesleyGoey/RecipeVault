@@ -8,11 +8,16 @@
 import SwiftUI
 
 struct SearchView: View {
+    // 🚀 PERBAIKAN: Terima Binding dari MainTabView
+    @Binding var selectedTab: Int
+    
     @StateObject private var viewModel = SearchViewModel()
     @EnvironmentObject var recipeViewModel: RecipeViewModel
     @FocusState private var isSearchFocused: Bool
     
-    // 🚀 State untuk menampung 2 koleksi acak di halaman depan
+    @State private var navResetID = UUID()
+    
+    // State untuk menampung 2 koleksi acak di halaman depan
     @State private var featuredCollections: [RecipeCollection] = []
 
     // Theme Colors
@@ -138,11 +143,22 @@ struct SearchView: View {
             .onAppear {
                 Task { await viewModel.fetchPublicCollections() }
             }
-            // 🚀 Ambil 2 acak saat koleksi Firebase berhasil diunduh
             .onChange(of: viewModel.collections) { collections in
                 if !collections.isEmpty {
                     featuredCollections = Array(collections.shuffled().prefix(2))
                 }
+            }
+        }
+        .id(navResetID) // 🚀 PERBAIKAN: Ikat ID dinamis untuk mereset tumpukan halaman
+        .onChange(of: selectedTab) { newTab in
+            // Jika user berpindah keluar dari tab SEARCH (index 1), cuci otak navigasinya!
+            if newTab != 1 {
+                navResetID = UUID()
+                
+                // Opsional: Otomatis menutup keyboard dan mode mengetik saat ditinggal
+                viewModel.isSearching = false
+                viewModel.searchText = ""
+                isSearchFocused = false
             }
         }
     }
@@ -168,7 +184,6 @@ extension SearchView {
                 }
                 .padding(.horizontal, 24)
 
-                // 🚀 MENGGUNAKAN 2 DATA FIREBASE ACAK & BISA DITEKAN
                 VStack(spacing: 20) {
                     if viewModel.isLoadingCollections {
                         ProgressView()
@@ -208,7 +223,6 @@ extension SearchView {
                             ProgressView()
                                 .padding(.leading, 24)
                         } else {
-                            // 🚀 MENGGUNAKAN STRUCT OPTIMASI
                             ForEach(viewModel.mealDBRecipes.prefix(5)) { recipe in
                                 OptimizedRecipeLink(recipe: recipe, recipeVM: recipeViewModel)
                             }
@@ -237,7 +251,6 @@ extension SearchView {
                     .foregroundColor(.gray)
                     .padding(.top, 40)
             } else {
-                // 🚀 MENGGUNAKAN STRUCT OPTIMASI
                 ForEach(viewModel.mealDBRecipes) { recipe in
                     OptimizedRecipeLink(recipe: recipe, recipeVM: recipeViewModel)
                 }
@@ -270,11 +283,10 @@ extension SearchView {
                     .font(.merriweather(14, weight: .regular))
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
-                    .padding(.top, 4)
+                    .padding(.top, 40)
                     .padding(.horizontal, 40)
             } else {
                 LazyVGrid(columns: columns, spacing: 20) {
-                    // 🚀 MENGGUNAKAN STRUCT OPTIMASI
                     ForEach(viewModel.collections) { collection in
                         OptimizedCollectionLink(
                             collection: collection,
@@ -291,9 +303,8 @@ extension SearchView {
     }
 }
 
-// MARK: - 🚀 STRUCT OPTIMASI (Jangan dihapus agar Xcode tidak ngelag!)
+// MARK: - 🚀 STRUCT OPTIMASI
 
-// 1. Struct untuk Kartu Koleksi Publik (Meringankan Compile)
 struct OptimizedCollectionLink: View {
     let collection: RecipeCollection
     let creatorNames: [String: String]
@@ -314,20 +325,18 @@ struct OptimizedCollectionLink: View {
     }
 }
 
-// 2. Struct untuk Kartu Resep (Meringankan Compile)
 struct OptimizedRecipeLink: View {
     let recipe: Recipe
     @ObservedObject var recipeVM: RecipeViewModel
     
     var body: some View {
-        // 🚀 PERBAIKAN: Gunakan 'recipeVM' yang di-passing, JANGAN 'RecipeViewModel()'
         NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
             RecipeCardView(recipe: recipe, viewModel: recipeVM)
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
-// 3. Helper Component Tab
+
 private struct SearchPickerTab: View {
     let title: String
     let isSelected: Bool
@@ -349,5 +358,6 @@ private struct SearchPickerTab: View {
 
 // MARK: - Preview
 #Preview {
-    SearchView()
+    SearchView(selectedTab: .constant(1))
+        .environmentObject(RecipeViewModel())
 }

@@ -8,8 +8,13 @@
 import SwiftUI
 
 struct HomeView: View {
+    @Binding var selectedTab: Int
+    
     @StateObject private var viewModel = HomeViewModel()
     @EnvironmentObject var recipeVM: RecipeViewModel
+    
+    // 🚀 State untuk mereset navigation
+    @State private var navResetID = UUID()
     
     // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
@@ -102,10 +107,10 @@ struct HomeView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.top, 40)
                         } else {
-                            // MASONRY / ZIG-ZAG LAYOUT
+                            // 🚀 MASONRY / ZIG-ZAG LAYOUT
                             HStack(alignment: .top, spacing: 16) {
                                 
-                                // KOLOM KIRI (Hanya berisi index Genap: 0, 2, 4...)
+                                // KOLOM KIRI
                                 VStack(spacing: 16) {
                                     ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 == 0 }, id: \.element.id) { index, recipe in
                                         NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
@@ -115,7 +120,7 @@ struct HomeView: View {
                                     }
                                 }
                                 
-                                // KOLOM KANAN (Hanya berisi index Ganjil: 1, 3, 5...)
+                                // KOLOM KANAN
                                 VStack(spacing: 16) {
                                     ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 != 0 }, id: \.element.id) { index, recipe in
                                         NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
@@ -124,6 +129,7 @@ struct HomeView: View {
                                         .buttonStyle(PlainButtonStyle())
                                     }
                                 }
+                                
                             }
                             .padding(.horizontal, 24)
                         }
@@ -133,11 +139,11 @@ struct HomeView: View {
             }
             .background(bgYellow.ignoresSafeArea())
         }
-        // 🚀 TAMBAHAN: Memicu pengambilan data saat layar muncul
-        .task {
-            if viewModel.feedRecipes.isEmpty {
-                // Memancing pemuatan data dengan mensimulasikan pemilihan kategori
-                viewModel.selectCategory("All")
+        .id(navResetID) // 🚀 Pasang UUID dinamis untuk pop ke root secara instan
+        .onChange(of: selectedTab) { newTab in
+            // Jika kita berpindah keluar dari tab HOME (index 0), reset halaman navigasinya
+            if newTab != 0 {
+                navResetID = UUID()
             }
         }
     }
@@ -170,6 +176,7 @@ struct CategoryPill: View {
 }
 
 #Preview {
-    HomeView()
-        .environmentObject(RecipeViewModel())
+    // Memberikan mockup binding statis semata-mata untuk preview
+    HomeView(selectedTab: .constant(0))
+        .environmentObject(RecipeViewModel()) // Wajib untuk mencegah Preview Crash
 }

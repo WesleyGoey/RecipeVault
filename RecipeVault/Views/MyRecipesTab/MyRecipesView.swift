@@ -9,6 +9,10 @@ import SwiftUI
 
 // MARK: - My Recipes Main View
 struct MyRecipesView: View {
+    // 🚀 TERIMA BINDING TAB
+    @Binding var selectedTab: Int
+    @State private var navResetID = UUID()
+    
     @StateObject private var viewModel = RecipeViewModel()
     
     @State private var showingCreateSheet = false
@@ -44,21 +48,15 @@ struct MyRecipesView: View {
                     await viewModel.loadMyRecipes()
                 }
             }
-            
-            // 🚀 MODIFIER SHEET DITEMPATKAN DI PARENT VIEW UTAMA
             .sheet(isPresented: $viewModel.showCollectionSheet) {
                 CollectionSelectionSheet(viewModel: viewModel)
             }
             .sheet(isPresented: $showingCreateSheet) {
-                // Pastikan RecipeCreateView sudah kamu buat
                 RecipeCreateView(viewModel: viewModel)
             }
             .sheet(item: $recipeToEdit) { recipe in
-                // Pastikan RecipeEditView sudah kamu buat
                 RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
             }
-            
-            // Alert Hapus Resep
             .alert("Delete Recipe", isPresented: $showingDeleteAlert, presenting: recipeToDelete) { recipe in
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
@@ -67,8 +65,6 @@ struct MyRecipesView: View {
             } message: { recipe in
                 Text("Are you sure you want to delete '\(recipe.title)'? This action cannot be undone.")
             }
-            
-            // Alert Error Umum
             .alert("Terjadi Kesalahan", isPresented: Binding(
                 get: { !viewModel.operationError.isEmpty },
                 set: { if !$0 { viewModel.operationError = "" } }
@@ -76,6 +72,13 @@ struct MyRecipesView: View {
                 Button("OK", role: .cancel) { viewModel.operationError = "" }
             } message: {
                 Text(viewModel.operationError)
+            }
+        }
+        .id(navResetID) // 🚀 RESET LOGIC
+        .onChange(of: selectedTab) { newTab in
+            // Jika keluar dari tab MyRecipes (index 2), reset halamannya!
+            if newTab != 2 {
+                navResetID = UUID()
             }
         }
     }
@@ -242,51 +245,11 @@ extension Recipe {
             ingredients: [], steps: [],
             category: "Italian",
             recipeImage: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=500&auto=format&fit=crop"
-        ),
-        Recipe(
-            userId: "123",
-            title: "Lemon Herb Roast Chicken",
-            description: "Ayam panggang juicy dengan perasan lemon segar.",
-            ingredients: [], steps: [],
-            category: "Dinner",
-            recipeImage: "https://images.unsplash.com/photo-1598103442097-8b74394b98c6?q=80&w=500&auto=format&fit=crop"
-        ),
-        Recipe(
-            userId: "123",
-            title: "Blueberry Pavlova",
-            description: "Kue meringue renyah dengan topping berry melimpah.",
-            ingredients: [], steps: [],
-            category: "Dessert",
-            recipeImage: "https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?q=80&w=500&auto=format&fit=crop"
-        ),
-        Recipe(
-            userId: "123",
-            title: "Weekend Shakshuka",
-            description: "Telur ceplok saus tomat pedas khas Timur Tengah.",
-            ingredients: [], steps: [],
-            category: "Brunch",
-            recipeImage: "https://images.unsplash.com/photo-1590412200988-a436bb705300?q=80&w=500&auto=format&fit=crop"
-        ),
-        Recipe(
-            userId: "123",
-            title: "Indonesian Soto Ayam",
-            description: "Soto ayam kuah kuning hangat yang kaya rempah.",
-            ingredients: [], steps: [],
-            category: "Soto",
-            recipeImage: "https://images.unsplash.com/photo-1626804475315-943482bcb563?q=80&w=500&auto=format&fit=crop"
-        ),
-        Recipe(
-            userId: "123",
-            title: "Classic Creamy Ramen",
-            description: "Mi kuah kaldu kental gurih ala Kopitiam.",
-            ingredients: [], steps: [],
-            category: "Noodles",
-            recipeImage: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=500&auto=format&fit=crop"
         )
     ]
 }
 
 // MARK: - Preview
 #Preview {
-    MyRecipesView()
+    MyRecipesView(selectedTab: .constant(2))
 }

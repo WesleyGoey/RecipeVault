@@ -1,128 +1,61 @@
-//
-//  ContentView.swift
-//  RecipeVault
-//
-//  Created by Wesley Goey on 13/05/26.
-//
-
 import SwiftUI
 
 struct MainTabView: View {
-    // We pass this in from ContentView so the Profile tab can eventually trigger a logout
-    @EnvironmentObject var authViewModel: AuthViewModel
+    @State private var selectedTab = 0
     
-    // Track which tab is currently active
-    @State private var selectedTab: Tab = .home
+    // 🚀 Injecting the Global State for tabs that need it
+    @StateObject private var recipeVM = RecipeViewModel()
     
-    // Theme Colors
     let mutedTeal = Color(hex: "43766c")
-    let bgYellow = Color(hex: "f8fae5")
-    
-    // Enum to make switching tabs clean and safe
-    enum Tab {
-        case home, search, myRecipes, collections, profile
-    }
     
     var body: some View {
-        // 1. The Main Content Area
         TabView(selection: $selectedTab) {
             
-            // MARK: - 1. Home Tab
-            HomeView()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(bgYellow.ignoresSafeArea())
-            .tag(Tab.home)
+            // TAB 1: HOME
+            HomeView(selectedTab: $selectedTab)
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("Home")
+                }
+                .tag(0)
             
-            // MARK: - 2. Search Tab
-            SearchView()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(bgYellow.ignoresSafeArea())
-            .tag(Tab.search)
+            // TAB 2: SEARCH
+            SearchView(selectedTab: $selectedTab)
+                .tabItem {
+                    Image(systemName: "magnifyingglass")
+                    Text("Search")
+                }
+                .tag(1)
             
-            // MARK: - 3. My Recipes Tab
-            MyRecipesView()
-                .tag(Tab.myRecipes)
+            // TAB 3: MY RECIPES
+            MyRecipesView(selectedTab: $selectedTab)
+                .tabItem {
+                    Image(systemName: "book.fill")
+                    Text("My Recipes")
+                }
+                .tag(2)
             
-            // MARK: - 4. Collections Tab
-            CollectionsView()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(bgYellow.ignoresSafeArea())
-            .tag(Tab.collections)
+            // TAB 4: COLLECTIONS
+            CollectionsView(selectedTab: $selectedTab)
+                .tabItem {
+                    Image(systemName: "books.vertical.fill")
+                    Text("Collections")
+                }
+                .tag(3)
             
-            // MARK: - 5. Profile Tab
-            ProfileView()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(bgYellow.ignoresSafeArea())
-            .tag(Tab.profile)
+            // TAB 5: PROFILE
+            ProfileView(selectedTab: $selectedTab)
+                .tabItem {
+                    Image(systemName: "person.fill")
+                    Text("Profile")
+                }
+                .tag(4)
         }
-        .toolbar(.hidden, for: .tabBar)
-        .safeAreaInset(edge: .bottom) {
-            customTabBar
-        }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .accentColor(mutedTeal) // Sets the active tab color
+        .environmentObject(recipeVM) // Inject global brain into all tabs
     }
 }
 
-// MARK: - Custom Tab Bar Subview
-extension MainTabView {
-    private var customTabBar: some View {
-        HStack(spacing: 0) {
-            TabBarButton(icon: "house", title: "Home", tab: .home, selectedTab: $selectedTab)
-            Spacer()
-            TabBarButton(icon: "magnifyingglass", title: "Search", tab: .search, selectedTab: $selectedTab)
-            Spacer()
-            TabBarButton(icon: "book", title: "My Recipes", tab: .myRecipes, selectedTab: $selectedTab)
-            Spacer()
-            TabBarButton(icon: "books.vertical", title: "Collections", tab: .collections, selectedTab: $selectedTab)
-            Spacer()
-            TabBarButton(icon: "person", title: "Profile", tab: .profile, selectedTab: $selectedTab)
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 15)
-        .background(
-            Color(hex: "f8fae5")
-                .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: -5)
-                .ignoresSafeArea(edges: .bottom)
-        )
-    }
-}
-
-// MARK: - Tab Bar Button Component
-struct TabBarButton: View {
-    var icon: String
-    var title: String
-    var tab: MainTabView.Tab
-    @Binding var selectedTab: MainTabView.Tab
-    
-    let mutedTeal = Color(hex: "43766c")
-    
-    var body: some View {
-        Button(action: {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                selectedTab = tab
-            }
-        }) {
-            VStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 22))
-                // Makes the active icon solid and inactive icon outlined (if supported)
-                    .environment(\.symbolVariants, selectedTab == tab ? .fill : .none)
-                // Makes the active icon slightly bolder
-                    .fontWeight(selectedTab == tab ? .bold : .regular)
-                
-                Text(title)
-                    // 🚀 Updated to use your Font extension!
-                    .font(.merriweather(10, weight: .regular))
-            }
-            // Colors: Muted Teal if active, gray if inactive
-            .foregroundColor(selectedTab == tab ? mutedTeal : Color.gray.opacity(0.8))
-            .frame(maxWidth: .infinity)
-        }
-    }
-}
-
-// MARK: - Preview
 #Preview {
     MainTabView()
-        .environmentObject(AuthViewModel())
 }
