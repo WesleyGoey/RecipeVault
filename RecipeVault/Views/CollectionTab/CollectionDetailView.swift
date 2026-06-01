@@ -82,9 +82,12 @@ struct CollectionDetailView: View {
                 }
             }
         }
+        
+        // 🚀 MEMANGGIL COLLECTION EDIT VIEW YANG SEBENARNYA
         .sheet(isPresented: $showingEditSheet) {
-            Text("Edit Sheet for \(collection.name)")
+            CollectionEditView(collectionToEdit: collection, viewModel: viewModel)
         }
+        
         .alert("Delete Collection", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
@@ -108,12 +111,10 @@ extension CollectionDetailView {
                 .frame(height: 320)
                 .overlay(
                     Group {
-                        // 1. Coba decode sebagai Base64 terlebih dahulu
                         if let imageData = Data(base64Encoded: collection.collectionImage),
                            let uiImage = UIImage(data: imageData) {
                             Image(uiImage: uiImage).resizable().scaledToFill()
                         }
-                        // 2. Jika bukan Base64, proses sebagai URL http (TheMealDB atau Default)
                         else {
                             let defaultUrl = "https://images.unsplash.com/photo-1495195134817-a165d4292816?q=80&w=800&auto=format&fit=crop"
                             let validUrl = collection.collectionImage.starts(with: "http") ? collection.collectionImage : defaultUrl
@@ -141,6 +142,8 @@ extension CollectionDetailView {
                         .clipShape(Circle())
                 }
                 Spacer()
+                
+                // 🚀 3-DOT MENU UNTUK EDIT/DELETE KOLEKSI
                 if viewModel.isOwner(collection: collection) {
                     Menu {
                         Button {
@@ -221,6 +224,7 @@ extension CollectionDetailView {
         LazyVStack(spacing: 16) {
             ForEach(viewModel.recipesInCollection, id: \.id) { recipe in
                 CollectionRecipeRow(recipe: recipe, parentCollection: collection, collectionVM: viewModel)
+                    .environmentObject(recipeVM)
             }
         }
     }
@@ -244,7 +248,6 @@ struct CollectionRecipeRow: View {
         NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
             HStack(spacing: 16) {
                 
-                // 🚀 PERBAIKAN LOGIKA GAMBAR BARIS (Sama persis dengan RecipeCardView)
                 Group {
                     if recipe.recipeImage.isEmpty {
                         placeholderImage
@@ -298,7 +301,6 @@ struct CollectionRecipeRow: View {
                 }
                 Spacer()
                 
-                // FITUR 3-DOT MENU PENGGANTI CHEVRON
                 Menu {
                     Button {
                         Task { await recipeVM.openCollectionSheet(for: recipe) }
@@ -324,6 +326,7 @@ struct CollectionRecipeRow: View {
                     
                 } label: {
                     Image(systemName: "ellipsis")
+                        .rotationEffect(.degrees(90))
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.gray)
                         .frame(width: 44, height: 44)
