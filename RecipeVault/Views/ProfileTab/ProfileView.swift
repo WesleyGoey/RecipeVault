@@ -24,7 +24,7 @@ struct ProfileView: View {
     let bgYellow = Color(hex: "FBF9EC")
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 bgYellow.ignoresSafeArea()
 

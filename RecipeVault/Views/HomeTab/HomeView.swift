@@ -35,7 +35,6 @@ struct HomeView: View {
                             .frame(maxWidth: .infinity)
                     } else if let heroRecipe = viewModel.recipeOfTheDay {
                         NavigationLink(destination: RecipeDetailView(recipe: heroRecipe, viewModel: recipeVM)) {
-                            // 🚀 PERBAIKAN: Hapus parameter recipeVM karena sudah ditarik otomatis oleh HomeCardView
                             HomeCardView(recipe: heroRecipe)
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -103,14 +102,13 @@ struct HomeView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.top, 40)
                         } else {
-                            // 🚀 MASONRY / ZIG-ZAG LAYOUT
+                            // MASONRY / ZIG-ZAG LAYOUT
                             HStack(alignment: .top, spacing: 16) {
                                 
                                 // KOLOM KIRI (Hanya berisi index Genap: 0, 2, 4...)
                                 VStack(spacing: 16) {
                                     ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 == 0 }, id: \.element.id) { index, recipe in
                                         NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
-                                            // 🚀 PERBAIKAN: Hapus parameter recipeVM
                                             FeedCardView(recipe: recipe, cardHeight: (index % 4 == 0) ? 280 : 220)
                                         }
                                         .buttonStyle(PlainButtonStyle())
@@ -121,13 +119,11 @@ struct HomeView: View {
                                 VStack(spacing: 16) {
                                     ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 != 0 }, id: \.element.id) { index, recipe in
                                         NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
-                                            // 🚀 PERBAIKAN: Hapus parameter recipeVM
                                             FeedCardView(recipe: recipe, cardHeight: (index % 4 == 3) ? 280 : 220)
                                         }
                                         .buttonStyle(PlainButtonStyle())
                                     }
                                 }
-                                
                             }
                             .padding(.horizontal, 24)
                         }
@@ -136,6 +132,13 @@ struct HomeView: View {
                 .padding(.bottom, 120)
             }
             .background(bgYellow.ignoresSafeArea())
+        }
+        // 🚀 TAMBAHAN: Memicu pengambilan data saat layar muncul
+        .task {
+            if viewModel.feedRecipes.isEmpty {
+                // Memancing pemuatan data dengan mensimulasikan pemilihan kategori
+                viewModel.selectCategory("All")
+            }
         }
     }
 }
@@ -168,5 +171,5 @@ struct CategoryPill: View {
 
 #Preview {
     HomeView()
-        .environmentObject(RecipeViewModel()) // Wajib untuk mencegah Preview Crash
+        .environmentObject(RecipeViewModel())
 }

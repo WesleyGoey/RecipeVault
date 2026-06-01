@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseFirestore // 🚀 WAJIB DI-IMPORT untuk menarik nama user
 
 struct RecipeDetailView: View {
     @State private var recipe: Recipe
@@ -16,6 +17,9 @@ struct RecipeDetailView: View {
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     @State private var isLoadingDetails = false
+    
+    // 🚀 State untuk menampung nama pembuat resep
+    @State private var creatorName: String = "Loading..."
     
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
@@ -31,7 +35,9 @@ struct RecipeDetailView: View {
         ScrollView {
             VStack(spacing: 0) {
                 heroImageSection
-                attributionSection
+                
+                // 🚀 PERBAIKAN: Mengganti attributionSection dengan authorSection
+                authorSection
                 
                 VStack(alignment: .leading, spacing: 20) {
                     titleSection
@@ -66,6 +72,25 @@ struct RecipeDetailView: View {
             // Ambil detail bahan jika kosong (dari TheMealDB)
             if recipe.ingredients.isEmpty, let mealId = recipe.id {
                 await fetchFullDetails(id: mealId)
+            }
+            
+            // 🚀 TAMBAHAN: Fetch User Profile Name
+            if recipe.userId == "themealdb" {
+                creatorName = "TheMealDB"
+            } else if viewModel.isOwner(recipe: recipe) {
+                creatorName = "You"
+            } else {
+                do {
+                    let db = Firestore.firestore()
+                    let doc = try await db.collection("users").document(recipe.userId).getDocument()
+                    if let name = doc.data()?["name"] as? String {
+                        creatorName = name
+                    } else {
+                        creatorName = "Unknown Chef"
+                    }
+                } catch {
+                    creatorName = "Unknown Chef"
+                }
             }
         }
         
@@ -241,17 +266,44 @@ extension RecipeDetailView {
         }
     }
     
-    private var attributionSection: some View {
-        HStack {
-            Circle().fill(mutedTeal).frame(width: 40, height: 40).overlay(Text("TM").foregroundColor(.white).font(.caption.bold()))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(recipe.userId == "themealdb" ? "TheMealDB" : "Personal Recipe").font(.merriweather(16, weight: .bold))
-                Text(recipe.userId == "themealdb" ? "@themealdb" : "User Creation").font(.merriweather(12, weight: .regular)).foregroundColor(.gray)
+    // 🚀 BISA DI-KLIK & MENGARAH KE OTHERPROFILEVIEW
+    private var authorSection: some View {
+        Group {
+            // JIKA DARI API THEMEALDB (Tidak bisa di-klik ke profil)
+            if recipe.userId == "themealdb" {
+                HStack {
+                    Circle().fill(mutedTeal).frame(width: 46, height: 46).overlay(Text("TM").foregroundColor(.white).font(.system(size: 14, weight: .bold)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("TheMealDB").font(.merriweather(16, weight: .bold)).foregroundColor(darkText)
+                        Text("@themealdb").font(.merriweather(14, weight: .regular)).foregroundColor(.gray)
+                    }
+                    Spacer()
+                }
+                .padding(20).background(bgYellow)
             }
-            Spacer()
-            Image(systemName: "chevron.right").foregroundColor(.gray)
+            // JIKA DARI USER SUNGGUHAN (Bisa di-klik)
+            else {
+                NavigationLink(destination: OtherProfileView(creatorId: recipe.userId)) {
+                    HStack {
+                        Circle().fill(mutedTeal).frame(width: 46, height: 46).overlay(
+                            // 2 huruf inisial
+                            Text(String(creatorName.prefix(2)).uppercased())
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                        )
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(creatorName).font(.merriweather(16, weight: .bold)).foregroundColor(darkText)
+                            Text(viewModel.isOwner(recipe: recipe) ? "Your Recipe" : "Public Creator")
+                                .font(.merriweather(14, weight: .regular)).foregroundColor(.gray)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundColor(.gray)
+                    }
+                    .padding(20).background(bgYellow)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
         }
-        .padding(20).background(bgYellow)
     }
     
     private var tagsSection: some View {

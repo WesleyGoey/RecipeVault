@@ -195,10 +195,10 @@ extension CollectionDetailView {
         }
     }
 
-    // 🚀 BISA DI-KLIK & MENGGUNAKAN DATA ASLI (Real Data)
+    // 🚀 BISA DI-KLIK & MENGARAH KE OTHERPROFILEVIEW
     private var authorSection: some View {
         NavigationLink(
-            destination: Text("Welcome to \(creatorName)'s Profile!")
+            destination: OtherProfileView(creatorId: collection.userId)
         ) {
             HStack(spacing: 12) {
                 Circle()
@@ -312,4 +312,5 @@ struct CollectionRecipeRow: View {
         collection: RecipeCollection.mockCollections[0],
         viewModel: CollectionViewModel()
     )
+    .environmentObject(RecipeViewModel()) // Jangan lupa pasang ini agar preview tidak crash
 }
