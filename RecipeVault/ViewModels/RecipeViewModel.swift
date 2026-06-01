@@ -32,11 +32,6 @@ class RecipeViewModel: ObservableObject {
     @Published var selectedRecipeForCollection: Recipe? = nil
     @Published var isSavingToCollections: Bool = false
     
-    enum DetailTab {
-        case ingredients
-        case steps
-    }
-    
     private let recipeService = RecipeService.shared
     private let collectionService = CollectionService.shared
     private let authService = AuthService.shared

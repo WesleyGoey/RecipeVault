@@ -55,9 +55,14 @@ class CollectionService: CollectionServiceProtocol {
     }
 
     // MARK: - 2. READ
-    func getUserCollections(userId: String) async throws -> [RecipeCollection] {
-        return try await firestoreRepo.getUserCollections(userId: userId)
-    }
+        func getUserCollections(userId: String) async throws -> [RecipeCollection] {
+            return try await firestoreRepo.getUserCollections(userId: userId)
+        }
+
+        // 🚀 TAMBAHKAN FUNGSI INI
+        func getPublicCollections() async throws -> [RecipeCollection] {
+            return try await firestoreRepo.getPublicCollections()
+        }
 
     func getRecipesInCollection(collectionId: String) async throws -> [Recipe] {
         return try await firestoreRepo.getRecipesInCollection(

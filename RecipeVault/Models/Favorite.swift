@@ -10,9 +10,9 @@ import Foundation
 import FirebaseFirestore
 
 struct Favorite: Codable, Identifiable {
-    @DocumentID var id: String? // Acts as the favoriteId
+    @DocumentID var id: String?
     var recipeId: String
     var userId: String
-    var recipeSource: String // E.g., "MealDB" or "Personal"
+    var recipeSource: String
     @ServerTimestamp var savedAt: Date?
 }

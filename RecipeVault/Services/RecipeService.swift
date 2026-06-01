@@ -25,10 +25,6 @@ class RecipeService: RecipeServiceProtocol {
         if let data = imageData, let uiImage = UIImage(data: data) {
             newRecipe.recipeImage = Base64Helper.encode(uiImage) ?? ""
         }
-        // 🚀 PERHATIAN PENTING:
-        // Jangan pernah menambahkan `else { newRecipe.recipeImage = "" }` di sini!
-        // Jika resep berasal dari TheMealDB (imageData == nil), kita HARUS membiarkan
-        // `recipeImage` menyimpan URL aslinya agar tidak terhapus dari database.
         
         try await firestoreRepo.createRecipe(recipe: newRecipe)
     }

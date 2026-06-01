@@ -7,19 +7,16 @@
 
 
 import Foundation
-// ... existing contents ...
 
 protocol FirestoreRepositoryProtocol {
     func getUserProfile(userId: String) async throws -> [String: Any]?
     func saveUserProfile(userId: String, name: String, email: String, profilePicture: String) async throws
 
-    // 🚀 FULL CRUD RECIPE
     func createRecipe(recipe: Recipe) async throws
-    func getUserRecipes(userId: String) async throws -> [Recipe] // READ
-    func updateRecipe(recipe: Recipe) async throws               // UPDATE
-    func deleteRecipe(recipeId: String) async throws             // DELETE
+    func getUserRecipes(userId: String) async throws -> [Recipe]
+    func updateRecipe(recipe: Recipe) async throws
+    func deleteRecipe(recipeId: String) async throws
 
-    // NEW: allow service to query and save single recipe by id (used for mirroring TheMealDB)
     func getRecipeById(recipeId: String) async throws -> Recipe?
     func saveRecipeIfNeeded(recipe: Recipe) async throws
     func createCollection(collection: RecipeCollection) async throws
@@ -30,12 +27,10 @@ protocol FirestoreRepositoryProtocol {
     func deleteCollection(collectionId: String) async throws
     func getCollectionIdsForRecipe(recipeId: String) async throws -> [String]
 
-    /// 🚀 FAVORITES
     func toggleFavorite(userId: String, recipeId: String, isFavorite: Bool) async throws
     func getFavoriteRecipeIds(userId: String) async throws -> [String]
     func getFavoriteRecipes(userId: String) async throws -> [Recipe]
 
-    // 🚀 RELASI (Add to Collection)
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws
     func removeRecipeFromCollection(collectionId: String, recipeId: String) async throws
     func getRecipesInCollection(collectionId: String) async throws -> [Recipe]

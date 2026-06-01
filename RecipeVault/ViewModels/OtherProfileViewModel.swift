@@ -8,21 +8,23 @@
 import Foundation
 import SwiftUI
 import Combine
-import FirebaseFirestore
 
 @MainActor
 class OtherProfileViewModel: ObservableObject {
     @Published var creatorName: String = ""
-    @Published var profilePictureURL: String = "" // Menyimpan Base64
+    @Published var profilePictureURL: String = "" // Menyimpan Base64 atau URL
     
     @Published var publicCollections: [RecipeCollection] = []
     @Published var collectionCounts: [String: Int] = [:]
     
     @Published var isLoading: Bool = true
+    @Published var operationError: String = "" // 🚀 REVISI: Konsisten untuk Alert UI jika error
     
     let creatorId: String
-    private let db = Firestore.firestore()
-    private let collectionService = CollectionService.shared // 🚀 Gunakan service untuk count
+    
+    // 🚀 BERSIH TOTAL: Manfaatkan Koki (Service) yang sudah ada tanpa menyentuh Firestore langsung
+    private let profileService = ProfileService.shared
+    private let collectionService = CollectionService.shared
     
     init(creatorId: String) {
         self.creatorId = creatorId
@@ -30,58 +32,39 @@ class OtherProfileViewModel: ObservableObject {
     
     func loadCreatorData() async {
         isLoading = true
-        await fetchCreatorProfile()
-        await fetchPublicCollections()
-        isLoading = false
-    }
-    
-    private func fetchCreatorProfile() async {
+        operationError = ""
+        
         do {
-            let doc = try await db.collection("users").document(creatorId).getDocument()
-            if let data = doc.data() {
-                self.creatorName = data["name"] as? String ?? "Unknown Creator"
-                // 🚀 PERBAIKAN: Gunakan key "profilePicture", bukan "profilePictureURL"
-                self.profilePictureURL = data["profilePicture"] as? String ?? ""
+            // 1. Ambil Profil Pencipta lewat ProfileService (Hasil otomatis rapi)
+            if let profileData = try await profileService.getUserProfile(userId: creatorId) {
+                self.creatorName = profileData["name"] as? String ?? "Unknown Creator"
+                self.profilePictureURL = profileData["profilePicture"] as? String ?? ""
             }
-        } catch {
-            print("Error fetching creator profile: \(error)")
-            self.creatorName = "Unknown Creator"
-        }
-    }
-    
-    private func fetchPublicCollections() async {
-        do {
-            let snapshot = try await db.collection("collections")
-                .whereField("userId", isEqualTo: creatorId)
-                .getDocuments()
             
-            var fetchedCollections: [RecipeCollection] = []
+            // 2. Ambil SEMUA Koleksi milik dia lewat CollectionService (Otomatis ter-decode berkat Codable di Repo)
+            let allCollections = try await collectionService.getUserCollections(userId: creatorId)
             
-            for doc in snapshot.documents {
-                let data = doc.data()
-                let visibilityString = data["visibility"] as? String ?? ""
-                
-                if visibilityString.lowercased().contains("public") {
-                    var collection = RecipeCollection(
-                        userId: creatorId,
-                        name: data["name"] as? String ?? "",
-                        description: data["description"] as? String ?? "",
-                        collectionImage: data["collectionImage"] as? String ?? "",
-                        visibility: .publicVisibility
-                    )
-                    collection.id = doc.documentID
-                    
-                    // 🚀 PERBAIKAN: Gunakan Junction Table melalui CollectionService
-                    let count = (try? await collectionService.getRecipeCountInCollection(collectionId: doc.documentID)) ?? 0
-                    self.collectionCounts[doc.documentID] = count
-                    
-                    fetchedCollections.append(collection)
+            // 3. Filter secara instan hanya yang Public menggunakan properti bawaan model
+            let filteredPublic = allCollections.filter { $0.visibility == .publicVisibility }
+            
+            // 4. Hitung jumlah resep per koleksi public menggunakan tabel relasi via Service
+            var tempCounts: [String: Int] = [:]
+            for collection in filteredPublic {
+                if let colId = collection.id {
+                    let count = (try? await collectionService.getRecipeCountInCollection(collectionId: colId)) ?? 0
+                    tempCounts[colId] = count
                 }
             }
             
-            self.publicCollections = fetchedCollections
+            // 5. Update State serentak agar UI me-render dengan tenang dan akurat
+            self.publicCollections = filteredPublic
+            self.collectionCounts = tempCounts
+            
         } catch {
-            print("Error fetching public collections: \(error)")
+            // Jika internet putus, tangkap errornya untuk dilempar ke Alert UI
+            self.operationError = error.localizedDescription
         }
+        
+        isLoading = false
     }
 }

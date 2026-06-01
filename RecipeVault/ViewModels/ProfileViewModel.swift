@@ -169,19 +169,20 @@ final class ProfileViewModel: ObservableObject {
     }
     
     func fetchAuthorName(for recipeUserId: String) async -> String {
-        if recipeUserId == "themealdb" { return "TheMealDB" }
-        if recipeUserId == Auth.auth().currentUser?.uid { return "Me" }
-        if let cachedName = authorNamesCache[recipeUserId] { return cachedName }
-        
-        do {
-            let doc = try await Firestore.firestore().collection("users").document(recipeUserId).getDocument()
-            if let name = doc.data()?["name"] as? String {
-                self.authorNamesCache[recipeUserId] = name
-                return name
+            if recipeUserId == "themealdb" { return "TheMealDB" }
+            if recipeUserId == Auth.auth().currentUser?.uid { return "Me" }
+            if let cachedName = authorNamesCache[recipeUserId] { return cachedName }
+            
+            do {
+                // 🚀 Menggunakan Service, BUKAN Firestore langsung
+                if let data = try await profileService.getUserProfile(userId: recipeUserId),
+                   let name = data["name"] as? String {
+                    self.authorNamesCache[recipeUserId] = name
+                    return name
+                }
+            } catch {
+                print("Gagal mengambil nama author: \(error)")
             }
-        } catch {
-            print("Gagal mengambil nama author: \(error)")
+            return "Community User"
         }
-        return "Community User"
-    }
 }

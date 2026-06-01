@@ -18,9 +18,8 @@ struct Recipe: Codable, Identifiable, Equatable {
     var steps: [String]
     var category: String
     var recipeImage: String
-    @ServerTimestamp var createdAt: Date? // Firebase will automatically set the exact server time!
+    @ServerTimestamp var createdAt: Date?
     
-    // Helper method from your class diagram
     func isOwnedBy(currentUserId: String) -> Bool {
         return userId == currentUserId
     }

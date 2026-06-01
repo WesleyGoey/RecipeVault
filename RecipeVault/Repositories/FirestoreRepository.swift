@@ -6,11 +6,6 @@
 //
 
 
-//
-//  FirestoreRepository.swift
-//  RecipeVault
-//
-
 import Foundation
 import FirebaseFirestore
 
