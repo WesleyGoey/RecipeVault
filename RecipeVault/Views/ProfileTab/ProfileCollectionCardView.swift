@@ -12,24 +12,20 @@ struct ProfileCollectionCardView: View {
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
+            
             // MARK: - Background Image / Placeholder
- 
+            // 🚀 PERBAIKAN: Logika Gambar (Bisa baca HTTP URL & Base64 Firebase)
             Group {
-                if collection.collectionImage.isEmpty {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                        Image(systemName: "square.stack.fill")
-                            .font(.system(size: 44))
-                            .foregroundColor(Color(hex: "163A2B").opacity(0.15))
-                    }
-                } else if let url = URL(string: collection.collectionImage) {
-                    AsyncImage(url: url) { phase in
+                let imageUrl = collection.collectionImage.trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                if imageUrl.isEmpty {
+                    placeholderView
+                } else if imageUrl.starts(with: "http") {
+                    AsyncImage(url: URL(string: imageUrl)) { phase in
                         switch phase {
                         case .empty:
                             ZStack {
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                placeholderView
                                 ProgressView()
                             }
                         case .success(let image):
@@ -39,18 +35,21 @@ struct ProfileCollectionCardView: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .clipped()
                         case .failure:
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                                Image(systemName: "square.stack.fill")
-                                    .font(.system(size: 44))
-                                    .foregroundColor(Color(hex: "163A2B").opacity(0.15))
-                            }
+                            placeholderView
                         @unknown default:
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                            placeholderView
                         }
                     }
+                } else if let imageData = Data(base64Encoded: imageUrl),
+                          let uiImage = UIImage(data: imageData) {
+                    // 🚀 Merender Base64 dari Firebase
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                } else {
+                    placeholderView
                 }
             }
             .frame(height: 140)
@@ -97,7 +96,6 @@ struct ProfileCollectionCardView: View {
             )
 
             // Recipe Count Pill
-        
             .overlay(alignment: .topTrailing) {
                 Text("\(recipeCount)")
                     .font(.system(size: 12, weight: .semibold))
@@ -107,6 +105,7 @@ struct ProfileCollectionCardView: View {
                     .clipShape(Circle())
                     .padding(10)
             }
+            
             // Collection Name Banner
             VStack(alignment: .leading, spacing: 6) {
                 Spacer()
@@ -124,7 +123,22 @@ struct ProfileCollectionCardView: View {
         }
         .background(Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 14))
+        
+        // 🚀 PERBAIKAN: Kunci agar kartu 100% bisa diklik meski gambar masih loading/kosong
+        .contentShape(Rectangle())
+        
         .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 3)
+    }
+    
+    // Dipisah agar kodenya lebih rapi
+    private var placeholderView: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+            Image(systemName: "square.stack.fill")
+                .font(.system(size: 44))
+                .foregroundColor(Color(hex: "163A2B").opacity(0.15))
+        }
     }
 }
 
