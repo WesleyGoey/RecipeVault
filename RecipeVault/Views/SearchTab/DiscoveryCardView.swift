@@ -8,74 +8,66 @@
 import SwiftUI
 
 struct DiscoverCardView: View {
-    // MARK: - Properties (Parameter agar kartu bisa dipakai berulang)
     var title: String
     var author: String
     var recipeCount: Int
     var imageUrl: String?
     var badgeText: String = "COLLECTION"
     
-    // Theme Colors
+    var isCompact: Bool = false // Flag for 2-column grid layout
+    
     let mutedTeal = Color(hex: "43766c")
     
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             backgroundSection
-            
             gradientOverlay
-            
             badgeSection
-            
             textContentSection
         }
         .frame(height: 240)
+        .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        // 🚀 Memastikan seluruh kartu padat dan bisa ditekan di NavigationLink
         .contentShape(Rectangle())
-        .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
     }
 }
 
 // MARK: - Subviews
 extension DiscoverCardView {
     
-    // 🚀 PERBAIKAN: Menambahkan dukungan Base64 untuk gambar dari Firebase
+    // 🚀 FIXED: Background Section
     private var backgroundSection: some View {
-        Group {
-            let urlStr = (imageUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            if urlStr.isEmpty {
-                placeholderView
-            } else if urlStr.starts(with: "http") {
-                AsyncImage(url: URL(string: urlStr)) { phase in
-                    switch phase {
-                    case .empty:
+        let urlStr = (imageUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Color.clear acts as a strict, invisible frame.
+        // It prevents the image's native width from pushing the layout boundaries!
+        return Color.clear
+            .overlay(
+                Group {
+                    if urlStr.isEmpty {
                         placeholderView
-                    case .success(let image):
-                        image
+                    } else if urlStr.starts(with: "http") {
+                        AsyncImage(url: URL(string: urlStr)) { phase in
+                            if let image = phase.image {
+                                image
+                                    .resizable()
+                                    .scaledToFill() // Fill the frame while preserving aspect ratio
+                            } else {
+                                placeholderView
+                            }
+                        }
+                    } else if let imageData = Data(base64Encoded: urlStr), let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFill()
-                    case .failure:
-                        placeholderView
-                    @unknown default:
+                    } else {
                         placeholderView
                     }
                 }
-                .frame(height: 240)
-                .frame(maxWidth: .infinity)
-                .clipped()
-            } else if let imageData = Data(base64Encoded: urlStr),
-                      let uiImage = UIImage(data: imageData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(height: 240)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-            } else {
-                placeholderView
-            }
-        }
+            )
+            .frame(height: 240)
+            .clipped() // 🚀 Safely crops any overflowing width without stretching
     }
     
     private var gradientOverlay: some View {
@@ -83,7 +75,7 @@ extension DiscoverCardView {
             gradient: Gradient(colors: [
                 .clear,
                 .black.opacity(0.2),
-                .black.opacity(0.85) // Sedikit lebih gelap di bawah untuk kontras teks putih
+                .black.opacity(0.85)
             ]),
             startPoint: .top,
             endPoint: .bottom
@@ -94,48 +86,48 @@ extension DiscoverCardView {
         VStack {
             HStack {
                 Text(badgeText.uppercased())
-                    .font(.system(size: 11, weight: .bold, design: .default))
-                    .tracking(1.5) // Memberikan jarak antar huruf (letter spacing)
+                    .font(.system(size: isCompact ? 9 : 11, weight: .bold, design: .default))
+                    .tracking(1.5)
                     .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, isCompact ? 10 : 16)
+                    .padding(.vertical, isCompact ? 6 : 8)
                     .background(mutedTeal)
                     .clipShape(Capsule())
                 
-                Spacer() // Mendorong badge ke kiri
+                Spacer(minLength: 0)
             }
-            Spacer() // Mendorong badge ke atas
+            Spacer(minLength: 0)
         }
-        .padding(20)
+        .padding(isCompact ? 12 : 20)
     }
     
     private var textContentSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: isCompact ? 4 : 6) {
             Text(author.uppercased())
-                // 🚀 Menggunakan extension Merriweather
-                .font(.merriweather(11, weight: .bold))
+                .font(.merriweather(isCompact ? 9 : 11, weight: .bold))
                 .tracking(1.2)
                 .foregroundColor(.white.opacity(0.9))
+                .lineLimit(1)
             
             Text(title)
-                // 🚀 Menggunakan extension Merriweather
-                .font(.merriweather(24, weight: .bold))
+                .font(.merriweather(isCompact ? 16 : 24, weight: .bold))
                 .foregroundColor(.white)
-                .lineLimit(2) // Maksimal 2 baris agar layout tidak rusak jika judul panjang
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
             
             Text("\(recipeCount) recipes curated")
-                // 🚀 Menggunakan extension Merriweather
-                .font(.merriweather(14, weight: .regular))
+                .font(.merriweather(isCompact ? 11 : 14, weight: .regular))
                 .foregroundColor(.white.opacity(0.8))
+                .lineLimit(1)
         }
-        .padding(20)
+        .padding(isCompact ? 12 : 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     
     private var placeholderView: some View {
         ZStack {
-            Color(hex: "e2e6c8") // Sedikit lebih gelap dari bgYellow sebagai background placeholder
+            Color(hex: "e2e6c8")
             
-            // TODO: Ganti "fork.knife" dengan Image("NamaAsetTopiKokiKamu") jika sudah ada aset kustom
             Image(systemName: "fork.knife")
                 .font(.system(size: 40))
                 .foregroundColor(mutedTeal.opacity(0.4))
@@ -143,26 +135,4 @@ extension DiscoverCardView {
         .frame(height: 240)
         .frame(maxWidth: .infinity)
     }
-}
-
-// MARK: - Preview with Dummy Data
-#Preview {
-    VStack(spacing: 20) {
-        // Contoh 1: Menggunakan URL Gambar Asli (seperti di Figma)
-        DiscoverCardView(
-            title: "Quick Weeknight Dinners",
-            author: "@CHEF_MARIA",
-            recipeCount: 24,
-            imageUrl: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=2940&auto=format&fit=crop"
-        )
-        
-        DiscoverCardView(
-            title: "Baking Essentials",
-            author: "@BAKE_WITH_LOVE",
-            recipeCount: 31,
-            imageUrl: nil
-        )
-    }
-    .padding()
-    .background(Color(hex: "f8fae5").ignoresSafeArea())
 }

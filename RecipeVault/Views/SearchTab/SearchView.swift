@@ -197,6 +197,7 @@ extension SearchView {
                             OptimizedCollectionLink(
                                 collection: collection,
                                 creatorNames: viewModel.creatorNames
+                                // isCompact defaults to false here, keeping the full width!
                             )
                         }
                     }
@@ -290,7 +291,8 @@ extension SearchView {
                     ForEach(viewModel.collections) { collection in
                         OptimizedCollectionLink(
                             collection: collection,
-                            creatorNames: viewModel.creatorNames
+                            creatorNames: viewModel.creatorNames,
+                            isCompact: true // 🚀 Set to true for the grid view!
                         )
                     }
                 }
@@ -308,6 +310,7 @@ extension SearchView {
 struct OptimizedCollectionLink: View {
     let collection: RecipeCollection
     let creatorNames: [String: String]
+    var isCompact: Bool = false // 🚀 Added compact flag
     
     var body: some View {
         let authorName = creatorNames[collection.userId] ?? "Chef"
@@ -318,7 +321,8 @@ struct OptimizedCollectionLink: View {
                 title: collection.name,
                 author: "@\(authorName.uppercased().replacingOccurrences(of: " ", with: "_"))",
                 recipeCount: 0,
-                imageUrl: validImage
+                imageUrl: validImage,
+                isCompact: isCompact // 🚀 Passed down to the card
             )
         }
         .buttonStyle(PlainButtonStyle())
