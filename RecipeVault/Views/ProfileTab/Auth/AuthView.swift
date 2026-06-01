@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+// MARK: - Login/Register View
 struct AuthView: View {
     @EnvironmentObject var authVM: AuthViewModel
     
@@ -16,16 +17,15 @@ struct AuthView: View {
 
     @State private var mode: AuthMode = .login
 
-    // login fields
     @State private var loginEmail: String = ""
     @State private var loginPassword: String = ""
 
-    // register fields
     @State private var regName: String = ""
     @State private var regEmail: String = ""
     @State private var regPassword: String = ""
     @State private var regConfirmPassword: String = ""
-
+    
+    // MARK: - Initializer
     init(vm: ProfileViewModel, initialMode: AuthMode = .login) {
         self.vm = vm
         self.initialMode = initialMode
@@ -51,7 +51,6 @@ struct AuthView: View {
                                 registerForm
                             }
                             
-                            // Pesan Error
                             if !authVM.errorMessage.isEmpty {
                                 Text(authVM.errorMessage)
                                     .font(.merriweather(13, weight: .bold))
@@ -60,7 +59,6 @@ struct AuthView: View {
                                     .frame(maxWidth: 360)
                             }
 
-                            // Primary action button
                             Button(action: { Task { await submit() } }) {
                                 HStack {
                                     if authVM.isLoading {
@@ -82,7 +80,6 @@ struct AuthView: View {
                             .disabled(authVM.isLoading || !isFormValid())
                             .padding(.top, 10)
 
-                            // Footer: Cancel + Toggle
                             HStack {
                                 Button(action: { dismiss() }) {
                                     Text("Cancel")
@@ -122,7 +119,7 @@ struct AuthView: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - Circle Header
     private var header: some View {
         HStack(spacing: 12) {
             ZStack {
@@ -150,8 +147,7 @@ struct AuthView: View {
         }
     }
 
-    // MARK: - Forms
-    // 🚀 FORM SEKARANG MENGGUNAKAN DUA STRUCT TERPISAH
+    // MARK: - Login form
     private var loginForm: some View {
         VStack(spacing: 14) {
             CustomTextField(title: "Email", placeholder: "email@example.com", text: $loginEmail, keyboard: .emailAddress, isWords: false)
@@ -159,6 +155,7 @@ struct AuthView: View {
         }
     }
 
+    //MARK: - Register form
     private var registerForm: some View {
         VStack(spacing: 14) {
             CustomTextField(title: "Name", placeholder: "Full name", text: $regName, keyboard: .default, isWords: true)
@@ -179,7 +176,8 @@ struct AuthView: View {
                    regPassword == regConfirmPassword
         }
     }
-
+    
+    // MARK: - Submit login or registration
     private func submit() async {
         authVM.errorMessage = ""
 
@@ -220,7 +218,7 @@ struct AuthView: View {
     }
 }
 
-// MARK: - 🚀 STRUCT TERPISAH UNTUK TEXT BIASA
+// MARK: - Text Field To Prevent Bug
 struct CustomTextField: View {
     let title: String
     let placeholder: String
@@ -247,7 +245,7 @@ struct CustomTextField: View {
     }
 }
 
-// MARK: - 🚀 STRUCT TERPISAH UNTUK PASSWORD (MENCEGAH BUG HILANG FOKUS)
+// MARK: - Secure Field To Prevent Bug
 struct CustomSecureField: View {
     let title: String
     let placeholder: String

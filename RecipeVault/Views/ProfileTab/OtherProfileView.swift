@@ -5,14 +5,13 @@
 //  Created by Sean tandjaja on 01/06/26.
 //
 
-
 import SwiftUI
 
+//MARK: - Other User's Profile View
 struct OtherProfileView: View {
     @StateObject private var vm: OtherProfileViewModel
     @Environment(\.dismiss) private var dismiss
     
-    // Injeksi CollectionViewModel global (opsional, jika NavigationLink ke detail membutuhkannya)
     @StateObject private var collectionVM = CollectionViewModel()
     
     let bgYellow = Color(hex: "f8fae5")
@@ -21,8 +20,8 @@ struct OtherProfileView: View {
     
     private let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
     
+    //MARK: - Initializer
     init(creatorId: String) {
-        // Menginisialisasi ViewModel dengan ID kreator yang di-passing
         _vm = StateObject(wrappedValue: OtherProfileViewModel(creatorId: creatorId))
     }
     
@@ -37,7 +36,6 @@ struct OtherProfileView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         
-                        // MARK: - Header Profil Kreator
                         VStack(spacing: 12) {
                             ZStack {
                                 Circle()
@@ -76,7 +74,6 @@ struct OtherProfileView: View {
                         Divider()
                             .padding(.horizontal, 24)
                         
-                        // MARK: - Daftar Public Collections
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Public Collections")
                                 .font(.merriweather(20, weight: .bold))
@@ -98,7 +95,6 @@ struct OtherProfileView: View {
                             } else {
                                 LazyVGrid(columns: columns, spacing: 18) {
                                     ForEach(vm.publicCollections) { col in
-                                        // 🚀 Menggunakan kartu dari ProfileView
                                         NavigationLink(destination: CollectionDetailView(collection: col, viewModel: collectionVM)) {
                                             ProfileCollectionCardView(collection: col, recipeCount: vm.collectionCounts[col.id ?? ""] ?? 0)
                                                 .frame(height: 170)
@@ -121,6 +117,7 @@ struct OtherProfileView: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     OtherProfileView(creatorId: "dummy_id")
 }

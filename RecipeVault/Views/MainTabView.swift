@@ -8,6 +8,7 @@
 
 import SwiftUI
 
+// MARK: - Main Tab View
 struct MainTabView: View {
     @State private var selectedTab = 0
     
@@ -15,6 +16,7 @@ struct MainTabView: View {
     
     let mutedTeal = Color(hex: "43766c")
     
+    // MARK: - Initializer for Tab Bar Appearance
     init() {
         let appearance = UITabBarAppearance()
         
@@ -31,8 +33,6 @@ struct MainTabView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            
-            // TAB 1: HOME
             HomeView(selectedTab: $selectedTab)
                 .tabItem {
                     Image(systemName: "house.fill")
@@ -40,7 +40,6 @@ struct MainTabView: View {
                 }
                 .tag(0)
             
-            // TAB 2: SEARCH
             SearchView(selectedTab: $selectedTab)
                 .tabItem {
                     Image(systemName: "magnifyingglass")
@@ -48,7 +47,6 @@ struct MainTabView: View {
                 }
                 .tag(1)
             
-            // TAB 3: MY RECIPES
             MyRecipesView(selectedTab: $selectedTab)
                 .tabItem {
                     Image(systemName: "book.fill")
@@ -56,7 +54,6 @@ struct MainTabView: View {
                 }
                 .tag(2)
             
-            // TAB 4: COLLECTIONS
             CollectionsView(selectedTab: $selectedTab)
                 .tabItem {
                     Image(systemName: "books.vertical.fill")
@@ -64,7 +61,6 @@ struct MainTabView: View {
                 }
                 .tag(3)
             
-            // TAB 5: PROFILE
             ProfileView(selectedTab: $selectedTab)
                 .tabItem {
                     Image(systemName: "person.fill")

@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseAuth
 
+// MARK: - Profile Favorite Card View
 struct ProfileFavoriteCardView: View {
     let recipe: Recipe
     
@@ -22,12 +23,10 @@ struct ProfileFavoriteCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // MARK: - Image & Heart Button
             ZStack(alignment: .topTrailing) {
                 Group {
                     let imageUrl = recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines)
                     
-                    // 1. Jika Kosong
                     if imageUrl.isEmpty {
                         ZStack {
                             mutedTeal.opacity(0.15)
@@ -36,7 +35,6 @@ struct ProfileFavoriteCardView: View {
                                 .foregroundColor(mutedTeal.opacity(0.5))
                         }
                     }
-                    // 2. Jika dari Internet (TheMealDB)
                     else if imageUrl.starts(with: "http") {
                         AsyncImage(url: URL(string: imageUrl)) { phase in
                             switch phase {
@@ -56,14 +54,12 @@ struct ProfileFavoriteCardView: View {
                             }
                         }
                     }
-                    // 3. Jika dari Firebase (Base64) - INI YANG MEMBUAT GAMBARMU MUNCUL
                     else if let imageData = Data(base64Encoded: imageUrl),
                             let uiImage = UIImage(data: imageData) {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFill()
                     }
-                    // 4. Fallback (Cadangan)
                     else {
                         ZStack {
                             mutedTeal.opacity(0.15)
@@ -89,7 +85,6 @@ struct ProfileFavoriteCardView: View {
                 .padding(12)
             }
             
-            // MARK: - Title & Ownership
             VStack(alignment: .leading, spacing: 6) {
                 Text(recipe.title)
                     .font(.merriweather(16, weight: .bold))
@@ -110,7 +105,6 @@ struct ProfileFavoriteCardView: View {
         }
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        // 🚀 TAMBAHAN KECIL: Memastikan seluruh badan kartu bisa di-klik
         .contentShape(Rectangle())
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
         
@@ -133,7 +127,7 @@ struct ProfileFavoriteCardView: View {
                     ingredients: [],
                     steps: [],
                     category: "Thai",
-                    recipeImage: "" // Kosong untuk mengetes Icon
+                    recipeImage: "" 
                 ),
                 recipeVM: RecipeViewModel(),
                 profileVM: ProfileViewModel()

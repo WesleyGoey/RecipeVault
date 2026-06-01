@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+// MARK: - Discover Card View
 struct DiscoverCardView: View {
     var title: String
     var author: String
@@ -33,10 +34,8 @@ struct DiscoverCardView: View {
     }
 }
 
-// MARK: - Subviews
+// MARK: - Extension For Discovery Card Subviews
 extension DiscoverCardView {
-    
-    // 🚀 FIXED: Background Section
     private var backgroundSection: some View {
         let urlStr = (imageUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         
@@ -68,6 +67,7 @@ extension DiscoverCardView {
             .clipped()
     }
     
+    // MARK: - Gradient Overlay For Better Text Readability
     private var gradientOverlay: some View {
         LinearGradient(
             gradient: Gradient(colors: [
@@ -80,6 +80,7 @@ extension DiscoverCardView {
         )
     }
     
+    // MARK: - Badge Section
     private var badgeSection: some View {
         VStack {
             HStack {
@@ -99,6 +100,7 @@ extension DiscoverCardView {
         .padding(isCompact ? 12 : 20)
     }
     
+    // MARK: - Text Content Section (Author, Title, Recipe Count)
     private var textContentSection: some View {
         VStack(alignment: .leading, spacing: isCompact ? 4 : 6) {
             Text(author.uppercased())
@@ -122,6 +124,7 @@ extension DiscoverCardView {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     
+    // MARK: - Placeholder View For Missing/Invalid Images
     private var placeholderView: some View {
         ZStack {
             Color(hex: "e2e6c8")

@@ -1,5 +1,13 @@
+//
+//  HomeCardView.swift
+//  RecipeVault
+//
+//  Created by Nicholas Gerwin Mawardji on 29/05/26.
+//
+
 import SwiftUI
 
+// MARK: - Home Card
 struct HomeCardView: View {
     let recipe: Recipe
     @EnvironmentObject var recipeVM: RecipeViewModel
@@ -9,8 +17,6 @@ struct HomeCardView: View {
     
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            
-            // 🚀 KUNCI PERBAIKAN: Gunakan Color.clear agar gambar tidak mendorong layout
             Color.clear
                 .overlay(imageSection)
                 .clipped()
@@ -50,7 +56,9 @@ struct HomeCardView: View {
     }
 }
 
+// MARK: - Home Card Subviews & Logic
 extension HomeCardView {
+    // MARK: - Favorite Button with Real Logic
     private var favoriteButton: some View {
         let isFav = recipeVM.isFavorite(recipe: recipe)
         return Button(action: {
@@ -65,7 +73,7 @@ extension HomeCardView {
                 .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         }
     }
-    
+    // MARK: - Image Handling with Multiple Sources
     private var imageSection: some View {
         Group {
             if recipe.recipeImage.isEmpty {
@@ -92,6 +100,7 @@ extension HomeCardView {
         }
     }
     
+    // MARK: - Image Placeholder for Missing or Failed Images
     private var placeholderImage: some View {
         ZStack {
             mutedTeal.opacity(0.15)
