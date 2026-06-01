@@ -307,22 +307,24 @@ struct CollectionRecipeRow: View {
                         .lineLimit(1)
                         .multilineTextAlignment(.leading)
                     
-                    HStack(spacing: 8) {
-                        Text(recipe.category)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(burntOrange).clipShape(Capsule())
-                        
-                        HStack(spacing: 4) {
-                            Image(systemName: "clock")
-                            Text("30 min")
+                    // 🚀 KATEGORI SEKARANG BERUPA SCROLLVIEW HORIZONTAL
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            let tags = recipe.category.components(separatedBy: ",")
+                                .map { $0.trimmingCharacters(in: .whitespaces) }
+                                .filter { !$0.isEmpty }
+                            
+                            ForEach(tags, id: \.self) { tag in
+                                Text(tag)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(burntOrange).clipShape(Capsule())
+                            }
                         }
-                        .font(.caption)
-                        .foregroundColor(.gray)
                     }
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 
                 Menu {
                     Button {

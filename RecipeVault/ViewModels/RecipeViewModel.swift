@@ -5,64 +5,42 @@
 //  Created by Wesley Goey on 28/05/26.
 //
 
-import Combine
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 class RecipeViewModel: ObservableObject {
-
+    
     // MARK: - List State
     @Published var myRecipes: [Recipe] = []
     @Published var isLoading: Bool = false
-
-    // 🚀 Error state
     @Published var operationError: String = ""
-
+    
     // MARK: - Detail UI State
     @Published var currentTab: DetailTab = .ingredients
-    @Published var favoriteRecipeIds: Set<String> = []  // State nyata untuk Favorites
-
+    @Published var favoriteRecipeIds: Set<String> = []
+    
     // MARK: - Collection Bottom Sheet State
     @Published var showCollectionSheet: Bool = false
     @Published var userCollections: [RecipeCollection] = []
+    
+    // STATE Untuk melacak perubahan centang kotak
     @Published var selectedCollectionIds: Set<String> = []
-    @Published var selectedRecipeForCollection: Recipe? = nil  // Melacak resep mana yang akan disimpan
+    @Published var originalCollectionIds: Set<String> = [] // Data centang asli dari database
+    
+    @Published var selectedRecipeForCollection: Recipe? = nil
     @Published var isSavingToCollections: Bool = false
-
+    
     enum DetailTab {
         case ingredients
         case steps
     }
-
+    
     private let recipeService = RecipeService.shared
     private let collectionService = CollectionService.shared
     private let authService = AuthService.shared
-
-    // MARK: - Helpers
-    /// Pastikan recipe punya ID yang stabil sebelum dipakai untuk favorite / collection.
-    /// Untuk resep TheMealDB, idealnya id = idMeal.
-    private func normalizedRecipeForPersistence(_ recipe: Recipe) -> Recipe? {
-        var normalized = recipe
-
-        // Jika id nil, kita tidak bisa simpan favorite secara konsisten.
-        // Untuk API (TheMealDB) seharusnya selalu ada idMeal.
-        guard let rid = normalized.id,
-            !rid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else {
-            return nil
-        }
-
-        // (Opsional) Pastikan userId terisi untuk membedakan sumber.
-        if normalized.userId.trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty
-        {
-            normalized.userId = "themealdb"
-        }
-
-        return normalized
-    }
-
+    
     // MARK: - Core CRUD Methods
     func loadMyRecipes() async {
         guard let uid = authService.getCurrentUID() else { return }
@@ -70,46 +48,24 @@ class RecipeViewModel: ObservableObject {
         operationError = ""
         do {
             myRecipes = try await recipeService.getUserRecipes(userId: uid)
-            await loadFavoriteIds()  // Muat juga data favorit saat memuat resep
+            await loadFavoriteIds()
         } catch {
             self.operationError = error.localizedDescription
         }
         isLoading = false
     }
-
-    func createRecipe(
-        title: String,
-        description: String,
-        category: String,
-        ingredients: [String],
-        steps: [String],
-        imageData: Data?
-    ) async -> Bool {
+    
+    func createRecipe(title: String, description: String, category: String, ingredients: [String], steps: [String], imageData: Data?) async -> Bool {
         isLoading = true
         operationError = ""
         guard let uid = authService.getCurrentUID() else { return false }
-
-        let cleanedIngredients = ingredients.filter {
-            !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }
-        let cleanedSteps = steps.filter {
-            !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }
-        let newRecipe = Recipe(
-            userId: uid,
-            title: title,
-            description: description,
-            ingredients: cleanedIngredients,
-            steps: cleanedSteps,
-            category: category,
-            recipeImage: ""
-        )
-
+        
+        let cleanedIngredients = ingredients.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let cleanedSteps = steps.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let newRecipe = Recipe(userId: uid, title: title, description: description, ingredients: cleanedIngredients, steps: cleanedSteps, category: category, recipeImage: "")
+        
         do {
-            try await recipeService.createRecipe(
-                recipe: newRecipe,
-                imageData: imageData
-            )
+            try await recipeService.createRecipe(recipe: newRecipe, imageData: imageData)
             await loadMyRecipes()
             isLoading = false
             return true
@@ -119,46 +75,21 @@ class RecipeViewModel: ObservableObject {
             return false
         }
     }
-
-    func updateRecipe(
-        recipeId: String,
-        title: String,
-        description: String,
-        category: String,
-        ingredients: [String],
-        steps: [String],
-        oldImageURL: String,
-        newImageData: Data?,
-        isImageDeleted: Bool
-    ) async -> Bool {
+    
+    func updateRecipe(recipeId: String, title: String, description: String, category: String, ingredients: [String], steps: [String], oldImageURL: String, newImageData: Data?, isImageDeleted: Bool) async -> Bool {
         isLoading = true
         operationError = ""
         guard let uid = authService.getCurrentUID() else { return false }
-
-        let cleanedIngredients = ingredients.filter {
-            !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }
-        let cleanedSteps = steps.filter {
-            !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }
+        
+        let cleanedIngredients = ingredients.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let cleanedSteps = steps.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let finalImageURL = isImageDeleted ? "" : oldImageURL
-
-        var updatedRecipe = Recipe(
-            userId: uid,
-            title: title,
-            description: description,
-            ingredients: cleanedIngredients,
-            steps: cleanedSteps,
-            category: category,
-            recipeImage: finalImageURL
-        )
+        
+        var updatedRecipe = Recipe(userId: uid, title: title, description: description, ingredients: cleanedIngredients, steps: cleanedSteps, category: category, recipeImage: finalImageURL)
         updatedRecipe.id = recipeId
-
+        
         do {
-            try await recipeService.updateRecipe(
-                recipe: updatedRecipe,
-                newImageData: newImageData
-            )
+            try await recipeService.updateRecipe(recipe: updatedRecipe, newImageData: newImageData)
             await loadMyRecipes()
             isLoading = false
             return true
@@ -168,7 +99,7 @@ class RecipeViewModel: ObservableObject {
             return false
         }
     }
-
+    
     func deleteRecipe(recipe: Recipe) async {
         guard let recipeId = recipe.id else { return }
         do {
@@ -178,12 +109,11 @@ class RecipeViewModel: ObservableObject {
             print("Error deleting recipe: \(error.localizedDescription)")
         }
     }
-
-    // MARK: - Ownership
+    
     func isOwner(recipe: Recipe) -> Bool {
         return recipe.userId == authService.getCurrentUID()
     }
-
+    
     // MARK: - 🌟 FAVORITES LOGIC
     func loadFavoriteIds() async {
         guard let uid = authService.getCurrentUID() else { return }
@@ -194,88 +124,75 @@ class RecipeViewModel: ObservableObject {
             print("Error loading favorites: \(error.localizedDescription)")
         }
     }
-
+    
     func isFavorite(recipe: Recipe) -> Bool {
         guard let recipeId = recipe.id else { return false }
         return favoriteRecipeIds.contains(recipeId)
     }
-
+    
     func toggleFavorite(recipe: Recipe) async {
-        guard let uid = authService.getCurrentUID() else { return }
-
-        // ✅ Normalisasi dulu supaya id selalu valid & konsisten
-        guard let normalized = normalizedRecipeForPersistence(recipe) else {
-            print(
-                "toggleFavorite aborted: recipe.id is nil/empty (cannot persist favorite)"
-            )
-            return
-        }
-        guard let recipeId = normalized.id else { return }
-
+        guard let uid = authService.getCurrentUID(), let recipeId = recipe.id else { return }
+        
         let isCurrentlyFavorite = favoriteRecipeIds.contains(recipeId)
         let willBeFavorite = !isCurrentlyFavorite
-
-        // Optimistic UI Update: Langsung ubah warna UI sebelum server membalas
-        if willBeFavorite {
-            favoriteRecipeIds.insert(recipeId)
-        } else {
-            favoriteRecipeIds.remove(recipeId)
-        }
-
+        
+        if willBeFavorite { favoriteRecipeIds.insert(recipeId) }
+        else { favoriteRecipeIds.remove(recipeId) }
+        
         do {
-            // 🚀 JIKA RESEP DARI THEMEALDB DIFAVORITKAN, SIMPAN SALINANNYA KE FIRESTORE
-            // Penting: ini membuat ProfileView bisa load resep favorit dari Firestore.
-            if willBeFavorite && normalized.userId == "themealdb" {
-                // Menggunakan try? agar tidak crash jika resep sudah pernah tersimpan sebelumnya
-                try? await recipeService.createRecipe(
-                    recipe: normalized,
-                    imageData: nil
-                )
+            if willBeFavorite && recipe.userId == "themealdb" {
+                try? await recipeService.createRecipe(recipe: recipe, imageData: nil)
             }
-
-            try await recipeService.toggleFavorite(
-                userId: uid,
-                recipeId: recipeId,
-                isFavorite: willBeFavorite
-            )
+            try await recipeService.toggleFavorite(userId: uid, recipeId: recipeId, isFavorite: willBeFavorite)
         } catch {
-            // Jika Firebase gagal, kembalikan warna hati seperti semula
-            if isCurrentlyFavorite {
-                favoriteRecipeIds.insert(recipeId)
-            } else {
-                favoriteRecipeIds.remove(recipeId)
-            }
+            if isCurrentlyFavorite { favoriteRecipeIds.insert(recipeId) }
+            else { favoriteRecipeIds.remove(recipeId) }
             print("Error toggling favorite: \(error.localizedDescription)")
         }
-
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(
-                name: .favoritesUpdated,
-                object: nil
-            )
-        }
-
     }
-
+    
     // MARK: - 🌟 COLLECTION SHEET LOGIC
     func openCollectionSheet(for recipe: Recipe) async {
         selectedRecipeForCollection = recipe
+        
+        // Reset state
         selectedCollectionIds.removeAll()
-        showCollectionSheet = true
+        originalCollectionIds.removeAll()
+        
+        // 1. Ambil data koleksi user terlebih dahulu
         await fetchUserCollections()
+        
+        // 2. Cek di database apakah resep ini sudah ada di folder
+        if let recipeId = recipe.id {
+            do {
+                let existingColIds = try await collectionService.getCollectionIdsForRecipe(recipeId: recipeId)
+                
+                // Pastikan hanya mencentang koleksi milik user yang sedang login
+                let userColIds = Set(userCollections.compactMap { $0.id })
+                let validIds = Set(existingColIds).intersection(userColIds)
+                
+                // Centang UI otomatis berdasarkan database
+                self.selectedCollectionIds = validIds
+                self.originalCollectionIds = validIds
+            } catch {
+                print("Error loading checked collections: \(error.localizedDescription)")
+            }
+        }
+        
+        // 🚀 3. SETELAH SEMUA DATA SIAP, BARU TAMPILKAN SHEET-NYA!
+        // Ini memastikan SwiftUI merender centangnya dengan benar tanpa delay
+        showCollectionSheet = true
     }
-
+    
     func fetchUserCollections() async {
         guard let uid = authService.getCurrentUID() else { return }
         do {
-            userCollections = try await collectionService.getUserCollections(
-                userId: uid
-            )
+            userCollections = try await collectionService.getUserCollections(userId: uid)
         } catch {
             print("Error fetching collections: \(error.localizedDescription)")
         }
     }
-
+    
     func toggleCollectionSelection(collectionId: String) {
         if selectedCollectionIds.contains(collectionId) {
             selectedCollectionIds.remove(collectionId)
@@ -283,35 +200,34 @@ class RecipeViewModel: ObservableObject {
             selectedCollectionIds.insert(collectionId)
         }
     }
-
+    
     func saveToSelectedCollections() async {
-        // ✅ Normalisasi dulu supaya id selalu valid & konsisten
-        guard let rawRecipe = selectedRecipeForCollection,
-            let normalized = normalizedRecipeForPersistence(rawRecipe),
-            let recipeId = normalized.id
-        else { return }
-
+        guard let recipe = selectedRecipeForCollection, let recipeId = recipe.id else { return }
         isSavingToCollections = true
-
+        
         do {
-            // 🚀 JIKA RESEP DARI THEMEALDB DISIMPAN KE KOLEKSI, SIMPAN SALINANNYA KE FIRESTORE
-            // Kita mengirimkan imageData: nil, sehingga URL aslinya (http...) tetap utuh.
-            if normalized.userId == "themealdb" {
-                // Menggunakan try? agar tidak crash jika resep sudah pernah tersimpan sebelumnya
-                try? await recipeService.createRecipe(
-                    recipe: normalized,
-                    imageData: nil
-                )
+            // Auto-clone jika TheMealDB
+            if recipe.userId == "themealdb" && !selectedCollectionIds.isEmpty {
+                try? await recipeService.createRecipe(recipe: recipe, imageData: nil)
             }
-
-            for collectionId in selectedCollectionIds {
-                try await collectionService.addRecipeToCollection(
-                    collectionId: collectionId,
-                    recipeId: recipeId
-                )
+            
+            // LOGIKA PERBANDINGAN (DIFFING): Tentukan mana yang ditambah, mana yang dihapus
+            let collectionsToAdd = selectedCollectionIds.subtracting(originalCollectionIds)
+            let collectionsToRemove = originalCollectionIds.subtracting(selectedCollectionIds)
+            
+            // 1. Eksekusi Penambahan
+            for collectionId in collectionsToAdd {
+                try await collectionService.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
             }
+            
+            // 2. Eksekusi Penghapusan (Jika user "uncheck" folder yang tadinya dicentang)
+            for collectionId in collectionsToRemove {
+                try await collectionService.removeRecipeFromCollection(collectionId: collectionId, recipeId: recipeId)
+            }
+            
             showCollectionSheet = false
             selectedCollectionIds.removeAll()
+            originalCollectionIds.removeAll()
             selectedRecipeForCollection = nil
         } catch {
             self.operationError = error.localizedDescription
