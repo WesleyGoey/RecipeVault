@@ -19,4 +19,5 @@ protocol CollectionServiceProtocol {
     
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws
     func removeRecipeFromCollection(collectionId: String, recipeId: String) async throws
+    func getCollectionIdsForRecipe(recipeId: String) async throws -> [String]
 }

@@ -31,11 +31,18 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         try await db.collection("users").document(userId).setData(userData, merge: true) // 🚀 Gunakan merge agar tidak menimpa data favorit
     }
     
-    // MARK: - Recipe Methods
-    func createRecipe(recipe: Recipe) async throws {
-        let ref = db.collection("recipes").document()
-        try ref.setData(from: recipe)
-    }
+    // MARK: - CREATE RECIPE (DI DALAM FirestoreRepository.swift)
+        func createRecipe(recipe: Recipe) async throws {
+            let db = Firestore.firestore()
+            
+            // 🚀 SOLUSI: Gunakan recipe.id jika tersedia (misal dari TheMealDB).
+            // Jika nil (resep baru buatan user), baru buatkan UUID acak.
+            let documentId = recipe.id ?? UUID().uuidString
+            let docRef = db.collection("recipes").document(documentId)
+            
+            // Gunakan setData, BUKAN addDocument
+            try docRef.setData(from: recipe)
+        }
     func getUserRecipes(userId: String) async throws -> [Recipe] {
         let snapshot = try await db.collection("recipes").whereField("userId", isEqualTo: userId).getDocuments()
         return snapshot.documents.compactMap { try? $0.data(as: Recipe.self) }
@@ -89,6 +96,17 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
             .whereField("collectionId", isEqualTo: collectionId)
             .getDocuments()
         return snapshot.documents.count
+    }
+    
+    func getCollectionIdsForRecipe(recipeId: String) async throws -> [String] {
+        let db = Firestore.firestore()
+        // Cari di tabel relasi di mana recipeId cocok
+        let snapshot = try await db.collection("collection_recipes")
+            .whereField("recipeId", isEqualTo: recipeId)
+            .getDocuments()
+        
+        // Ambil array ID koleksinya saja
+        return snapshot.documents.compactMap { $0.data()["collectionId"] as? String }
     }
     
     func updateCollection(collection: RecipeCollection) async throws {
@@ -160,5 +178,7 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         }
         return recipes
     }
+    
+
 }
 
