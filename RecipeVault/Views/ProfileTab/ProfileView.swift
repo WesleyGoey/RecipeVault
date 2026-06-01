@@ -7,8 +7,8 @@
 
 import SwiftUI
 
+// MARK: - Profile View
 struct ProfileView: View {
-    // 🚀 TERIMA BINDING TAB
     @Binding var selectedTab: Int
     @State private var navResetID = UUID()
 
@@ -16,15 +16,13 @@ struct ProfileView: View {
     @EnvironmentObject var recipeVM: RecipeViewModel
     @StateObject private var vm = ProfileViewModel()
 
-    // 🚀 UBAH NAMA JADI selectedSegment agar tidak bentrok dengan selectedTab dari MainTabView
-    @State private var selectedSegment: Int = 0  // 0 = Collections, 1 = Favorites
+    @State private var selectedSegment: Int = 0
 
     @State private var showAuthView: Bool = false
     @State private var authInitialMode: AuthMode = .login
 
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
-    // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     let bgYellow = Color(hex: "FBF9EC")
@@ -36,7 +34,6 @@ struct ProfileView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        // Header (common)
                         headerSection
                             .padding(.horizontal)
 
@@ -48,7 +45,6 @@ struct ProfileView: View {
                             segmentedControl
                                 .padding(.horizontal)
 
-                            // Gunakan selectedSegment
                             if selectedSegment == 0 {
                                 collectionsSection
                                     .padding(.horizontal)
@@ -98,14 +94,13 @@ struct ProfileView: View {
             .onReceive(
                 NotificationCenter.default.publisher(for: .favoritesUpdated)
             ) { _ in
-                if selectedSegment == 1 {  // Jika user sedang membuka tab Favorites
+                if selectedSegment == 1 {
                     Task { await vm.loadFavoriteRecipes() }
                 }
             }
         }
-        .id(navResetID)  // 🚀 RESET LOGIC
+        .id(navResetID)
         .onChange(of: selectedTab) { newTab in
-            // Jika keluar dari tab Profile (index 4), reset halamannya!
             if newTab != 4 {
                 navResetID = UUID()
             }
@@ -167,7 +162,6 @@ struct ProfileView: View {
                                     height: 86
                                 ).clipShape(Circle())
                         }
-                        // 🚀 PERBAIKAN LOGIKA FOTO PROFIL UNTUK BASE64 & LINK HTTP
                         else if !vm.profilePictureURL.isEmpty {
                             if vm.profilePictureURL.hasPrefix("http") {
                                 AsyncImage(url: URL(string: vm.profilePictureURL)) { phase in
@@ -301,7 +295,6 @@ struct ProfileView: View {
     // MARK: - Segmented control
     private var segmentedControl: some View {
         HStack(spacing: 0) {
-            // Gunakan selectedSegment
             Button(action: { withAnimation { selectedSegment = 0 } }) {
                 Text("Public Collections")
                     .font(

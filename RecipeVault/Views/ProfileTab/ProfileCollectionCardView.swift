@@ -2,9 +2,12 @@
 //  ProfileCollectionCardView.swift
 //  RecipeVault
 //
+//  Created by Sean tandjaja on 01/06/26.
+//
 
 import SwiftUI
 
+// MARK: - Profile Collection Card View
 struct ProfileCollectionCardView: View {
     let collection: RecipeCollection
     let recipeCount: Int
@@ -12,9 +15,6 @@ struct ProfileCollectionCardView: View {
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            
-            // MARK: - Background Image / Placeholder
-            // 🚀 PERBAIKAN: Logika Gambar (Bisa baca HTTP URL & Base64 Firebase)
             Group {
                 let imageUrl = collection.collectionImage.trimmingCharacters(in: .whitespacesAndNewlines)
                 
@@ -42,7 +42,6 @@ struct ProfileCollectionCardView: View {
                     }
                 } else if let imageData = Data(base64Encoded: imageUrl),
                           let uiImage = UIImage(data: imageData) {
-                    // 🚀 Merender Base64 dari Firebase
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFill()
@@ -54,8 +53,6 @@ struct ProfileCollectionCardView: View {
             }
             .frame(height: 140)
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            
-            // MARK: - Overlays (Pills & Count)
             .overlay(
                 VStack {
                     HStack {
@@ -74,7 +71,6 @@ struct ProfileCollectionCardView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                             .padding(8)
                         } else {
-                            // Tambahan untuk Private (opsional)
                             Label {
                                 Text("PRIVATE")
                                     .font(.caption2).bold()
@@ -94,8 +90,6 @@ struct ProfileCollectionCardView: View {
                     Spacer()
                 }
             )
-
-            // Recipe Count Pill
             .overlay(alignment: .topTrailing) {
                 Text("\(recipeCount)")
                     .font(.system(size: 12, weight: .semibold))
@@ -106,7 +100,6 @@ struct ProfileCollectionCardView: View {
                     .padding(10)
             }
             
-            // Collection Name Banner
             VStack(alignment: .leading, spacing: 6) {
                 Spacer()
                 Text(collection.name)
@@ -123,14 +116,11 @@ struct ProfileCollectionCardView: View {
         }
         .background(Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        
-        // 🚀 PERBAIKAN: Kunci agar kartu 100% bisa diklik meski gambar masih loading/kosong
         .contentShape(Rectangle())
-        
         .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 3)
     }
     
-    // Dipisah agar kodenya lebih rapi
+    // MARK: - Placeholder View For Empty or Invalid Images
     private var placeholderView: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 14)
@@ -151,7 +141,7 @@ struct ProfileCollectionCardView: View {
                 userId: "u1",
                 name: "Weeknight Favorites",
                 description: "Tasty easy dinners",
-                collectionImage: "", // Kosong untuk mengetes Icon
+                collectionImage: "", 
                 visibility: .publicVisibility
             ),
             recipeCount: 7

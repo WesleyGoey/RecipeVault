@@ -7,8 +7,8 @@
 
 import SwiftUI
 
+// MARK: - Search View
 struct SearchView: View {
-    // 🚀 PERBAIKAN: Terima Binding dari MainTabView
     @Binding var selectedTab: Int
     
     @StateObject private var viewModel = SearchViewModel()
@@ -17,16 +17,13 @@ struct SearchView: View {
     
     @State private var navResetID = UUID()
     
-    // State untuk menampung 2 koleksi acak di halaman depan
     @State private var featuredCollections: [RecipeCollection] = []
 
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     let darkText = Color.primary
-
-    // Grid Setup untuk 2 Kolom (Hasil Pencarian)
+    
     let columns = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16),
@@ -35,11 +32,7 @@ struct SearchView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-
-                // MARK: - FIXED HEADER AREA
                 VStack(alignment: .leading, spacing: 0) {
-
-                    // 1. Title
                     if !viewModel.isSearching {
                         Text("Discover")
                             .font(.merriweather(36, weight: .bold))
@@ -52,7 +45,6 @@ struct SearchView: View {
                         Spacer().frame(height: 20)
                     }
 
-                    // 2. Search Bar & Cancel Button
                     HStack(spacing: 12) {
                         HStack {
                             Image(systemName: "magnifyingglass")
@@ -102,7 +94,6 @@ struct SearchView: View {
                     }
                     .padding(.horizontal, 24)
 
-                    // 3. Segmented Tabs
                     if viewModel.isSearching {
                         HStack(spacing: 0) {
                             SearchPickerTab(title: "TheMealDB", isSelected: viewModel.selectedTab == .theMealDB) {
@@ -125,7 +116,6 @@ struct SearchView: View {
                 .background(bgYellow)
                 .zIndex(1)
 
-                // MARK: - SCROLLABLE CONTENT AREA
                 ScrollView {
                     if !viewModel.isSearching {
                         discoveryFeed
@@ -149,13 +139,10 @@ struct SearchView: View {
                 }
             }
         }
-        .id(navResetID) // 🚀 PERBAIKAN: Ikat ID dinamis untuk mereset tumpukan halaman
+        .id(navResetID)
         .onChange(of: selectedTab) { newTab in
-            // Jika user berpindah keluar dari tab SEARCH (index 1), cuci otak navigasinya!
             if newTab != 1 {
                 navResetID = UUID()
-                
-                // Opsional: Otomatis menutup keyboard dan mode mengetik saat ditinggal
                 viewModel.isSearching = false
                 viewModel.searchText = ""
                 isSearchFocused = false
@@ -164,14 +151,11 @@ struct SearchView: View {
     }
 }
 
-// MARK: - Subviews
+// MARK: - Search Subviews
 extension SearchView {
-
-    // MARK: - Discovery Feed (Default State)
+    // MARK: - Discovery Feed
     private var discoveryFeed: some View {
         VStack(alignment: .leading, spacing: 32) {
-
-            // SECTION 1: EDITOR'S PICK
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("EDITOR'S PICK")
@@ -197,7 +181,6 @@ extension SearchView {
                             OptimizedCollectionLink(
                                 collection: collection,
                                 creatorNames: viewModel.creatorNames
-                                // isCompact defaults to false here, keeping the full width!
                             )
                         }
                     }
@@ -205,7 +188,6 @@ extension SearchView {
                 .padding(.horizontal, 24)
             }
 
-            // SECTION 2: WHAT'S HOT
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("WHAT'S HOT")
@@ -292,7 +274,7 @@ extension SearchView {
                         OptimizedCollectionLink(
                             collection: collection,
                             creatorNames: viewModel.creatorNames,
-                            isCompact: true // 🚀 Set to true for the grid view!
+                            isCompact: true
                         )
                     }
                 }
@@ -305,12 +287,11 @@ extension SearchView {
     }
 }
 
-// MARK: - 🚀 STRUCT OPTIMASI
-
+// MARK: - Optimized Collection Link
 struct OptimizedCollectionLink: View {
     let collection: RecipeCollection
     let creatorNames: [String: String]
-    var isCompact: Bool = false // 🚀 Added compact flag
+    var isCompact: Bool = false
     
     var body: some View {
         let authorName = creatorNames[collection.userId] ?? "Chef"
@@ -322,13 +303,14 @@ struct OptimizedCollectionLink: View {
                 author: "@\(authorName.uppercased().replacingOccurrences(of: " ", with: "_"))",
                 recipeCount: 0,
                 imageUrl: validImage,
-                isCompact: isCompact // 🚀 Passed down to the card
+                isCompact: isCompact
             )
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
 
+// MARK: - Optimized Recipe Link
 struct OptimizedRecipeLink: View {
     let recipe: Recipe
     @ObservedObject var recipeVM: RecipeViewModel
@@ -341,6 +323,7 @@ struct OptimizedRecipeLink: View {
     }
 }
 
+// MARK: - Search Tab Picker Button
 private struct SearchPickerTab: View {
     let title: String
     let isSelected: Bool

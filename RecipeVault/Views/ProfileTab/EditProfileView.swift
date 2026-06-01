@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 
+// MARK: - Edit Profile View
 struct EditProfileView: View {
     @ObservedObject var vm: ProfileViewModel
     @Environment(\.dismiss) private var dismiss
@@ -19,13 +20,9 @@ struct EditProfileView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
                 
-                // Avatar & Change Photo Button
                 avatarSection
                 
-                // Input TextFields
                 VStack(alignment: .leading, spacing: 20) {
-                    
-                    // Name Field
                     VStack(alignment: .leading, spacing: 8) {
                         Text("NAME").font(.caption).foregroundColor(.gray)
                         TextField("Name", text: $vm.name)
@@ -35,7 +32,6 @@ struct EditProfileView: View {
                             .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
                     }
                     
-                    // Password Section
                     VStack(alignment: .leading, spacing: 8) {
                         Text("CHANGE PASSWORD").font(.caption).foregroundColor(.gray)
                             .padding(.bottom, 4)
@@ -60,7 +56,6 @@ struct EditProfileView: View {
                     }
                 }
                 
-                // AREA TOMBOL DIPINDAH KE DALAM SCROLLVIEW
                 VStack(spacing: 12) {
                     if vm.isLoading {
                         ProgressView()
@@ -68,7 +63,6 @@ struct EditProfileView: View {
                     
                     Button(action: {
                         Task {
-                            // Tutup keyboard saat simpan
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                             
                             await vm.saveProfileChanges()
@@ -101,7 +95,6 @@ struct EditProfileView: View {
         }
         .background(Color(hex: "FBF9EC").ignoresSafeArea())
         .onTapGesture {
-            // Menutup keyboard jika tap area kosong
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
         .photosPicker(isPresented: $showingImagePicker, selection: $phPickerItem, matching: .images)
@@ -109,9 +102,8 @@ struct EditProfileView: View {
             Task {
                 if let item = newItem, let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
                     vm.selectedUIImage = image
-                    // 🚀 Gunakan data mentah 100%
                     vm.selectedImageData = image.jpegData(compressionQuality: 1.0)
-                    vm.isImageDeleted = false // Batalkan hapus jika pilih foto baru
+                    vm.isImageDeleted = false
                 }
             }
         }
@@ -123,8 +115,6 @@ struct EditProfileView: View {
     // MARK: - Avatar Section
     private var avatarSection: some View {
         ZStack(alignment: .topTrailing) {
-            
-            // Base Profil & Tombol Ganti Foto
             ZStack(alignment: .bottom) {
                 Circle()
                     .fill(Color(hex: "2F6B5E"))
@@ -135,7 +125,6 @@ struct EditProfileView: View {
                                 Image(uiImage: ui).resizable().scaledToFill()
                             }
                             else if !vm.profilePictureURL.isEmpty && !vm.isImageDeleted {
-                                // 🚀 CEK HTTP ATAU BASE64
                                 if vm.profilePictureURL.hasPrefix("http") {
                                     AsyncImage(url: URL(string: vm.profilePictureURL)) { phase in
                                         switch phase {
@@ -173,9 +162,8 @@ struct EditProfileView: View {
                 }
             }
             .padding(.top, 10)
-            .padding(.trailing, 10) // Beri jarak agar ikon sampah tidak menabrak batas
+            .padding(.trailing, 10)
             
-            // 🚀 TOMBOL TRASH KANAN ATAS
             if vm.selectedUIImage != nil || (!vm.profilePictureURL.isEmpty && !vm.isImageDeleted) {
                 Button(action: {
                     withAnimation {
@@ -196,7 +184,7 @@ struct EditProfileView: View {
             }
         }
     }
-
+    // MARK: - Initials Generator For Placeholder Avatar
     private func initials() -> String {
         let n = vm.name.isEmpty ? "AR" : vm.name
         let parts = n.split(separator: " ")
