@@ -11,6 +11,10 @@ import FirebaseFirestore
 struct CollectionDetailView: View {
     let collection: RecipeCollection
     @ObservedObject var viewModel: CollectionViewModel
+    
+    // 🚀 INJEKSI RECIPE VIEW MODEL UNTUK MENGELOLA FAVORIT & ADD TO COLLECTION
+    @StateObject private var recipeVM = RecipeViewModel()
+    
     @Environment(\.dismiss) private var dismiss
 
     @State private var showingEditSheet = false
@@ -51,11 +55,19 @@ struct CollectionDetailView: View {
         .background(bgYellow.ignoresSafeArea())
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
+        
+        // 🚀 BOTTOM SHEET UNTUK MENYIMPAN RESEP KE KOLEKSI LAIN
+        .sheet(isPresented: $recipeVM.showCollectionSheet) {
+            CollectionSelectionSheet(viewModel: recipeVM)
+        }
+        
         .task {
             // Ambil daftar resep untuk koleksi ini
             if let collectionId = collection.id {
                 await viewModel.loadRecipesForCollection(collectionId: collectionId)
             }
+            // 🚀 Pastikan memuat daftar favorit agar menu (Add/Remove Favorite) akurat
+            await recipeVM.loadFavoriteIds()
         }
     }
 }
@@ -163,8 +175,8 @@ extension CollectionDetailView {
             } else {
                 ForEach(viewModel.recipesInCollection) { recipe in
                     
-                    // 🚀 BUNGKUS DENGAN NAVIGATION LINK AGAR BISA DITAP KE RECIPEDETAILVIEW
-                    NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
+                    // Teruskan recipeVM ke DetailView agar navigasi mulus
+                    NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
                         HStack(spacing: 16) {
                             
                             // Thumbnail Recipe
@@ -173,7 +185,6 @@ extension CollectionDetailView {
                                     mutedTeal.opacity(0.15)
                                     Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
                                 }
-                                // 🚀 LOGIKA BARU: SUPPORT GAMBAR HTTP (THEMEALDB) DI DALAM LIST
                                 else if recipe.recipeImage.starts(with: "http") {
                                     AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
                                         if let image = phase.image {
@@ -207,8 +218,40 @@ extension CollectionDetailView {
                             }
                             Spacer()
                             
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.gray.opacity(0.5))
+                            // 🚀 MENGGANTI CHEVRON.RIGHT DENGAN 3 DOT MENU
+                            Menu {
+                                // 1. Opsi Add to Collection
+                                Button {
+                                    Task { await recipeVM.openCollectionSheet(for: recipe) }
+                                } label: {
+                                    Label("Add to Collection", systemImage: "folder.badge.plus")
+                                }
+                                
+                                // 2. Opsi Add/Remove Favorite
+                                let isFav = recipeVM.isFavorite(recipe: recipe)
+                                Button {
+                                    Task { await recipeVM.toggleFavorite(recipe: recipe) }
+                                } label: {
+                                    Label(isFav ? "Remove Favorite" : "Add to Favorite", systemImage: isFav ? "heart.slash" : "heart")
+                                }
+                                
+                                // 3. Opsi Remove from Collection (Hanya muncul jika yang login adalah pemilik koleksi ini)
+                                if viewModel.isOwner(collection: collection) {
+                                    Divider() // Pemisah garis agar terlihat rapi
+                                    Button(role: .destructive) {
+                                        Task { await viewModel.removeRecipeFromCollection(recipe: recipe, from: collection) }
+                                    } label: {
+                                        Label("Remove from Collection", systemImage: "trash")
+                                    }
+                                }
+                                
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 44, height: 44) // Memperbesar area tap agar mudah ditekan
+                                    .contentShape(Rectangle())
+                            }
                         }
                         .padding(12)
                         .background(Color.white)
@@ -221,7 +264,6 @@ extension CollectionDetailView {
         }
     }
 }
-
 #Preview {
     CollectionDetailView(
         collection: RecipeCollection.mockCollections[0],

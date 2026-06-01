@@ -15,19 +15,21 @@ class RecipeViewModel: ObservableObject {
     // MARK: - List State
     @Published var myRecipes: [Recipe] = []
     @Published var isLoading: Bool = false
-    
-    // 🚀 Error state
     @Published var operationError: String = ""
     
     // MARK: - Detail UI State
     @Published var currentTab: DetailTab = .ingredients
-    @Published var favoriteRecipeIds: Set<String> = [] // State nyata untuk Favorites
+    @Published var favoriteRecipeIds: Set<String> = []
     
     // MARK: - Collection Bottom Sheet State
     @Published var showCollectionSheet: Bool = false
     @Published var userCollections: [RecipeCollection] = []
+    
+    // 🚀 STATE BARU: Untuk melacak perubahan centang kotak
     @Published var selectedCollectionIds: Set<String> = []
-    @Published var selectedRecipeForCollection: Recipe? = nil // Melacak resep mana yang akan disimpan
+    @Published var originalCollectionIds: Set<String> = [] // Menyimpan data asli sebelum diedit
+    
+    @Published var selectedRecipeForCollection: Recipe? = nil
     @Published var isSavingToCollections: Bool = false
     
     enum DetailTab {
@@ -46,7 +48,7 @@ class RecipeViewModel: ObservableObject {
         operationError = ""
         do {
             myRecipes = try await recipeService.getUserRecipes(userId: uid)
-            await loadFavoriteIds() // Muat juga data favorit saat memuat resep
+            await loadFavoriteIds()
         } catch {
             self.operationError = error.localizedDescription
         }
@@ -108,7 +110,6 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Ownership
     func isOwner(recipe: Recipe) -> Bool {
         return recipe.userId == authService.getCurrentUID()
     }
@@ -135,19 +136,15 @@ class RecipeViewModel: ObservableObject {
         let isCurrentlyFavorite = favoriteRecipeIds.contains(recipeId)
         let willBeFavorite = !isCurrentlyFavorite
         
-        // Optimistic UI Update: Langsung ubah warna UI sebelum server membalas
         if willBeFavorite { favoriteRecipeIds.insert(recipeId) }
         else { favoriteRecipeIds.remove(recipeId) }
         
         do {
-            // 🚀 JIKA RESEP DARI THEMEALDB DIFAVORITKAN, SIMPAN SALINANNYA KE FIRESTORE
             if willBeFavorite && recipe.userId == "themealdb" {
                 try? await recipeService.createRecipe(recipe: recipe, imageData: nil)
             }
-            
             try await recipeService.toggleFavorite(userId: uid, recipeId: recipeId, isFavorite: willBeFavorite)
         } catch {
-            // Jika Firebase gagal, kembalikan warna hati seperti semula
             if isCurrentlyFavorite { favoriteRecipeIds.insert(recipeId) }
             else { favoriteRecipeIds.remove(recipeId) }
             print("Error toggling favorite: \(error.localizedDescription)")
@@ -158,8 +155,27 @@ class RecipeViewModel: ObservableObject {
     func openCollectionSheet(for recipe: Recipe) async {
         selectedRecipeForCollection = recipe
         selectedCollectionIds.removeAll()
+        originalCollectionIds.removeAll()
+        
         showCollectionSheet = true
         await fetchUserCollections()
+        
+        // 🚀 Cek di database apakah resep ini sudah ada di folder
+        if let recipeId = recipe.id {
+            do {
+                let existingColIds = try await collectionService.getCollectionIdsForRecipe(recipeId: recipeId)
+                
+                // Pastikan hanya mencentang koleksi milik user yang sedang login
+                let userColIds = Set(userCollections.compactMap { $0.id })
+                let validIds = Set(existingColIds).intersection(userColIds)
+                
+                // Centang UI otomatis
+                self.selectedCollectionIds = validIds
+                self.originalCollectionIds = validIds
+            } catch {
+                print("Error loading checked collections: \(error.localizedDescription)")
+            }
+        }
     }
     
     func fetchUserCollections() async {
@@ -184,18 +200,28 @@ class RecipeViewModel: ObservableObject {
         isSavingToCollections = true
         
         do {
-            // 🚀 JIKA RESEP DARI THEMEALDB DISIMPAN KE KOLEKSI, SIMPAN SALINANNYA KE FIRESTORE
-            // Kita mengirimkan imageData: nil, sehingga URL aslinya (http...) tetap utuh.
-            if recipe.userId == "themealdb" {
-                // Menggunakan try? agar tidak crash jika resep sudah pernah tersimpan sebelumnya
+            // Auto-clone jika TheMealDB (Hanya dipanggil jika ditambah ke folder baru)
+            if recipe.userId == "themealdb" && !selectedCollectionIds.isEmpty {
                 try? await recipeService.createRecipe(recipe: recipe, imageData: nil)
             }
             
-            for collectionId in selectedCollectionIds {
+            // 🚀 LOGIKA DIFFING: Tentukan mana yang ditambah, mana yang dihapus
+            let collectionsToAdd = selectedCollectionIds.subtracting(originalCollectionIds)
+            let collectionsToRemove = originalCollectionIds.subtracting(selectedCollectionIds)
+            
+            // 1. Eksekusi Penambahan
+            for collectionId in collectionsToAdd {
                 try await collectionService.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
             }
+            
+            // 2. Eksekusi Penghapusan (Jika user "uncheck" folder yang tadinya dicentang)
+            for collectionId in collectionsToRemove {
+                try await collectionService.removeRecipeFromCollection(collectionId: collectionId, recipeId: recipeId)
+            }
+            
             showCollectionSheet = false
             selectedCollectionIds.removeAll()
+            originalCollectionIds.removeAll()
             selectedRecipeForCollection = nil
         } catch {
             self.operationError = error.localizedDescription
@@ -207,7 +233,6 @@ class RecipeViewModel: ObservableObject {
 // MARK: - Mock Data Extension
 extension Recipe {
     static let mockRecipes = [
-        Recipe(userId: "123", title: "Mom's Sunday Pasta", description: "Delicious pasta", ingredients: ["Pasta"], steps: ["Boil water"], category: "Italian", recipeImage: "https://www.themealdb.com/images/media/meals/sutysw1468247559.jpg"),
-        Recipe(userId: "123", title: "Blueberry Pavlova", description: "Sweet dessert", ingredients: ["Blueberry"], steps: ["Bake"], category: "Dessert", recipeImage: "https://www.themealdb.com/images/media/meals/adxcjq1628770918.jpg")
+        Recipe(userId: "123", title: "Mom's Sunday Pasta", description: "Delicious pasta", ingredients: ["Pasta"], steps: ["Boil water"], category: "Italian", recipeImage: "https://www.themealdb.com/images/media/meals/sutysw1468247559.jpg")
     ]
 }

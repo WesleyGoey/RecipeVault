@@ -80,6 +80,17 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         return snapshot.documents.count
     }
     
+    func getCollectionIdsForRecipe(recipeId: String) async throws -> [String] {
+        let db = Firestore.firestore()
+        // Cari di tabel relasi di mana recipeId cocok
+        let snapshot = try await db.collection("collection_recipes")
+            .whereField("recipeId", isEqualTo: recipeId)
+            .getDocuments()
+        
+        // Ambil array ID koleksinya saja
+        return snapshot.documents.compactMap { $0.data()["collectionId"] as? String }
+    }
+    
     func updateCollection(collection: RecipeCollection) async throws {
         guard let colId = collection.id else { return }
         try db.collection("collections").document(colId).setData(from: collection)
@@ -149,4 +160,6 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         }
         return recipes
     }
+    
+
 }

@@ -83,4 +83,8 @@ class CollectionService: CollectionServiceProtocol {
     func removeRecipeFromCollection(collectionId: String, recipeId: String) async throws {
         try await firestoreRepo.removeRecipeFromCollection(collectionId: collectionId, recipeId: recipeId)
     }
+    
+    func getCollectionIdsForRecipe(recipeId: String) async throws -> [String] {
+        return try await firestoreRepo.getCollectionIdsForRecipe(recipeId: recipeId)
+    }
 }

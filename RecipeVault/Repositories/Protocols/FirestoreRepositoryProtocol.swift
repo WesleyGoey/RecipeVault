@@ -24,6 +24,7 @@ protocol FirestoreRepositoryProtocol {
     func getRecipeCountInCollection(collectionId: String) async throws -> Int
     func updateCollection(collection: RecipeCollection) async throws   // 🚀 Baru
     func deleteCollection(collectionId: String) async throws           // 🚀 Baru
+    func getCollectionIdsForRecipe(recipeId: String) async throws -> [String]
     
     /// 🚀 FAVORITES
     func toggleFavorite(userId: String, recipeId: String, isFavorite: Bool) async throws
@@ -34,4 +35,5 @@ protocol FirestoreRepositoryProtocol {
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws
     func removeRecipeFromCollection(collectionId: String, recipeId: String) async throws
     func getRecipesInCollection(collectionId: String) async throws -> [Recipe]
+    
 }
