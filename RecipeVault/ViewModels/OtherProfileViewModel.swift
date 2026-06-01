@@ -7,13 +7,13 @@
 
 import Foundation
 import SwiftUI
-import Combine // Wajib agar tidak error ObservableObject
+import Combine
 import FirebaseFirestore
 
 @MainActor
 class OtherProfileViewModel: ObservableObject {
     @Published var creatorName: String = ""
-    @Published var profilePictureURL: String = ""
+    @Published var profilePictureURL: String = "" // Menyimpan Base64
     
     @Published var publicCollections: [RecipeCollection] = []
     @Published var collectionCounts: [String: Int] = [:]
@@ -22,6 +22,7 @@ class OtherProfileViewModel: ObservableObject {
     
     let creatorId: String
     private let db = Firestore.firestore()
+    private let collectionService = CollectionService.shared // 🚀 Gunakan service untuk count
     
     init(creatorId: String) {
         self.creatorId = creatorId
@@ -39,7 +40,8 @@ class OtherProfileViewModel: ObservableObject {
             let doc = try await db.collection("users").document(creatorId).getDocument()
             if let data = doc.data() {
                 self.creatorName = data["name"] as? String ?? "Unknown Creator"
-                self.profilePictureURL = data["profilePictureURL"] as? String ?? ""
+                // 🚀 PERBAIKAN: Gunakan key "profilePicture", bukan "profilePictureURL"
+                self.profilePictureURL = data["profilePicture"] as? String ?? ""
             }
         } catch {
             print("Error fetching creator profile: \(error)")
@@ -49,7 +51,6 @@ class OtherProfileViewModel: ObservableObject {
     
     private func fetchPublicCollections() async {
         do {
-            // 🚀 1. Hanya ambil koleksi milik user ini untuk menghindari error Firebase Index
             let snapshot = try await db.collection("collections")
                 .whereField("userId", isEqualTo: creatorId)
                 .getDocuments()
@@ -58,25 +59,21 @@ class OtherProfileViewModel: ObservableObject {
             
             for doc in snapshot.documents {
                 let data = doc.data()
-                
-                // 🚀 2. Ambil nilai "visibility" (Bukan "isPublic")
                 let visibilityString = data["visibility"] as? String ?? ""
                 
-                // 🚀 3. Filter secara manual: Hanya masukkan jika mengandung kata "public"
                 if visibilityString.lowercased().contains("public") {
-                    
-                    // 🚀 4. Format inisialisasi disesuaikan dengan Struct RecipeCollection milikmu
                     var collection = RecipeCollection(
                         userId: creatorId,
                         name: data["name"] as? String ?? "",
                         description: data["description"] as? String ?? "",
                         collectionImage: data["collectionImage"] as? String ?? "",
-                        visibility: .publicVisibility // Paksa jadi public
+                        visibility: .publicVisibility
                     )
-                    collection.id = doc.documentID // ID Dokumen Firestore
+                    collection.id = doc.documentID
                     
-                    let recipes = data["recipeIds"] as? [String] ?? []
-                    self.collectionCounts[doc.documentID] = recipes.count
+                    // 🚀 PERBAIKAN: Gunakan Junction Table melalui CollectionService
+                    let count = (try? await collectionService.getRecipeCountInCollection(collectionId: doc.documentID)) ?? 0
+                    self.collectionCounts[doc.documentID] = count
                     
                     fetchedCollections.append(collection)
                 }

@@ -16,8 +16,9 @@ struct CollectionDetailView: View {
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
 
-    // State untuk menampung nama pembuat koleksi (Real Data)
+    // 🚀 State untuk menampung nama pembuat koleksi (Real Data)
     @State private var creatorName: String = "Loading..."
+    @State private var creatorProfilePic: String = ""
     
     // Injeksi RecipeViewModel untuk fitur 3-Dot Menu
     @StateObject private var recipeVM = RecipeViewModel()
@@ -56,7 +57,7 @@ struct CollectionDetailView: View {
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
         
-        // BOTTOM SHEET UNTUK MENYIMPAN RESEP (Dari 3-Dot Menu)
+        // BOTTOM SHEET UNTUK MENYIMPAN RESEP
         .sheet(isPresented: $recipeVM.showCollectionSheet) {
             CollectionSelectionSheet(viewModel: recipeVM)
         }
@@ -66,34 +67,37 @@ struct CollectionDetailView: View {
             await viewModel.loadRecipesForCollection(collectionId: id)
             await recipeVM.loadFavoriteIds() // Muat status favorit
 
-            if viewModel.isOwner(collection: collection) {
-                creatorName = "You"
-            } else {
-                do {
-                    let db = Firestore.firestore()
-                    let doc = try await db.collection("users").document(collection.userId).getDocument()
-                    if let name = doc.data()?["name"] as? String {
-                        creatorName = name
-                    } else {
-                        creatorName = "Unknown Chef"
+            // 🚀 AMBIL DATA AUTHOR
+            do {
+                let db = Firestore.firestore()
+                let doc = try await db.collection("users").document(collection.userId).getDocument()
+                if let data = doc.data() {
+                    creatorName = data["name"] as? String ?? "Unknown Chef"
+                    creatorProfilePic = data["profilePicture"] as? String ?? ""
+                    
+                    if viewModel.isOwner(collection: collection) {
+                        creatorName = "You"
                     }
-                } catch {
+                } else {
                     creatorName = "Unknown Chef"
                 }
+            } catch {
+                creatorName = "Unknown Chef"
             }
         }
         
-        // 🚀 MEMANGGIL COLLECTION EDIT VIEW YANG SEBENARNYA
         .sheet(isPresented: $showingEditSheet) {
             CollectionEditView(collectionToEdit: collection, viewModel: viewModel)
         }
         
+        // 🚀 LOGIKA DISMISS INSTAN
         .alert("Delete Collection", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
+                dismiss()
                 Task {
+                    try? await Task.sleep(nanoseconds: 250_000_000)
                     await viewModel.deleteCollection(collection: collection)
-                    dismiss()
                 }
             }
         } message: {
@@ -143,7 +147,7 @@ extension CollectionDetailView {
                 }
                 Spacer()
                 
-                // 🚀 3-DOT MENU UNTUK EDIT/DELETE KOLEKSI
+                // 3-DOT MENU UNTUK EDIT/DELETE KOLEKSI
                 if viewModel.isOwner(collection: collection) {
                     Menu {
                         Button {
@@ -191,17 +195,36 @@ extension CollectionDetailView {
         }
     }
 
+    // 🚀 BISA DI-KLIK & MENAMPILKAN FOTO PROFIL AUTHOR
     private var authorSection: some View {
         NavigationLink(destination: OtherProfileView(creatorId: collection.userId)) {
             HStack(spacing: 12) {
-                Circle()
-                    .fill(mutedTeal)
-                    .frame(width: 46, height: 46)
-                    .overlay(
+                
+                // 🚀 LOGIKA FOTO PROFIL AUTHOR
+                ZStack {
+                    Circle().fill(mutedTeal).frame(width: 46, height: 46)
+                    if !creatorProfilePic.isEmpty {
+                        if creatorProfilePic.hasPrefix("http") {
+                            AsyncImage(url: URL(string: creatorProfilePic)) { phase in
+                                if let image = phase.image {
+                                    image.resizable().scaledToFill()
+                                } else {
+                                    Text(String(creatorName.prefix(2)).uppercased())
+                                        .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                                }
+                            }
+                            .frame(width: 46, height: 46).clipShape(Circle())
+                        } else if let data = Data(base64Encoded: creatorProfilePic), let uiImg = UIImage(data: data) {
+                            Image(uiImage: uiImg).resizable().scaledToFill().frame(width: 46, height: 46).clipShape(Circle())
+                        } else {
+                            Text(String(creatorName.prefix(2)).uppercased())
+                                .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                        }
+                    } else {
                         Text(String(creatorName.prefix(2)).uppercased())
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                    )
+                            .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                    }
+                }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(creatorName)

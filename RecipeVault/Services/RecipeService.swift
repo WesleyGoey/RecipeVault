@@ -4,75 +4,66 @@
 //
 //  Created by Wesley Goey on 28/05/26.
 //
+
 import Foundation
+import UIKit // 🚀 Wajib import UIKit untuk menangani UIImage
 
 // MARK: - RecipeService
 class RecipeService: RecipeServiceProtocol {
     
-    // MARK: - Properties
+    // 🚀 HAPUS storageRepo, kita hanya pakai Firestore
     static let shared = RecipeService(
-        firestoreRepo: FirestoreRepository.shared,
-        storageRepo: CloudStorageRepository.shared
+        firestoreRepo: FirestoreRepository.shared
     )
     
     private let firestoreRepo: FirestoreRepositoryProtocol
-    private let storageRepo: CloudStorageRepositoryProtocol
     
     // MARK: - Initializer (Dependency Injection)
-    init(firestoreRepo: FirestoreRepositoryProtocol, storageRepo: CloudStorageRepositoryProtocol) {
+    init(firestoreRepo: FirestoreRepositoryProtocol) {
         self.firestoreRepo = firestoreRepo
-        self.storageRepo = storageRepo
-    }
-    
-    // MARK: - Business Logic (NFR-03)
-    private func validateSize(image: Data, maxMB: Int = 5) -> Bool {
-        let sizeInMB = Double(image.count) / (1024.0 * 1024.0)
-        return sizeInMB <= Double(maxMB)
     }
     
     // MARK: - Methods required by RecipeServiceProtocol
     
-    // Create (with optional image)
+    // 1. CREATE
     func createRecipe(recipe: Recipe, imageData: Data?) async throws {
+        var newRecipe = recipe
+        
+        // 🚀 UBAH GAMBAR JADI BASE64 TEXT
         if let data = imageData {
-            guard validateSize(image: data) else {
-                throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Ukuran gambar melebihi 5 MB."])
-            }
-            let imageURL = try await storageRepo.uploadImage(image: data, path: "recipe_images")
-            var newRecipe = recipe
-            newRecipe.recipeImage = imageURL
-            try await firestoreRepo.createRecipe(recipe: newRecipe)
+            // Karena dari UI kamu mengirim `rawImageData` (kualitas 1.0),
+            // kita langsung ubah saja data tersebut jadi String Base64.
+            newRecipe.recipeImage = data.base64EncodedString()
         } else {
-            try await firestoreRepo.createRecipe(recipe: recipe)
+            newRecipe.recipeImage = ""
         }
+        
+        try await firestoreRepo.createRecipe(recipe: newRecipe)
     }
     
-    // Read user recipes
+    // 2. READ USER RECIPES
     func getUserRecipes(userId: String) async throws -> [Recipe] {
         return try await firestoreRepo.getUserRecipes(userId: userId)
     }
     
-    // Update (with optional new image)
+    // 3. UPDATE
     func updateRecipe(recipe: Recipe, newImageData: Data?) async throws {
         var updatedRecipe = recipe
+        
+        // 🚀 UBAH GAMBAR BARU JADI BASE64 TEXT (Jika user mengganti gambar)
         if let data = newImageData {
-            guard validateSize(image: data) else {
-                throw NSError(domain: "RecipeService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Ukuran gambar melebihi 5 MB."])
-            }
-            let imageURL = try await storageRepo.uploadImage(image: data, path: "recipe_images")
-            updatedRecipe.recipeImage = imageURL
+            updatedRecipe.recipeImage = data.base64EncodedString()
         }
+        
         try await firestoreRepo.updateRecipe(recipe: updatedRecipe)
     }
     
-    // Delete
+    // 4. DELETE
     func deleteRecipe(recipeId: String) async throws {
         try await firestoreRepo.deleteRecipe(recipeId: recipeId)
     }
     
-    // MARK: - Favorites
-    // Enhanced: If the recipe being favorited is not present in Firestore, attempt to
-    // fetch it from TheMealDB API and save it to Firestore before toggling favorite.
+    // MARK: - 🌟 FAVORITES (Dengan TheMealDB Mirroring)
     func toggleFavorite(userId: String, recipeId: String, isFavorite: Bool) async throws {
         // If adding to favorites, ensure recipe exists in Firestore (mirror from TheMealDB if needed)
         if isFavorite {
@@ -119,14 +110,11 @@ class RecipeService: RecipeServiceProtocol {
                                 ingredients: parsedIngredients,
                                 steps: parsedSteps.isEmpty ? [instructions] : parsedSteps,
                                 category: category,
-                                recipeImage: image
+                                recipeImage: image // 🚀 Biarkan berupa URL TheMealDB
                             )
-                            // Assign the MealDB id so Firestore doc id can be set
                             newRecipe.id = mealId
-                            // Optionally set createdAt to now; Firestore @ServerTimestamp will handle if nil
                             newRecipe.createdAt = Date()
                             
-                            // Save to Firestore only if needed (repo has helper)
                             try await firestoreRepo.saveRecipeIfNeeded(recipe: newRecipe)
                             print("[RecipeService] mirrored TheMealDB recipe \(mealId) into Firestore")
                         } else {
@@ -136,11 +124,9 @@ class RecipeService: RecipeServiceProtocol {
                         print("[RecipeService] invalid TheMealDB lookup URL for id \(recipeId)")
                     }
                 } else {
-                    // Recipe already exists in Firestore; nothing to do
                     print("[RecipeService] recipe \(recipeId) already exists in Firestore")
                 }
             } catch {
-                // Non-fatal: we still attempt to toggle favorite. Log the issue.
                 print("[RecipeService]: warning failed to mirror external recipe before favoriting: \(error)")
             }
         }
