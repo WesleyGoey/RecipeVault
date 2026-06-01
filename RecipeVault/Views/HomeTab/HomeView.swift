@@ -9,6 +9,7 @@ import SwiftUI
 
 struct HomeView: View {
     @StateObject private var viewModel = HomeViewModel()
+    @EnvironmentObject var recipeVM: RecipeViewModel
     
     // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
@@ -22,7 +23,6 @@ struct HomeView: View {
                     
                     // MARK: - 1. Title Area
                     Text("Recipe Vault")
-                        // 🚀 Menggunakan extension Font.merriweather
                         .font(.merriweather(40, weight: .bold))
                         .foregroundColor(darkText)
                         .padding(.horizontal, 24)
@@ -34,7 +34,8 @@ struct HomeView: View {
                             .frame(height: 320)
                             .frame(maxWidth: .infinity)
                     } else if let heroRecipe = viewModel.recipeOfTheDay {
-                        NavigationLink(destination: RecipeDetailView(recipe: heroRecipe, viewModel: RecipeViewModel())) {
+                        NavigationLink(destination: RecipeDetailView(recipe: heroRecipe, viewModel: recipeVM)) {
+                            // 🚀 PERBAIKAN: Hapus parameter recipeVM karena sudah ditarik otomatis oleh HomeCardView
                             HomeCardView(recipe: heroRecipe)
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -108,8 +109,8 @@ struct HomeView: View {
                                 // KOLOM KIRI (Hanya berisi index Genap: 0, 2, 4...)
                                 VStack(spacing: 16) {
                                     ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 == 0 }, id: \.element.id) { index, recipe in
-                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
-                                            // Pola Tinggi: Indeks 0 = 280, Indeks 2 = 220
+                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
+                                            // 🚀 PERBAIKAN: Hapus parameter recipeVM
                                             FeedCardView(recipe: recipe, cardHeight: (index % 4 == 0) ? 280 : 220)
                                         }
                                         .buttonStyle(PlainButtonStyle())
@@ -119,8 +120,8 @@ struct HomeView: View {
                                 // KOLOM KANAN (Hanya berisi index Ganjil: 1, 3, 5...)
                                 VStack(spacing: 16) {
                                     ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 != 0 }, id: \.element.id) { index, recipe in
-                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
-                                            // Pola Tinggi Kebalikan: Indeks 1 = 220, Indeks 3 = 280
+                                        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
+                                            // 🚀 PERBAIKAN: Hapus parameter recipeVM
                                             FeedCardView(recipe: recipe, cardHeight: (index % 4 == 3) ? 280 : 220)
                                         }
                                         .buttonStyle(PlainButtonStyle())
@@ -132,7 +133,7 @@ struct HomeView: View {
                         }
                     }
                 }
-                .padding(.bottom, 120) // Ruang ekstra agar ScrollView tidak tertutup Tab Bar
+                .padding(.bottom, 120)
             }
             .background(bgYellow.ignoresSafeArea())
         }
@@ -151,7 +152,6 @@ struct CategoryPill: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                // 🚀 Menggunakan extension Font.merriweather
                 .font(.merriweather(16, weight: .bold))
                 .foregroundColor(isSelected ? .white : mutedTeal)
                 .padding(.horizontal, 24)
@@ -168,4 +168,5 @@ struct CategoryPill: View {
 
 #Preview {
     HomeView()
+        .environmentObject(RecipeViewModel()) // Wajib untuk mencegah Preview Crash
 }

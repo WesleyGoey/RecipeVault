@@ -245,65 +245,48 @@ extension CollectionDetailView {
 // MARK: - 🚀 STRUCT TERPISAH (Meringankan beban kompilasi Xcode)
 struct CollectionRecipeRow: View {
     let recipe: Recipe
-
+    
+    // 🚀 PERBAIKAN 1: Panggil Global State di sini
+    @EnvironmentObject var recipeVM: RecipeViewModel
+    
     // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
     let darkText = Color.primary
-
+    
     var body: some View {
-        NavigationLink(
-            destination: RecipeDetailView(
-                recipe: recipe,
-                viewModel: RecipeViewModel()
-            )
-        ) {
+        // 🚀 PERBAIKAN 2: Gunakan 'recipeVM', JANGAN 'RecipeViewModel()'
+        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
             HStack(spacing: 16) {
-
-                // 🚀 Fallback Gambar Tanpa PercentEncoding yang merusak URL
-                let rawUrl =
-                    recipe.recipeImage.isEmpty
-                    ? "https://images.unsplash.com/photo-1495195134817-a165d4292816?q=80&w=800&auto=format&fit=crop"
-                    : recipe.recipeImage
-
-                AsyncImage(
-                    url: URL(
-                        string: rawUrl.trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        )
-                    )
-                ) { phase in
+                
+                // Fallback Gambar Tanpa PercentEncoding yang merusak URL
+                let rawUrl = recipe.recipeImage.isEmpty ? "https://images.unsplash.com/photo-1495195134817-a165d4292816?q=80&w=800&auto=format&fit=crop" : recipe.recipeImage
+                
+                AsyncImage(url: URL(string: rawUrl.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
                     if let image = phase.image {
                         image.resizable().scaledToFill()
                     } else if phase.error != nil {
-                        // Jika URL gagal di-load
-                        Color.gray.opacity(0.3)
-                            .overlay(
-                                Image(systemName: "photo").foregroundColor(
-                                    .gray
-                                )
-                            )
+                        Color.gray.opacity(0.3).overlay(Image(systemName: "photo").foregroundColor(.gray))
                     } else {
-                        // Sedang loading
                         Color.gray.opacity(0.2).overlay(ProgressView())
                     }
                 }
                 .frame(width: 80, height: 80)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-
+                
                 VStack(alignment: .leading, spacing: 8) {
                     Text(recipe.title)
                         .font(.merriweather(16, weight: .bold))
                         .foregroundColor(darkText)
                         .lineLimit(1)
                         .multilineTextAlignment(.leading)
-
+                    
                     HStack(spacing: 8) {
                         Text(recipe.category)
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 10).padding(.vertical, 4)
                             .background(burntOrange).clipShape(Capsule())
-
+                        
                         HStack(spacing: 4) {
                             Image(systemName: "clock")
                             Text("30 min")
@@ -313,9 +296,7 @@ struct CollectionRecipeRow: View {
                     }
                 }
                 Spacer()
-                Image(systemName: "chevron.right").foregroundColor(
-                    .gray.opacity(0.5)
-                )
+                Image(systemName: "chevron.right").foregroundColor(.gray.opacity(0.5))
             }
             .padding(12)
             .background(Color.white)

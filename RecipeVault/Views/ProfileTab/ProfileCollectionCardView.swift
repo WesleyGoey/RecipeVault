@@ -13,15 +13,15 @@ struct ProfileCollectionCardView: View {
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             // MARK: - Background Image / Placeholder
+ 
             Group {
                 if collection.collectionImage.isEmpty {
-                    // 🚀 JIKA GAMBAR KOSONG: Tampilkan Icon Folder Elegan
                     ZStack {
                         RoundedRectangle(cornerRadius: 14)
                             .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                         Image(systemName: "square.stack.fill")
                             .font(.system(size: 44))
-                            .foregroundColor(Color(hex: "163A2B").opacity(0.15)) // Warna hijau gelap transparan
+                            .foregroundColor(Color(hex: "163A2B").opacity(0.15))
                     }
                 } else if let url = URL(string: collection.collectionImage) {
                     AsyncImage(url: url) { phase in
@@ -39,7 +39,6 @@ struct ProfileCollectionCardView: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .clipped()
                         case .failure:
-                            // 🚀 JIKA GAGAL LOAD: Tampilkan Icon Folder
                             ZStack {
                                 RoundedRectangle(cornerRadius: 14)
                                     .fill(LinearGradient(colors: placeholderColors, startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -98,20 +97,16 @@ struct ProfileCollectionCardView: View {
             )
 
             // Recipe Count Pill
-            HStack {
-                Spacer()
-                VStack {
-                    Spacer()
-                    Text("\(recipeCount)")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(8)
-                        .background(Color.black.opacity(0.55))
-                        .clipShape(Circle())
-                        .padding(10)
-                }
+        
+            .overlay(alignment: .topTrailing) {
+                Text("\(recipeCount)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(8)
+                    .background(Color.black.opacity(0.55))
+                    .clipShape(Circle())
+                    .padding(10)
             }
-
             // Collection Name Banner
             VStack(alignment: .leading, spacing: 6) {
                 Spacer()

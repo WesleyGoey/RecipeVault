@@ -9,9 +9,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var authVM: AuthViewModel
-
+    @EnvironmentObject var recipeVM: RecipeViewModel
     @StateObject private var vm = ProfileViewModel()
-    @StateObject private var recipeVM = RecipeViewModel()
 
     @State private var selectedTab: Int = 0  // 0 = Collections, 1 = Favorites
     @State private var showAuthView: Bool = false
@@ -91,6 +90,13 @@ struct ProfileView: View {
                 Button("OK", role: .cancel) { vm.operationError = "" }
             } message: {
                 Text(vm.operationError)
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(for: .favoritesUpdated)
+            ) { _ in
+                if selectedTab == 1 {  // Jika user sedang membuka tab Favorites
+                    Task { await vm.loadFavoriteRecipes() }
+                }
             }
         }
     }

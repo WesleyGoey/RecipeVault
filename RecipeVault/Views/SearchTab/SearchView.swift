@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SearchView: View {
     @StateObject private var viewModel = SearchViewModel()
-    @StateObject private var recipeViewModel = RecipeViewModel()
+    @EnvironmentObject var recipeViewModel: RecipeViewModel
     @FocusState private var isSearchFocused: Bool
     
     // 🚀 State untuk menampung 2 koleksi acak di halaman depan
@@ -320,13 +320,13 @@ struct OptimizedRecipeLink: View {
     @ObservedObject var recipeVM: RecipeViewModel
     
     var body: some View {
-        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
+        // 🚀 PERBAIKAN: Gunakan 'recipeVM' yang di-passing, JANGAN 'RecipeViewModel()'
+        NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
             RecipeCardView(recipe: recipe, viewModel: recipeVM)
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
-
 // 3. Helper Component Tab
 private struct SearchPickerTab: View {
     let title: String

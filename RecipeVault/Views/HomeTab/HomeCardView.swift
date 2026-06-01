@@ -1,123 +1,108 @@
-//
-//  HomeCardView.swift
-//  RecipeVault
-//
-//  Created by Nicholas Gerwin Mawardji on 29/05/26.
-//
-
 import SwiftUI
 
 struct HomeCardView: View {
     let recipe: Recipe
+    @EnvironmentObject var recipeVM: RecipeViewModel
     
-    // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
-    let bgYellow = Color(hex: "f8fae5")
+    let mutedTeal = Color(hex: "43766c")
     
     var body: some View {
-        ZStack {
-            // 1. Background Image
-            GeometryReader { geo in
-                AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
-                    switch phase {
-                    case .empty:
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .overlay(ProgressView())
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
-                            .clipped()
-                    case .failure:
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .overlay(Image(systemName: "photo").foregroundColor(.gray))
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
-            }
-            // 🚀 Diubah ke 250
-            .frame(height: 250)
-            .frame(maxWidth: .infinity)
-            .clipped()
+        ZStack(alignment: .bottomLeading) {
             
-            // 2. Gradient Overlay
+            // 🚀 KUNCI PERBAIKAN: Gunakan Color.clear agar gambar tidak mendorong layout
+            Color.clear
+                .overlay(imageSection)
+                .clipped()
+            
             LinearGradient(
-                gradient: Gradient(colors: [
-                    .clear,
-                    .black.opacity(0.3),
-                    .black.opacity(0.85)
-                ]),
-                startPoint: .top,
+                gradient: Gradient(colors: [.clear, .black.opacity(0.8)]),
+                startPoint: .center,
                 endPoint: .bottom
             )
             
-            // 3. Content Overlay
-            VStack {
-                // Top-Left Badge
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    HStack(spacing: 6) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 12))
-                        Text("FEATURED")
-                            .font(.merriweather(12, weight: .bold))
-                            .tracking(1.0)
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(burntOrange)
-                    .clipShape(Capsule())
-                    
                     Spacer()
+                    favoriteButton
                 }
-                
                 Spacer()
                 
-                VStack(spacing: 6) {
-                    Text("RECIPE OF THE DAY")
-                        .font(.merriweather(12, weight: .bold))
-                        .tracking(2.0)
-                        .foregroundColor(bgYellow.opacity(0.9))
-                    
-                    Text(recipe.title)
-                        .font(.merriweather(32, weight: .bold))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .padding(.horizontal, 16)
-                }
-                // 🚀 Padding bawah dikurangi sedikit agar teks tidak bertabrakan dengan batas kartu
-                .padding(.bottom, 8)
+                Text("RECIPE OF THE DAY")
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundColor(burntOrange)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.white)
+                    .clipShape(Capsule())
+                
+                Text(recipe.title)
+                    .font(.merriweather(24, weight: .bold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
             }
             .padding(20)
         }
-        // 🚀 Diubah ke 250
-        .frame(height: 250)
-        .clipShape(RoundedRectangle(cornerRadius: 32))
-        .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
+        .frame(maxWidth: .infinity)
+        .frame(height: 320)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
     }
 }
 
-// MARK: - Preview
-#Preview {
-    ZStack {
-        Color(hex: "43766c").ignoresSafeArea()
-        
-        HomeCardView(
-            recipe: Recipe(
-                userId: "123",
-                title: "Braised Short Ribs",
-                description: "A classic dish.",
-                ingredients: [],
-                steps: [],
-                category: "Beef",
-                recipeImage: "https://images.unsplash.com/photo-1544025162-8315ea070940?q=80&w=2938&auto=format&fit=crop"
-            )
-        )
-        .padding()
+extension HomeCardView {
+    private var favoriteButton: some View {
+        let isFav = recipeVM.isFavorite(recipe: recipe)
+        return Button(action: {
+            Task { await recipeVM.toggleFavorite(recipe: recipe) }
+        }) {
+            Image(systemName: isFav ? "heart.fill" : "heart")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(isFav ? .white : burntOrange)
+                .padding(12)
+                .background(isFav ? burntOrange : Color.white.opacity(0.9))
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        }
     }
+    
+    private var imageSection: some View {
+        Group {
+            if recipe.recipeImage.isEmpty {
+                placeholderImage
+            } else if recipe.recipeImage.starts(with: "http") {
+                AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
+                    if let image = phase.image {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else if phase.error != nil {
+                        placeholderImage
+                    } else {
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            ProgressView()
+                        }
+                    }
+                }
+            } else if let imageData = Data(base64Encoded: recipe.recipeImage),
+                      let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage).resizable().aspectRatio(contentMode: .fill)
+            } else {
+                placeholderImage
+            }
+        }
+    }
+    
+    private var placeholderImage: some View {
+        ZStack {
+            mutedTeal.opacity(0.15)
+            Image(systemName: "fork.knife")
+                .font(.system(size: 60))
+                .foregroundColor(mutedTeal.opacity(0.5))
+        }
+    }
+}
+
+#Preview {
+    HomeCardView(recipe: Recipe(userId: "1", title: "Test Recipe", description: "", ingredients: [], steps: [], category: "Dessert", recipeImage: ""))
+        .environmentObject(RecipeViewModel())
 }

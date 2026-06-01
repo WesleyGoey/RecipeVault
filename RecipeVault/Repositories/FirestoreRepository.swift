@@ -48,6 +48,24 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         try await db.collection("recipes").document(recipeId).delete()
     }
     
+    // MARK: - Single Recipe Helpers (Protocol compliance)
+    func getRecipeById(recipeId: String) async throws -> Recipe? {
+        let doc = try await db.collection("recipes").document(recipeId).getDocument()
+        return try? doc.data(as: Recipe.self)
+    }
+
+    func saveRecipeIfNeeded(recipe: Recipe) async throws {
+        // If recipe has an id, upsert using that id; otherwise create a new document
+        if let id = recipe.id, !id.isEmpty {
+            try db.collection("recipes").document(id).setData(from: recipe, merge: true)
+        } else {
+            let ref = db.collection("recipes").document()
+            var r = recipe
+            r.id = ref.documentID
+            try ref.setData(from: r)
+        }
+    }
+    
     // MARK: - Collection Methods
     func createCollection(collection: RecipeCollection) async throws {
         let ref = db.collection("collections").document()
@@ -143,3 +161,4 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         return recipes
     }
 }
+

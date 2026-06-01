@@ -7,17 +7,13 @@
 
 import SwiftUI
 import FirebaseCore
-import FirebaseAppCheck // 🚀 1. WAJIB IMPORT INI
+import FirebaseAppCheck
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        
-        #if DEBUG
-        // 🚀 2. Tukar provider menjadi DEBUG khusus saat dijalankan di Simulator/Xcode Development
         let providerFactory = AppCheckDebugProviderFactory()
         AppCheck.setAppCheckProviderFactory(providerFactory)
-        #endif
         
         FirebaseApp.configure()
         return true
@@ -28,11 +24,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct RecipeVaultApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var authVM = AuthViewModel()
+    @StateObject private var recipeVM = RecipeViewModel()
 
     var body: some Scene {
         WindowGroup {
             MainTabView()
                 .environmentObject(authVM)
+                .environmentObject(recipeVM)
         }
     }
 }
