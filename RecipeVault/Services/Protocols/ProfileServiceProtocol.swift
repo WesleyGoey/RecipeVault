@@ -8,11 +8,11 @@
 
 import Foundation
 
+// MARK: - ProfileService Protocol
 protocol ProfileServiceProtocol {
-    // READ
+    // MARK: - Get User Profile
     func getUserProfile(userId: String) async throws -> [String: Any]?
     
-    // UPDATE
-    // Mengembalikan String (URL gambar terbaru) agar UI bisa langsung diperbarui
+    // MARK: - Save User Profile
     func saveUserProfile(userId: String, name: String, email: String, currentImageURL: String, newImageData: Data?) async throws -> String
 }

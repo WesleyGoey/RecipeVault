@@ -5,30 +5,25 @@
 //  Created by Wesley Goey on 28/05/26.
 //
 
+
 import Foundation
 import SwiftUI
 import Combine
 
+// MARK: - RecipeViewModel Class
 @MainActor
 class RecipeViewModel: ObservableObject {
-    
-    // MARK: - List State
     @Published var myRecipes: [Recipe] = []
     @Published var isLoading: Bool = false
     @Published var operationError: String = ""
     
-    // MARK: - Detail UI State
     @Published var currentTab: DetailTab = .ingredients
     @Published var favoriteRecipeIds: Set<String> = []
     
-    // MARK: - Collection Bottom Sheet State
     @Published var showCollectionSheet: Bool = false
     @Published var userCollections: [RecipeCollection] = []
-    
-    // STATE Untuk melacak perubahan centang kotak
     @Published var selectedCollectionIds: Set<String> = []
-    @Published var originalCollectionIds: Set<String> = [] // Data centang asli dari database
-    
+    @Published var originalCollectionIds: Set<String> = []
     @Published var selectedRecipeForCollection: Recipe? = nil
     @Published var isSavingToCollections: Bool = false
     
@@ -36,7 +31,9 @@ class RecipeViewModel: ObservableObject {
     private let collectionService = CollectionService.shared
     private let authService = AuthService.shared
     
-    // MARK: - Core CRUD Methods
+    // MARK: - Recipe Section
+    
+    // MARK: - Load My Recipes
     func loadMyRecipes() async {
         guard let uid = authService.getCurrentUID() else { return }
         isLoading = true
@@ -50,6 +47,7 @@ class RecipeViewModel: ObservableObject {
         isLoading = false
     }
     
+    // MARK: - Create Recipe
     func createRecipe(title: String, description: String, category: String, ingredients: [String], steps: [String], imageData: Data?) async -> Bool {
         isLoading = true
         operationError = ""
@@ -71,6 +69,7 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Update Recipe
     func updateRecipe(recipeId: String, title: String, description: String, category: String, ingredients: [String], steps: [String], oldImageURL: String, newImageData: Data?, isImageDeleted: Bool) async -> Bool {
         isLoading = true
         operationError = ""
@@ -95,6 +94,7 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Delete Recipe
     func deleteRecipe(recipe: Recipe) async {
         guard let recipeId = recipe.id else { return }
         do {
@@ -105,11 +105,15 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Check Ownership
     func isOwner(recipe: Recipe) -> Bool {
         return recipe.userId == authService.getCurrentUID()
     }
     
-    // MARK: - 🌟 FAVORITES LOGIC
+    
+    // MARK: - Favorite Section
+    
+    // MARK: - Load Favorite IDs
     func loadFavoriteIds() async {
         guard let uid = authService.getCurrentUID() else { return }
         do {
@@ -120,11 +124,13 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Is Favorite
     func isFavorite(recipe: Recipe) -> Bool {
         guard let recipeId = recipe.id else { return false }
         return favoriteRecipeIds.contains(recipeId)
     }
     
+    // MARK: - Toggle Favorite
     func toggleFavorite(recipe: Recipe) async {
         guard let uid = authService.getCurrentUID(), let recipeId = recipe.id else { return }
         
@@ -146,27 +152,25 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 🌟 COLLECTION SHEET LOGIC
+    
+    // MARK: - Collection Section
+    
+    // MARK: - Open Collection Sheet
     func openCollectionSheet(for recipe: Recipe) async {
         selectedRecipeForCollection = recipe
         
-        // Reset state
         selectedCollectionIds.removeAll()
         originalCollectionIds.removeAll()
         
-        // 1. Ambil data koleksi user terlebih dahulu
         await fetchUserCollections()
         
-        // 2. Cek di database apakah resep ini sudah ada di folder
         if let recipeId = recipe.id {
             do {
                 let existingColIds = try await collectionService.getCollectionIdsForRecipe(recipeId: recipeId)
                 
-                // Pastikan hanya mencentang koleksi milik user yang sedang login
                 let userColIds = Set(userCollections.compactMap { $0.id })
                 let validIds = Set(existingColIds).intersection(userColIds)
                 
-                // Centang UI otomatis berdasarkan database
                 self.selectedCollectionIds = validIds
                 self.originalCollectionIds = validIds
             } catch {
@@ -174,11 +178,10 @@ class RecipeViewModel: ObservableObject {
             }
         }
         
-        // 🚀 3. SETELAH SEMUA DATA SIAP, BARU TAMPILKAN SHEET-NYA!
-        // Ini memastikan SwiftUI merender centangnya dengan benar tanpa delay
         showCollectionSheet = true
     }
     
+    // MARK: - Fetch User Collections
     func fetchUserCollections() async {
         guard let uid = authService.getCurrentUID() else { return }
         do {
@@ -188,6 +191,7 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Toggle Collection Selection
     func toggleCollectionSelection(collectionId: String) {
         if selectedCollectionIds.contains(collectionId) {
             selectedCollectionIds.remove(collectionId)
@@ -196,26 +200,23 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Save Selection To Collections
     func saveToSelectedCollections() async {
         guard let recipe = selectedRecipeForCollection, let recipeId = recipe.id else { return }
         isSavingToCollections = true
         
         do {
-            // Auto-clone jika TheMealDB
             if recipe.userId == "themealdb" && !selectedCollectionIds.isEmpty {
                 try? await recipeService.createRecipe(recipe: recipe, imageData: nil)
             }
             
-            // LOGIKA PERBANDINGAN (DIFFING): Tentukan mana yang ditambah, mana yang dihapus
             let collectionsToAdd = selectedCollectionIds.subtracting(originalCollectionIds)
             let collectionsToRemove = originalCollectionIds.subtracting(selectedCollectionIds)
             
-            // 1. Eksekusi Penambahan
             for collectionId in collectionsToAdd {
                 try await collectionService.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
             }
             
-            // 2. Eksekusi Penghapusan (Jika user "uncheck" folder yang tadinya dicentang)
             for collectionId in collectionsToRemove {
                 try await collectionService.removeRecipeFromCollection(collectionId: collectionId, recipeId: recipeId)
             }
@@ -231,6 +232,7 @@ class RecipeViewModel: ObservableObject {
     }
 }
 
+// MARK: - Notification Extension
 extension Notification.Name {
     static let favoritesUpdated = Notification.Name("favoritesUpdated")
 }

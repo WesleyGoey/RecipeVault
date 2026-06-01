@@ -13,6 +13,8 @@ import FirebaseFirestore
 class FirestoreRepository: FirestoreRepositoryProtocol {
     static let shared = FirestoreRepository()
     private let db = Firestore.firestore()
+    
+    // MARK: - Initializer
     private init() {}
     
     // MARK: - User Section
@@ -46,6 +48,12 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         return snapshot.documents.compactMap { try? $0.data(as: Recipe.self) }
     }
     
+    // MARK: - Get Recipe By ID
+    func getRecipeById(recipeId: String) async throws -> Recipe? {
+        let doc = try await db.collection("recipes").document(recipeId).getDocument()
+        return try? doc.data(as: Recipe.self)
+    }
+    
     // MARK: - Update Recipe
     func updateRecipe(recipe: Recipe) async throws {
         guard let recipeId = recipe.id else { return }
@@ -55,12 +63,6 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
     // MARK: - Delete Recipe
     func deleteRecipe(recipeId: String) async throws {
         try await db.collection("recipes").document(recipeId).delete()
-    }
-    
-    // MARK: - Get Recipe By ID
-    func getRecipeById(recipeId: String) async throws -> Recipe? {
-        let doc = try await db.collection("recipes").document(recipeId).getDocument()
-        return try? doc.data(as: Recipe.self)
     }
     
     // MARK: - Save Recipe If Needed
@@ -178,7 +180,7 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         return recipes
     }
     
-    // MARK: - Get Recipe Count
+    // MARK: - Get Recipe Count In Collection
     func getRecipeCountInCollection(collectionId: String) async throws -> Int {
         let snapshot = try await db.collection("collection_recipes")
             .whereField("collectionId", isEqualTo: collectionId)
@@ -186,7 +188,7 @@ class FirestoreRepository: FirestoreRepositoryProtocol {
         return snapshot.documents.count
     }
     
-    // MARK: - Get Collection IDs
+    // MARK: - Get Collection IDs For Recipe
     func getCollectionIdsForRecipe(recipeId: String) async throws -> [String] {
         let db = Firestore.firestore()
         let snapshot = try await db.collection("collection_recipes")

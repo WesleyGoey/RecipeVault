@@ -5,39 +5,37 @@
 //  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
 
+
 import Foundation
 import SwiftUI
 import Combine
 
+// MARK: - CollectionViewModel Class
 @MainActor
 class CollectionViewModel: ObservableObject {
+    private let collectionService = CollectionService.shared
+    private let authService = AuthService.shared
     
     @Published var myCollections: [RecipeCollection] = []
     @Published var recipesInCollection: [Recipe] = []
     @Published var collectionCounts: [String: Int] = [:]
     
     @Published var isLoading: Bool = false
-    
-    // 🚀 REVISI: Mengubah errorMessage menjadi operationError agar konsisten dengan ViewModel lain
     @Published var operationError: String = ""
     
-    private let collectionService = CollectionService.shared
-    private let authService = AuthService.shared
+    // MARK: - Collection Section
     
-    // MARK: - READ
+    // MARK: - Load My Collections
     func loadMyCollections() async {
         guard let uid = authService.getCurrentUID() else { return }
         isLoading = true
         operationError = ""
         
         do {
-            // 1. Ambil data koleksi dari Firebase
             let fetchedCollections = try await collectionService.getUserCollections(userId: uid)
             
-            // 2. Buat dictionary sementara untuk menghindari render berulang yang menyebabkan bug angka 0
             var tempCounts: [String: Int] = [:]
             
-            // Ambil jumlah resep untuk setiap koleksi
             for collection in fetchedCollections {
                 if let colId = collection.id {
                     let count = (try? await collectionService.getRecipeCountInCollection(collectionId: colId)) ?? 0
@@ -45,7 +43,6 @@ class CollectionViewModel: ObservableObject {
                 }
             }
             
-            // 3. Update State secara serentak. Ini akan memaksa UI (CollectionsView) untuk refresh dengan akurat
             self.myCollections = fetchedCollections
             self.collectionCounts = tempCounts
             
@@ -56,18 +53,7 @@ class CollectionViewModel: ObservableObject {
         isLoading = false
     }
     
-    func loadRecipesForCollection(collectionId: String) async {
-        isLoading = true
-        operationError = ""
-        do {
-            recipesInCollection = try await collectionService.getRecipesInCollection(collectionId: collectionId)
-        } catch {
-            self.operationError = error.localizedDescription
-        }
-        isLoading = false
-    }
-    
-    // MARK: - CREATE
+    // MARK: - Create Collection
     func createCollection(name: String, description: String, visibility: Visibility, imageData: Data?) async -> Bool {
         guard let uid = authService.getCurrentUID() else { return false }
         isLoading = true
@@ -77,7 +63,7 @@ class CollectionViewModel: ObservableObject {
         
         do {
             try await collectionService.createCollection(collection: newCol, imageData: imageData)
-            await loadMyCollections() // Langsung refresh UI
+            await loadMyCollections()
             isLoading = false
             return true
         } catch {
@@ -87,7 +73,7 @@ class CollectionViewModel: ObservableObject {
         }
     }
     
-    // MARK: - UPDATE
+    // MARK: - Update Collection
     func updateCollection(collectionId: String, name: String, description: String, visibility: Visibility, oldImageURL: String, newImageData: Data?, isImageDeleted: Bool) async -> Bool {
         guard let uid = authService.getCurrentUID() else { return false }
         isLoading = true
@@ -99,7 +85,7 @@ class CollectionViewModel: ObservableObject {
         
         do {
             try await collectionService.updateCollection(collection: updatedCol, newImageData: newImageData)
-            await loadMyCollections() // Langsung refresh UI
+            await loadMyCollections()
             isLoading = false
             return true
         } catch {
@@ -109,37 +95,55 @@ class CollectionViewModel: ObservableObject {
         }
     }
     
-    // MARK: - DELETE
+    // MARK: - Delete Collection
     func deleteCollection(collection: RecipeCollection) async {
         guard let collectionId = collection.id else { return }
         isLoading = true
         do {
             try await collectionService.deleteCollection(collectionId: collectionId)
-            myCollections.removeAll { $0.id == collectionId } // Hapus instan dari UI
+            myCollections.removeAll { $0.id == collectionId }
         } catch {
             self.operationError = "Error deleting: \(error.localizedDescription)"
         }
         isLoading = false
     }
     
-    // FITUR TAMBAHAN: Hapus resep dari koleksi spesifik
+    
+    // MARK: - Recipe Section
+    
+    // MARK: - Load Recipes For Collection
+    func loadRecipesForCollection(collectionId: String) async {
+        isLoading = true
+        operationError = ""
+        do {
+            recipesInCollection = try await collectionService.getRecipesInCollection(collectionId: collectionId)
+        } catch {
+            self.operationError = error.localizedDescription
+        }
+        isLoading = false
+    }
+    
+    // MARK: - Remove Recipe From Collection
     func removeRecipeFromCollection(recipe: Recipe, from collection: RecipeCollection) async {
         guard let collectionId = collection.id, let recipeId = recipe.id else { return }
         do {
             try await collectionService.removeRecipeFromCollection(collectionId: collectionId, recipeId: recipeId)
-            recipesInCollection.removeAll { $0.id == recipeId } // Hapus dari UI layar Detail
+            recipesInCollection.removeAll { $0.id == recipeId }
         } catch {
             self.operationError = error.localizedDescription
         }
     }
     
-    // MARK: - Ownership
+    
+    // MARK: - Utilities
+    
+    // MARK: - Check Ownership
     func isOwner(collection: RecipeCollection) -> Bool {
         return collection.userId == authService.getCurrentUID()
     }
 }
 
-// MARK: - Mock Data
+// MARK: - Mock Data Extension
 extension RecipeCollection {
     static let mockCollections = [
         RecipeCollection(userId: "123", name: "Weeknight Favorites", description: "Quick and easy recipes for busy weekdays.", collectionImage: "mock_image_1", visibility: .publicVisibility),

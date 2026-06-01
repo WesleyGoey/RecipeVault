@@ -12,7 +12,6 @@ import Foundation
 
 // MARK: - FirestoreRepository Protocol
 protocol FirestoreRepositoryProtocol {
-
     // MARK: - User Section
     
     // MARK: - Get User Profile
@@ -30,14 +29,14 @@ protocol FirestoreRepositoryProtocol {
     // MARK: - Get User Recipes
     func getUserRecipes(userId: String) async throws -> [Recipe]
     
+    // MARK: - Get Recipe By ID
+    func getRecipeById(recipeId: String) async throws -> Recipe?
+    
     // MARK: - Update Recipe
     func updateRecipe(recipe: Recipe) async throws
     
     // MARK: - Delete Recipe
     func deleteRecipe(recipeId: String) async throws
-    
-    // MARK: - Get Recipe By ID
-    func getRecipeById(recipeId: String) async throws -> Recipe?
     
     // MARK: - Save Recipe If Needed
     func saveRecipeIfNeeded(recipe: Recipe) async throws

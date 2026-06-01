@@ -12,6 +12,8 @@ import Foundation
 class TheMealDBRepository: TheMealDBRepositoryProtocol {
     static let shared = TheMealDBRepository()
     private let baseURL = "https://www.themealdb.com/api/json/v1/1"
+    
+    // MARK: - Initializer
     private init() {}
     
     // MARK: - Search Meals

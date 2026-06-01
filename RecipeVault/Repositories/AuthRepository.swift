@@ -12,6 +12,8 @@ import FirebaseAuth
 // MARK: - AuthRepository Class
 class AuthRepository: AuthRepositoryProtocol {
     static let shared = AuthRepository()
+    
+    // MARK: - Initializer
     private init() {}
     
     // MARK: - Register
