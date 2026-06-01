@@ -6,19 +6,15 @@
 //
 
 
-// MARK: - TheMealDBRepository
 import Foundation
 
+// MARK: - TheMealDBRepository Class
 class TheMealDBRepository: TheMealDBRepositoryProtocol {
-    
-    // MARK: - Properties
     static let shared = TheMealDBRepository()
     private let baseURL = "https://www.themealdb.com/api/json/v1/1"
-    
-    // MARK: - Initializer
     private init() {}
     
-    // MARK: - Methods
+    // MARK: - Search Meals
     func searchMeals(query: String) async throws -> [MealDBRecipe] {
         guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
               let url = URL(string: "\(baseURL)/search.php?s=\(encodedQuery)") else {

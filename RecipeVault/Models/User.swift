@@ -14,6 +14,7 @@ struct User: Codable, Identifiable {
     var email: String
     var profilePicture: String
     
+    // MARK: - Convert Dictionary
     func toDict() -> [String: Any] {
         return [
             "name": name,

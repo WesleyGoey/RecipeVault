@@ -9,6 +9,7 @@
 import Foundation
 import FirebaseFirestore
 
+// MARK: - CollectionRecipe Model
 struct CollectionRecipe: Codable, Identifiable {
     @DocumentID var id: String?
     var collectionId: String

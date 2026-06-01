@@ -9,6 +9,7 @@
 import Foundation
 import FirebaseFirestore
 
+// MARK: - Favorite Model
 struct Favorite: Codable, Identifiable {
     @DocumentID var id: String?
     var recipeId: String
