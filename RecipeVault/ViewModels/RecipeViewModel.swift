@@ -16,7 +16,7 @@ class RecipeViewModel: ObservableObject {
     @Published var myRecipes: [Recipe] = []
     @Published var isLoading: Bool = false
     
-    // 🚀 REVISI: Ubah errorMessage menjadi operationError agar cocok dengan View
+    // 🚀 Error state
     @Published var operationError: String = ""
     
     // MARK: - Detail UI State
@@ -140,6 +140,11 @@ class RecipeViewModel: ObservableObject {
         else { favoriteRecipeIds.remove(recipeId) }
         
         do {
+            // 🚀 JIKA RESEP DARI THEMEALDB DIFAVORITKAN, SIMPAN SALINANNYA KE FIRESTORE
+            if willBeFavorite && recipe.userId == "themealdb" {
+                try? await recipeService.createRecipe(recipe: recipe, imageData: nil)
+            }
+            
             try await recipeService.toggleFavorite(userId: uid, recipeId: recipeId, isFavorite: willBeFavorite)
         } catch {
             // Jika Firebase gagal, kembalikan warna hati seperti semula
@@ -175,9 +180,17 @@ class RecipeViewModel: ObservableObject {
     }
     
     func saveToSelectedCollections() async {
-        guard let recipeId = selectedRecipeForCollection?.id else { return }
+        guard let recipe = selectedRecipeForCollection, let recipeId = recipe.id else { return }
         isSavingToCollections = true
+        
         do {
+            // 🚀 JIKA RESEP DARI THEMEALDB DISIMPAN KE KOLEKSI, SIMPAN SALINANNYA KE FIRESTORE
+            // Kita mengirimkan imageData: nil, sehingga URL aslinya (http...) tetap utuh.
+            if recipe.userId == "themealdb" {
+                // Menggunakan try? agar tidak crash jika resep sudah pernah tersimpan sebelumnya
+                try? await recipeService.createRecipe(recipe: recipe, imageData: nil)
+            }
+            
             for collectionId in selectedCollectionIds {
                 try await collectionService.addRecipeToCollection(collectionId: collectionId, recipeId: recipeId)
             }

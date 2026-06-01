@@ -5,8 +5,8 @@
 //  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
 
-import FirebaseFirestore  // Diperlukan untuk fetch User
 import SwiftUI
+import FirebaseFirestore
 
 struct CollectionDetailView: View {
     let collection: RecipeCollection
@@ -16,7 +16,6 @@ struct CollectionDetailView: View {
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
 
-    // 🚀 State untuk menampung nama pembuat koleksi (Real Data)
     @State private var creatorName: String = "Loading..."
 
     // Theme Colors
@@ -33,7 +32,7 @@ struct CollectionDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     authorSection
 
-                    Text(collection.description)
+                    Text(collection.description.isEmpty ? "Tidak ada deskripsi." : collection.description)
                         .font(.merriweather(15, weight: .regular))
                         .foregroundColor(.gray)
                         .lineSpacing(4)
@@ -53,84 +52,64 @@ struct CollectionDetailView: View {
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
         .task {
-            guard let id = collection.id else { return }
-            await viewModel.loadRecipesForCollection(collectionId: id)
-
-            if viewModel.isOwner(collection: collection) {
-                creatorName = "You"
-            } else {
-                do {
-                    let db = Firestore.firestore()
-                    let doc = try await db.collection("users").document(
-                        collection.userId
-                    ).getDocument()
-                    if let name = doc.data()?["name"] as? String {
-                        creatorName = name
-                    } else {
-                        creatorName = "Unknown Chef"
-                    }
-                } catch {
-                    creatorName = "Unknown Chef"
-                }
+            // Ambil daftar resep untuk koleksi ini
+            if let collectionId = collection.id {
+                await viewModel.loadRecipesForCollection(collectionId: collectionId)
             }
-        }
-        .sheet(isPresented: $showingEditSheet) {
-            Text("Edit Sheet for \(collection.name)")
-        }
-        .alert("Delete Collection", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
-                Task {
-                    await viewModel.deleteCollection(collection: collection)
-                    dismiss()
-                }
-            }
-        } message: {
-            Text("Are you sure you want to delete this collection?")
         }
     }
 }
 
 // MARK: - Subviews
 extension CollectionDetailView {
-
+    
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
-            Color.clear
-                .frame(height: 320)
-                .overlay(
-                    Group {
-                        let validUrl =
-                            collection.collectionImage.isEmpty
-                            ? "https://images.unsplash.com/photo-1495195134817-a165d4292816?q=80&w=800&auto=format&fit=crop"
-                            : collection.collectionImage
-
-                        AsyncImage(
-                            url: URL(
-                                string: validUrl.trimmingCharacters(
-                                    in: .whitespacesAndNewlines
-                                )
-                            )
-                        ) { image in
-                            image.resizable().scaledToFill()
-                        } placeholder: {
-                            Rectangle().fill(Color.gray.opacity(0.3)).overlay(
-                                ProgressView()
-                            )
+            
+            if collection.collectionImage.isEmpty {
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "folder.fill").font(.system(size: 60)).foregroundColor(mutedTeal.opacity(0.5))
+                }
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+            }
+            else if collection.collectionImage.starts(with: "http") {
+                AsyncImage(url: URL(string: collection.collectionImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else if phase.error != nil {
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            Image(systemName: "folder.fill").font(.system(size: 60)).foregroundColor(mutedTeal.opacity(0.5))
+                        }
+                    } else {
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            ProgressView()
                         }
                     }
+                }
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+            }
+            else if let imageData = Data(base64Encoded: collection.collectionImage),
+                    let uiImage = UIImage(data: imageData) {
+                
+                Color.clear.overlay(
+                    Image(uiImage: uiImage).resizable().scaledToFill()
                 )
-                .clipped()
-                .overlay(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            .clear, .black.opacity(0.7),
-                        ]),
-                        startPoint: .center,
-                        endPoint: .bottom
-                    )
-                )
-
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+                
+            } else {
+                ZStack {
+                    mutedTeal.opacity(0.15)
+                    Image(systemName: "folder.fill").font(.system(size: 60)).foregroundColor(mutedTeal.opacity(0.5))
+                }
+                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+            }
+            
+            LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.6)]), startPoint: .center, endPoint: .bottom)
+                .frame(height: 300)
+            
             HStack {
                 Button(action: { dismiss() }) {
                     Image(systemName: "chevron.left")
@@ -141,188 +120,105 @@ extension CollectionDetailView {
                         .clipShape(Circle())
                 }
                 Spacer()
-                if viewModel.isOwner(collection: collection) {
-                    Menu {
-                        Button {
-                            showingEditSheet = true
-                        } label: {
-                            Label("Edit Collection", systemImage: "pencil")
-                        }
-                        Button(role: .destructive) {
-                            showingDeleteAlert = true
-                        } label: {
-                            Label("Delete Collection", systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color.black.opacity(0.4))
-                            .clipShape(Circle())
-                    }
-                }
             }
-            .padding(.top, 50)
-            .padding(.horizontal, 20)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Spacer()
-                HStack {
-                    Image(
-                        systemName: collection.visibility == .publicVisibility
-                            ? "globe" : "lock.fill"
-                    )
-                    Text(collection.visibility.rawValue.uppercased())
-                }
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(mutedTeal.opacity(0.8))
-                .clipShape(Capsule())
-
-                Text(collection.name)
-                    .font(.merriweather(32, weight: .bold))
-                    .foregroundColor(.white)
-
-                Text("\(viewModel.recipesInCollection.count) recipes")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 50).padding(.horizontal, 20)
         }
     }
-
-    // 🚀 BISA DI-KLIK & MENGGUNAKAN DATA ASLI (Real Data)
+    
     private var authorSection: some View {
-        NavigationLink(
-            destination: Text("Welcome to \(creatorName)'s Profile!")
-        ) {
-            HStack(spacing: 12) {
-                Circle()
-                    .fill(mutedTeal)
-                    .frame(width: 46, height: 46)
-                    .overlay(
-                        // Menggunakan 2 huruf pertama dari nama asli kreator
-                        Text(String(creatorName.prefix(2)).uppercased())
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                    )
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(creatorName)
-                        .font(.merriweather(16, weight: .bold))
-                        .foregroundColor(darkText)
-
-                    Text(
-                        viewModel.isOwner(collection: collection)
-                            ? "Your collection" : "Public Creator"
-                    )
-                    .font(.merriweather(14, weight: .regular))
-                    .foregroundColor(.gray)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(collection.name)
+                    .font(.merriweather(28, weight: .bold))
+                    .foregroundColor(darkText)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                HStack(spacing: 6) {
+                    Image(systemName: collection.visibility == .publicVisibility ? "globe" : "lock.fill")
+                    Text(collection.visibility.rawValue.capitalized)
                 }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundColor(.gray)
+                .font(.merriweather(12, weight: .regular))
+                .foregroundColor(.gray)
             }
-            .padding(.vertical, 10)
-            .background(Color.white.opacity(0.001))
+            Spacer()
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.top, 4)
     }
-
-    // 🚀 List memanggil Struct Terpisah agar Xcode tidak lambat
+    
     private var recipesListSection: some View {
-        LazyVStack(spacing: 16) {
-            ForEach(viewModel.recipesInCollection, id: \.id) { recipe in
-                CollectionRecipeRow(recipe: recipe)
-            }
-        }
-    }
-}
-
-// MARK: - 🚀 STRUCT TERPISAH (Meringankan beban kompilasi Xcode)
-struct CollectionRecipeRow: View {
-    let recipe: Recipe
-
-    // Theme Colors
-    let burntOrange = Color(hex: "cd4b12")
-    let darkText = Color.primary
-
-    var body: some View {
-        NavigationLink(
-            destination: RecipeDetailView(
-                recipe: recipe,
-                viewModel: RecipeViewModel()
-            )
-        ) {
-            HStack(spacing: 16) {
-
-                // 🚀 Fallback Gambar Tanpa PercentEncoding yang merusak URL
-                let rawUrl =
-                    recipe.recipeImage.isEmpty
-                    ? "https://images.unsplash.com/photo-1495195134817-a165d4292816?q=80&w=800&auto=format&fit=crop"
-                    : recipe.recipeImage
-
-                AsyncImage(
-                    url: URL(
-                        string: rawUrl.trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        )
-                    )
-                ) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFill()
-                    } else if phase.error != nil {
-                        // Jika URL gagal di-load
-                        Color.gray.opacity(0.3)
-                            .overlay(
-                                Image(systemName: "photo").foregroundColor(
-                                    .gray
-                                )
-                            )
-                    } else {
-                        // Sedang loading
-                        Color.gray.opacity(0.2).overlay(ProgressView())
-                    }
-                }
-                .frame(width: 80, height: 80)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(recipe.title)
-                        .font(.merriweather(16, weight: .bold))
-                        .foregroundColor(darkText)
-                        .lineLimit(1)
-                        .multilineTextAlignment(.leading)
-
-                    HStack(spacing: 8) {
-                        Text(recipe.category)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(burntOrange).clipShape(Capsule())
-
-                        HStack(spacing: 4) {
-                            Image(systemName: "clock")
-                            Text("30 min")
-                        }
-                        .font(.caption)
+        VStack(spacing: 16) {
+            if viewModel.isLoading {
+                ProgressView().padding(.top, 40)
+            } else if viewModel.recipesInCollection.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 40))
+                        .foregroundColor(mutedTeal.opacity(0.3))
+                    Text("No recipes here yet.")
+                        .font(.merriweather(14))
                         .foregroundColor(.gray)
-                    }
                 }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundColor(
-                    .gray.opacity(0.5)
-                )
+                .frame(maxWidth: .infinity)
+                .padding(.top, 40)
+            } else {
+                ForEach(viewModel.recipesInCollection) { recipe in
+                    
+                    // 🚀 BUNGKUS DENGAN NAVIGATION LINK AGAR BISA DITAP KE RECIPEDETAILVIEW
+                    NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: RecipeViewModel())) {
+                        HStack(spacing: 16) {
+                            
+                            // Thumbnail Recipe
+                            ZStack {
+                                if recipe.recipeImage.isEmpty {
+                                    mutedTeal.opacity(0.15)
+                                    Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
+                                }
+                                // 🚀 LOGIKA BARU: SUPPORT GAMBAR HTTP (THEMEALDB) DI DALAM LIST
+                                else if recipe.recipeImage.starts(with: "http") {
+                                    AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
+                                        if let image = phase.image {
+                                            image.resizable().scaledToFill()
+                                        } else {
+                                            mutedTeal.opacity(0.15)
+                                            Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
+                                        }
+                                    }
+                                }
+                                else if let imageData = Data(base64Encoded: recipe.recipeImage),
+                                          let uiImg = UIImage(data: imageData) {
+                                    Image(uiImage: uiImg).resizable().scaledToFill()
+                                } else {
+                                    mutedTeal.opacity(0.15)
+                                    Image(systemName: "fork.knife").foregroundColor(mutedTeal.opacity(0.5))
+                                }
+                            }
+                            .frame(width: 60, height: 60)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(recipe.title)
+                                    .font(.merriweather(16, weight: .bold))
+                                    .foregroundColor(darkText)
+                                    .multilineTextAlignment(.leading)
+                                    .lineLimit(2)
+                                Text(recipe.category)
+                                    .font(.merriweather(12))
+                                    .foregroundColor(.gray)
+                            }
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray.opacity(0.5))
+                        }
+                        .padding(12)
+                        .background(Color.white)
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
-            .padding(12)
-            .background(Color.white)
-            .cornerRadius(20)
-            .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
         }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 
