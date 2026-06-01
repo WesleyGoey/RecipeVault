@@ -16,7 +16,6 @@ struct EditProfileView: View {
     @State private var showingImagePicker: Bool = false
 
     var body: some View {
-        // 1. AREA KONTEN SEKARANG FULL SCROLLVIEW
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
                 
@@ -61,7 +60,7 @@ struct EditProfileView: View {
                     }
                 }
                 
-                // 🚀 2. AREA TOMBOL DIPINDAH KE DALAM SCROLLVIEW
+                // AREA TOMBOL DIPINDAH KE DALAM SCROLLVIEW
                 VStack(spacing: 12) {
                     if vm.isLoading {
                         ProgressView()
@@ -94,7 +93,7 @@ struct EditProfileView: View {
                     }
                     .disabled(vm.isLoading)
                 }
-                .padding(.top, 16) // Memberikan sedikit jarak ekstra antara textfield terakhir dan tombol
+                .padding(.top, 16)
                 
             }
             .padding(.horizontal, 20)
@@ -108,9 +107,11 @@ struct EditProfileView: View {
         .photosPicker(isPresented: $showingImagePicker, selection: $phPickerItem, matching: .images)
         .onChange(of: phPickerItem) { newItem in
             Task {
-                if let item = newItem, let data = try? await item.loadTransferable(type: Data.self) {
-                    vm.selectedImageData = data
-                    vm.selectedUIImage = UIImage(data: data)
+                if let item = newItem, let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                    vm.selectedUIImage = image
+                    // 🚀 Gunakan data mentah 100%
+                    vm.selectedImageData = image.jpegData(compressionQuality: 1.0)
+                    vm.isImageDeleted = false // Batalkan hapus jika pilih foto baru
                 }
             }
         }
@@ -119,43 +120,79 @@ struct EditProfileView: View {
         } message: { Text(vm.operationError) }
     }
     
-    // Potongan View terpisah agar badan utama bersih
+    // MARK: - Avatar Section
     private var avatarSection: some View {
-        ZStack(alignment: .bottom) {
-            Circle()
-                .fill(Color(hex: "2F6B5E"))
-                .frame(width: 120, height: 120)
-                .overlay(
-                    Group {
-                        if let ui = vm.selectedUIImage {
-                            Image(uiImage: ui).resizable().scaledToFill()
-                        } else if let url = URL(string: vm.profilePictureURL), !vm.profilePictureURL.isEmpty {
-                            AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .success(let image): image.resizable().scaledToFill()
-                                default: Color.clear
-                                }
+        ZStack(alignment: .topTrailing) {
+            
+            // Base Profil & Tombol Ganti Foto
+            ZStack(alignment: .bottom) {
+                Circle()
+                    .fill(Color(hex: "2F6B5E"))
+                    .frame(width: 120, height: 120)
+                    .overlay(
+                        Group {
+                            if let ui = vm.selectedUIImage {
+                                Image(uiImage: ui).resizable().scaledToFill()
                             }
-                        } else {
-                            Text(initials())
-                                .font(.system(size: 40, weight: .bold))
-                                .foregroundColor(.white)
+                            else if !vm.profilePictureURL.isEmpty && !vm.isImageDeleted {
+                                // 🚀 CEK HTTP ATAU BASE64
+                                if vm.profilePictureURL.hasPrefix("http") {
+                                    AsyncImage(url: URL(string: vm.profilePictureURL)) { phase in
+                                        switch phase {
+                                        case .success(let image): image.resizable().scaledToFill()
+                                        default: Color.clear
+                                        }
+                                    }
+                                } else if let data = Data(base64Encoded: vm.profilePictureURL), let uiImage = UIImage(data: data) {
+                                    Image(uiImage: uiImage).resizable().scaledToFill()
+                                } else {
+                                    Text(initials())
+                                        .font(.system(size: 40, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            } else {
+                                Text(initials())
+                                    .font(.system(size: 40, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
                         }
-                    }
-                    .clipShape(Circle())
-                )
-                .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+                        .clipShape(Circle())
+                    )
+                    .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
 
-            Button(action: { showingImagePicker = true }) {
-                Text("CHANGE PHOTO")
-                    .font(.system(size: 12, weight: .semibold))
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 16)
-                    .background(Color(hex: "163A2B").opacity(0.95))
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
-                    .shadow(radius: 4)
-                    .offset(y: 12)
+                Button(action: { showingImagePicker = true }) {
+                    Text("CHANGE PHOTO")
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 16)
+                        .background(Color(hex: "163A2B").opacity(0.95))
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                        .shadow(radius: 4)
+                        .offset(y: 12)
+                }
+            }
+            .padding(.top, 10)
+            .padding(.trailing, 10) // Beri jarak agar ikon sampah tidak menabrak batas
+            
+            // 🚀 TOMBOL TRASH KANAN ATAS
+            if vm.selectedUIImage != nil || (!vm.profilePictureURL.isEmpty && !vm.isImageDeleted) {
+                Button(action: {
+                    withAnimation {
+                        vm.selectedUIImage = nil
+                        vm.selectedImageData = nil
+                        phPickerItem = nil
+                        vm.isImageDeleted = true
+                    }
+                }) {
+                    Image(systemName: "trash.circle.fill")
+                        .resizable()
+                        .frame(width: 32, height: 32)
+                        .foregroundColor(.red)
+                        .background(Circle().fill(Color.white))
+                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                }
+                .offset(x: 5, y: -5)
             }
         }
     }

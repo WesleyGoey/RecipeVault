@@ -111,6 +111,6 @@ class CollectionService: CollectionServiceProtocol {
     }
 
     func getCollectionIdsForRecipe(recipeId: String) async throws -> [String] {
-        return []
+        return try await firestoreRepo.getCollectionIdsForRecipe(recipeId: recipeId)
     }
 }

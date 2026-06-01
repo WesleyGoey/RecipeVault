@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import FirebaseFirestore // 🚀 WAJIB DI-IMPORT untuk menarik nama user
+import FirebaseFirestore
 
 struct RecipeDetailView: View {
     @State private var recipe: Recipe
@@ -18,8 +18,9 @@ struct RecipeDetailView: View {
     @State private var showingDeleteAlert = false
     @State private var isLoadingDetails = false
     
-    // 🚀 State untuk menampung nama pembuat resep
+    // 🚀 State untuk menampung nama & foto pembuat resep
     @State private var creatorName: String = "Loading..."
+    @State private var creatorProfilePic: String = ""
     
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
@@ -36,7 +37,6 @@ struct RecipeDetailView: View {
             VStack(spacing: 0) {
                 heroImageSection
                 
-                // 🚀 PERBAIKAN: Mengganti attributionSection dengan authorSection
                 authorSection
                 
                 VStack(alignment: .leading, spacing: 20) {
@@ -74,17 +74,20 @@ struct RecipeDetailView: View {
                 await fetchFullDetails(id: mealId)
             }
             
-            // 🚀 TAMBAHAN: Fetch User Profile Name
+            // 🚀 FETCH USER PROFILE NAME & PICTURE
             if recipe.userId == "themealdb" {
                 creatorName = "TheMealDB"
-            } else if viewModel.isOwner(recipe: recipe) {
-                creatorName = "You"
             } else {
                 do {
                     let db = Firestore.firestore()
                     let doc = try await db.collection("users").document(recipe.userId).getDocument()
-                    if let name = doc.data()?["name"] as? String {
-                        creatorName = name
+                    if let data = doc.data() {
+                        creatorName = data["name"] as? String ?? "Unknown Chef"
+                        creatorProfilePic = data["profilePicture"] as? String ?? ""
+                        // Timpa "You" jika itu kita sendiri, tapi tetap ambil fotonya
+                        if viewModel.isOwner(recipe: recipe) {
+                            creatorName = "You"
+                        }
                     } else {
                         creatorName = "Unknown Chef"
                     }
@@ -103,16 +106,12 @@ struct RecipeDetailView: View {
             RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
         }
         
-        // REVISI FITUR DELETE: Dismiss halaman dulu baru hapus di latar belakang
+        // REVISI FITUR DELETE
         .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
-                // 1. Tutup halaman secara instan agar user merasakan transisi secepat kilat
                 dismiss()
-                
-                // 2. Eksekusi penghapusan di background agar main thread tidak patah-patah
                 Task {
-                    // Jeda sejenak demi kelancaran animasi pop out halaman dismiss
                     try? await Task.sleep(nanoseconds: 250_000_000)
                     await viewModel.deleteRecipe(recipe: recipe)
                 }
@@ -158,7 +157,7 @@ struct RecipeDetailView: View {
 
 extension RecipeDetailView {
     
-    // MARK: - Hero Image Section (Membaca Base64 & URL)
+    // MARK: - Hero Image Section
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
             if recipe.recipeImage.isEmpty {
@@ -266,10 +265,10 @@ extension RecipeDetailView {
         }
     }
     
-    // 🚀 BISA DI-KLIK & MENGARAH KE OTHERPROFILEVIEW
+    // 🚀 BISA DI-KLIK & MENAMPILKAN FOTO PROFIL AUTHOR
     private var authorSection: some View {
         Group {
-            // JIKA DARI API THEMEALDB (Tidak bisa di-klik ke profil)
+            // JIKA DARI API THEMEALDB
             if recipe.userId == "themealdb" {
                 HStack {
                     Circle().fill(mutedTeal).frame(width: 46, height: 46).overlay(Text("TM").foregroundColor(.white).font(.system(size: 14, weight: .bold)))
@@ -281,16 +280,37 @@ extension RecipeDetailView {
                 }
                 .padding(20).background(bgYellow)
             }
-            // JIKA DARI USER SUNGGUHAN (Bisa di-klik)
+            // JIKA DARI USER SUNGGUHAN
             else {
                 NavigationLink(destination: OtherProfileView(creatorId: recipe.userId)) {
-                    HStack {
-                        Circle().fill(mutedTeal).frame(width: 46, height: 46).overlay(
-                            // 2 huruf inisial
-                            Text(String(creatorName.prefix(2)).uppercased())
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(.white)
-                        )
+                    HStack(spacing: 12) {
+                        
+                        // 🚀 LOGIKA FOTO PROFIL AUTHOR
+                        ZStack {
+                            Circle().fill(mutedTeal).frame(width: 46, height: 46)
+                            if !creatorProfilePic.isEmpty {
+                                if creatorProfilePic.hasPrefix("http") {
+                                    AsyncImage(url: URL(string: creatorProfilePic)) { phase in
+                                        if let image = phase.image {
+                                            image.resizable().scaledToFill()
+                                        } else {
+                                            Text(String(creatorName.prefix(2)).uppercased())
+                                                .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                                        }
+                                    }
+                                    .frame(width: 46, height: 46).clipShape(Circle())
+                                } else if let data = Data(base64Encoded: creatorProfilePic), let uiImg = UIImage(data: data) {
+                                    Image(uiImage: uiImg).resizable().scaledToFill().frame(width: 46, height: 46).clipShape(Circle())
+                                } else {
+                                    Text(String(creatorName.prefix(2)).uppercased())
+                                        .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                                }
+                            } else {
+                                Text(String(creatorName.prefix(2)).uppercased())
+                                    .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+                            }
+                        }
+
                         VStack(alignment: .leading, spacing: 2) {
                             Text(creatorName).font(.merriweather(16, weight: .bold)).foregroundColor(darkText)
                             Text(viewModel.isOwner(recipe: recipe) ? "Your Recipe" : "Public Creator")
@@ -365,7 +385,6 @@ extension RecipeDetailView {
     }
 }
 
-// Struct penolong untuk Tab
 struct PickerTab: View {
     let title: String
     let isSelected: Bool

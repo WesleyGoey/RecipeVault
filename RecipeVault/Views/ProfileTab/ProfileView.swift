@@ -166,17 +166,31 @@ struct ProfileView: View {
                                     width: 86,
                                     height: 86
                                 ).clipShape(Circle())
-                        } else if let url = URL(string: vm.profilePictureURL),
-                            !vm.profilePictureURL.isEmpty
-                        {
-                            AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image.resizable().scaledToFill()
-                                default: Color.clear
+                        }
+                        // 🚀 PERBAIKAN LOGIKA FOTO PROFIL UNTUK BASE64 & LINK HTTP
+                        else if !vm.profilePictureURL.isEmpty {
+                            if vm.profilePictureURL.hasPrefix("http") {
+                                AsyncImage(url: URL(string: vm.profilePictureURL)) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image.resizable().scaledToFill()
+                                    default: Color.clear
+                                    }
                                 }
+                                .frame(width: 86, height: 86).clipShape(Circle())
+                            } else if let data = Data(base64Encoded: vm.profilePictureURL), let uiImage = UIImage(data: data) {
+                                Image(uiImage: uiImage)
+                                    .resizable().scaledToFill()
+                                    .frame(width: 86, height: 86).clipShape(Circle())
+                            } else {
+                                Text(
+                                    vm.name.split(separator: " ").prefix(2)
+                                        .compactMap { $0.first }.map { String($0) }
+                                        .joined()
+                                )
+                                .font(.merriweather(32, weight: .bold))
+                                .foregroundColor(.white)
                             }
-                            .frame(width: 86, height: 86).clipShape(Circle())
                         } else {
                             Text(
                                 vm.name.split(separator: " ").prefix(2)
@@ -345,7 +359,6 @@ struct ProfileView: View {
     }
 
     // MARK: - Collections Section
-    // MARK: - Collections Section
     private var collectionsSection: some View {
         Group {
             if vm.isLoading {
@@ -365,8 +378,6 @@ struct ProfileView: View {
             } else {
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(vm.publicCollections) { col in
-
-                        // 🚀 PERBAIKAN: Bungkus dengan NavigationLink agar bisa diklik!
                         NavigationLink(
                             destination: CollectionDetailView(
                                 collection: col,
@@ -380,8 +391,7 @@ struct ProfileView: View {
                             )
                             .frame(height: 170)
                         }
-                        .buttonStyle(PlainButtonStyle())  // Agar warna teks tidak berubah biru
-
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
             }
