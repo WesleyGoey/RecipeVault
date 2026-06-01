@@ -94,29 +94,53 @@ struct CollectionDetailView: View {
 // MARK: - Subviews
 extension CollectionDetailView {
 
+    // 🚀 PERBAIKAN: Header Gambar yang membaca HTTP dan Base64 dengan sempurna
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
             Color.clear
                 .frame(height: 320)
                 .overlay(
                     Group {
-                        let validUrl =
-                            collection.collectionImage.isEmpty
-                            ? "https://images.unsplash.com/photo-1495195134817-a165d4292816?q=80&w=800&auto=format&fit=crop"
-                            : collection.collectionImage
-
-                        AsyncImage(
-                            url: URL(
-                                string: validUrl.trimmingCharacters(
-                                    in: .whitespacesAndNewlines
-                                )
-                            )
-                        ) { image in
-                            image.resizable().scaledToFill()
-                        } placeholder: {
-                            Rectangle().fill(Color.gray.opacity(0.3)).overlay(
-                                ProgressView()
-                            )
+                        let imageUrl = collection.collectionImage.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        if imageUrl.isEmpty {
+                            ZStack {
+                                mutedTeal.opacity(0.15)
+                                Image(systemName: "photo")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(mutedTeal.opacity(0.5))
+                            }
+                        } else if imageUrl.starts(with: "http") {
+                            AsyncImage(url: URL(string: imageUrl)) { phase in
+                                switch phase {
+                                case .empty:
+                                    Rectangle().fill(Color.gray.opacity(0.3)).overlay(ProgressView())
+                                case .success(let image):
+                                    image.resizable().scaledToFill()
+                                case .failure:
+                                    ZStack {
+                                        mutedTeal.opacity(0.15)
+                                        Image(systemName: "photo")
+                                            .font(.system(size: 60))
+                                            .foregroundColor(mutedTeal.opacity(0.5))
+                                    }
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                        } else if let imageData = Data(base64Encoded: imageUrl),
+                                  let uiImage = UIImage(data: imageData) {
+                            // 🚀 Membaca Base64 buatan User
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                        } else {
+                            ZStack {
+                                mutedTeal.opacity(0.15)
+                                Image(systemName: "photo")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(mutedTeal.opacity(0.5))
+                            }
                         }
                     }
                 )

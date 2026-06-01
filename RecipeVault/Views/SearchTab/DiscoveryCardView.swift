@@ -30,6 +30,8 @@ struct DiscoverCardView: View {
         }
         .frame(height: 240)
         .clipShape(RoundedRectangle(cornerRadius: 24))
+        // 🚀 Memastikan seluruh kartu padat dan bisa ditekan di NavigationLink
+        .contentShape(Rectangle())
         .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
     }
 }
@@ -37,10 +39,15 @@ struct DiscoverCardView: View {
 // MARK: - Subviews
 extension DiscoverCardView {
     
+    // 🚀 PERBAIKAN: Menambahkan dukungan Base64 untuk gambar dari Firebase
     private var backgroundSection: some View {
         Group {
-            if let urlString = imageUrl, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
+            let urlStr = (imageUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if urlStr.isEmpty {
+                placeholderView
+            } else if urlStr.starts(with: "http") {
+                AsyncImage(url: URL(string: urlStr)) { phase in
                     switch phase {
                     case .empty:
                         placeholderView
@@ -57,6 +64,14 @@ extension DiscoverCardView {
                 .frame(height: 240)
                 .frame(maxWidth: .infinity)
                 .clipped()
+            } else if let imageData = Data(base64Encoded: urlStr),
+                      let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 240)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
             } else {
                 placeholderView
             }
@@ -83,7 +98,7 @@ extension DiscoverCardView {
                     .tracking(1.5) // Memberikan jarak antar huruf (letter spacing)
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 8)	
+                    .padding(.vertical, 8)
                     .background(mutedTeal)
                     .clipShape(Capsule())
                 
@@ -97,17 +112,20 @@ extension DiscoverCardView {
     private var textContentSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(author.uppercased())
-                .font(.custom("Merriweather-Bold", size: 11))
+                // 🚀 Menggunakan extension Merriweather
+                .font(.merriweather(11, weight: .bold))
                 .tracking(1.2)
                 .foregroundColor(.white.opacity(0.9))
             
             Text(title)
-                .font(.custom("Merriweather-Bold", size: 24))
+                // 🚀 Menggunakan extension Merriweather
+                .font(.merriweather(24, weight: .bold))
                 .foregroundColor(.white)
                 .lineLimit(2) // Maksimal 2 baris agar layout tidak rusak jika judul panjang
             
             Text("\(recipeCount) recipes curated")
-                .font(.custom("Merriweather-Regular", size: 14))
+                // 🚀 Menggunakan extension Merriweather
+                .font(.merriweather(14, weight: .regular))
                 .foregroundColor(.white.opacity(0.8))
         }
         .padding(20)
