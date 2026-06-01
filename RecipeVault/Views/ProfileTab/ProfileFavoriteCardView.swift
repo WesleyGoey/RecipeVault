@@ -24,40 +24,58 @@ struct ProfileFavoriteCardView: View {
         VStack(alignment: .leading, spacing: 12) {
             // MARK: - Image & Heart Button
             ZStack(alignment: .topTrailing) {
-                
-                // 🚀 JIKA GAMBAR KOSONG: Tampilkan Icon Sendok Garpu
-                if recipe.recipeImage.isEmpty {
-                    ZStack {
-                        mutedTeal.opacity(0.15)
-                        Image(systemName: "fork.knife")
-                            .font(.system(size: 30))
-                            .foregroundColor(mutedTeal.opacity(0.5))
-                    }
-                    .frame(height: 140)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                } else {
-                    AsyncImage(url: URL(string: recipe.recipeImage)) { phase in
-                        switch phase {
-                        case .empty:
-                            Rectangle().fill(Color.gray.opacity(0.15)).overlay(ProgressView())
-                        case .success(let image):
-                            image.resizable().scaledToFill()
-                        case .failure:
-                            ZStack {
-                                mutedTeal.opacity(0.15)
-                                Image(systemName: "fork.knife")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(mutedTeal.opacity(0.5))
-                            }
-                        @unknown default:
-                            EmptyView()
+                Group {
+                    let imageUrl = recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    // 1. Jika Kosong
+                    if imageUrl.isEmpty {
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 30))
+                                .foregroundColor(mutedTeal.opacity(0.5))
                         }
                     }
-                    .frame(height: 140)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
+                    // 2. Jika dari Internet (TheMealDB)
+                    else if imageUrl.starts(with: "http") {
+                        AsyncImage(url: URL(string: imageUrl)) { phase in
+                            switch phase {
+                            case .empty:
+                                Rectangle().fill(Color.gray.opacity(0.15)).overlay(ProgressView())
+                            case .success(let image):
+                                image.resizable().scaledToFill()
+                            case .failure:
+                                ZStack {
+                                    mutedTeal.opacity(0.15)
+                                    Image(systemName: "fork.knife")
+                                        .font(.system(size: 30))
+                                        .foregroundColor(mutedTeal.opacity(0.5))
+                                }
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    }
+                    // 3. Jika dari Firebase (Base64) - INI YANG MEMBUAT GAMBARMU MUNCUL
+                    else if let imageData = Data(base64Encoded: imageUrl),
+                            let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                    }
+                    // 4. Fallback (Cadangan)
+                    else {
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 30))
+                                .foregroundColor(mutedTeal.opacity(0.5))
+                        }
+                    }
                 }
+                .frame(height: 140)
+                .frame(maxWidth: .infinity)
+                .clipped()
                 
                 Button(action: { Task { await recipeVM.toggleFavorite(recipe: recipe) } }) {
                     Image(systemName: "heart.fill")
@@ -92,6 +110,8 @@ struct ProfileFavoriteCardView: View {
         }
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        // 🚀 TAMBAHAN KECIL: Memastikan seluruh badan kartu bisa di-klik
+        .contentShape(Rectangle())
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
         
         .task {
