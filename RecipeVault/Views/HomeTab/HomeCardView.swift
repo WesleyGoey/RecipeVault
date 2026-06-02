@@ -111,6 +111,7 @@ extension HomeCardView {
     }
 }
 
+// MARK: - Preview
 #Preview {
     HomeCardView(recipe: Recipe(userId: "1", title: "Test Recipe", description: "", ingredients: [], steps: [], category: "Dessert", recipeImage: ""))
         .environmentObject(RecipeViewModel())

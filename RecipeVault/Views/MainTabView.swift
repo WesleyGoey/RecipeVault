@@ -16,7 +16,7 @@ struct MainTabView: View {
     
     let mutedTeal = Color(hex: "43766c")
     
-    // MARK: - Initializer for Tab Bar Appearance
+    // MARK: - Initializer
     init() {
         let appearance = UITabBarAppearance()
         

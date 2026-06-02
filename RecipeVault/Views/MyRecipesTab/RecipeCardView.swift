@@ -29,7 +29,6 @@ struct RecipeCardView: View {
 
 // MARK: - Subviews
 extension RecipeCardView {
-    
     // MARK: - Image Section & Placeholder
     private var imageSection: some View {
         Group {
