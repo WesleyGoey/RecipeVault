@@ -8,6 +8,7 @@
 import FirebaseFirestore
 import SwiftUI
 
+// MARK: - Collection Detail View
 struct CollectionDetailView: View {
     let collection: RecipeCollection
     @ObservedObject var viewModel: CollectionViewModel
@@ -19,10 +20,8 @@ struct CollectionDetailView: View {
     @State private var creatorName: String = "Loading..."
     @State private var creatorProfilePic: String = ""
     
-    // Injeksi RecipeViewModel untuk fitur 3-Dot Menu
     @StateObject private var recipeVM = RecipeViewModel()
 
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let mutedTeal = Color(hex: "43766c")
     let burntOrange = Color(hex: "cd4b12")
@@ -102,9 +101,10 @@ struct CollectionDetailView: View {
     }
 }
 
-// MARK: - Subviews
+// MARK: - Collection Detail Subview
 extension CollectionDetailView {
 
+    // MARK: - Hero Image Section
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
             Color.clear
@@ -190,6 +190,7 @@ extension CollectionDetailView {
         }
     }
 
+    // MARK: - Author Section with NavigationLink to Profile
     private var authorSection: some View {
         NavigationLink(destination: OtherProfileView(creatorId: collection.userId)) {
             HStack(spacing: 12) {
@@ -234,7 +235,8 @@ extension CollectionDetailView {
         }
         .buttonStyle(PlainButtonStyle())
     }
-
+    
+    // MARK: - Recipes List Section
     private var recipesListSection: some View {
         LazyVStack(spacing: 16) {
             ForEach(viewModel.recipesInCollection, id: \.id) { recipe in
@@ -262,7 +264,6 @@ struct CollectionRecipeRow: View {
             HStack(spacing: 16) {
                 
                 Group {
-                    // 🚀 KEMBALI KE LOGIKA RECIPECARDVIEW YANG TERBUKTI BEKERJA
                     let cleanImageString = recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines)
                     
                     if cleanImageString.isEmpty {
@@ -358,6 +359,7 @@ struct CollectionRecipeRow: View {
         .buttonStyle(PlainButtonStyle())
     }
     
+    // MARK: - Placeholder Image View
     private var placeholderImage: some View {
         ZStack {
             mutedTeal.opacity(0.15)
@@ -368,6 +370,7 @@ struct CollectionRecipeRow: View {
     }
 }
 
+// MARK: - Preview 
 #Preview {
     CollectionDetailView(
         collection: RecipeCollection.mockCollections[0],

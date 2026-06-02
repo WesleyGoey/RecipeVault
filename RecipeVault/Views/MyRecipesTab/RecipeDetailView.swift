@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseFirestore
 
+// MARK: - Recipe Detail View
 struct RecipeDetailView: View {
     @State private var recipe: Recipe
     @ObservedObject var viewModel: RecipeViewModel
@@ -18,7 +19,6 @@ struct RecipeDetailView: View {
     @State private var showingDeleteAlert = false
     @State private var isLoadingDetails = false
     
-    // 🚀 State untuk menampung nama & foto pembuat resep
     @State private var creatorName: String = "Loading..."
     @State private var creatorProfilePic: String = ""
     
@@ -27,6 +27,7 @@ struct RecipeDetailView: View {
     let mutedTeal = Color(hex: "43766c")
     let darkText = Color.primary
     
+    // MARK: - Initializer For Live Data Update
     init(recipe: Recipe, viewModel: RecipeViewModel) {
         self._recipe = State(initialValue: recipe)
         self.viewModel = viewModel
@@ -36,14 +37,11 @@ struct RecipeDetailView: View {
         ScrollView {
             VStack(spacing: 0) {
                 heroImageSection
-                
                 authorSection
-                
                 VStack(alignment: .leading, spacing: 20) {
                     titleSection
                     tagsSection
                     customPicker
-                    
                     if isLoadingDetails {
                         ProgressView().scaleEffect(1.5).frame(maxWidth: .infinity).padding(.top, 40)
                     } else {
@@ -69,12 +67,10 @@ struct RecipeDetailView: View {
             }
         }
         .task {
-            // Ambil detail bahan jika kosong (dari TheMealDB)
             if recipe.ingredients.isEmpty, let mealId = recipe.id {
                 await fetchFullDetails(id: mealId)
             }
             
-            // 🚀 FETCH USER PROFILE NAME & PICTURE
             if recipe.userId == "themealdb" {
                 creatorName = "TheMealDB"
             } else {
@@ -96,17 +92,12 @@ struct RecipeDetailView: View {
                 }
             }
         }
-        
-        // BOTTOM SHEET KOLEKSI
         .sheet(isPresented: $viewModel.showCollectionSheet) {
             CollectionSelectionSheet(viewModel: viewModel)
         }
-        
         .sheet(isPresented: $showingEditSheet) {
             RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
         }
-        
-        // REVISI FITUR DELETE
         .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -121,6 +112,7 @@ struct RecipeDetailView: View {
         }
     }
     
+    // MARK: - Fetch Full Recipe Details from TheMealDB
     private func fetchFullDetails(id: String) async {
         isLoadingDetails = true
         guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/lookup.php?i=\(id)") else { return }
@@ -155,6 +147,7 @@ struct RecipeDetailView: View {
     }
 }
 
+// MARK: - Subviews & Components
 extension RecipeDetailView {
     
     // MARK: - Hero Image Section
@@ -169,7 +162,6 @@ extension RecipeDetailView {
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }
-            // RENDER GAMBAR DARI THEMEALDB URL
             else if recipe.recipeImage.starts(with: "http") {
                 AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
                     if let image = phase.image {
@@ -188,7 +180,6 @@ extension RecipeDetailView {
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }
-            // RENDER GAMBAR DARI TEXT BASE64
             else if let imageData = Data(base64Encoded: recipe.recipeImage),
                     let uiImage = UIImage(data: imageData) {
                 
@@ -206,8 +197,6 @@ extension RecipeDetailView {
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }
-            
-            // Overlay Gradient agar tombol back terlihat jelas
             LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.6)]), startPoint: .center, endPoint: .bottom)
                 .frame(height: 300)
             
@@ -229,6 +218,7 @@ extension RecipeDetailView {
         }
     }
     
+    // MARK: - Title & Action Buttons Section
     private var titleSection: some View {
         HStack(alignment: .top) {
             Text(recipe.title)
@@ -236,10 +226,8 @@ extension RecipeDetailView {
                 .foregroundColor(darkText)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer()
-            
+
             HStack(spacing: 12) {
-                
-                // TOMBOL ADD TO COLLECTION
                 Button(action: { Task { await viewModel.openCollectionSheet(for: recipe) } }) {
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .bold))
@@ -249,7 +237,6 @@ extension RecipeDetailView {
                         .clipShape(Circle())
                 }
                 
-                // TOMBOL FAVORITE
                 let isFav = viewModel.isFavorite(recipe: recipe)
                 Button(action: { Task { await viewModel.toggleFavorite(recipe: recipe) } }) {
                     Image(systemName: isFav ? "heart.fill" : "heart")
@@ -265,10 +252,9 @@ extension RecipeDetailView {
         }
     }
     
-    // 🚀 BISA DI-KLIK & MENAMPILKAN FOTO PROFIL AUTHOR
+    // MARK: - Author Info Section
     private var authorSection: some View {
         Group {
-            // JIKA DARI API THEMEALDB
             if recipe.userId == "themealdb" {
                 HStack {
                     Circle().fill(mutedTeal).frame(width: 46, height: 46).overlay(Text("TM").foregroundColor(.white).font(.system(size: 14, weight: .bold)))
@@ -280,12 +266,9 @@ extension RecipeDetailView {
                 }
                 .padding(20).background(bgYellow)
             }
-            // JIKA DARI USER SUNGGUHAN
             else {
                 NavigationLink(destination: OtherProfileView(creatorId: recipe.userId)) {
                     HStack(spacing: 12) {
-                        
-                        // 🚀 LOGIKA FOTO PROFIL AUTHOR
                         ZStack {
                             Circle().fill(mutedTeal).frame(width: 46, height: 46)
                             if !creatorProfilePic.isEmpty {
@@ -326,6 +309,7 @@ extension RecipeDetailView {
         }
     }
     
+    // MARK: - Tags Section
     private var tagsSection: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
@@ -346,6 +330,7 @@ extension RecipeDetailView {
         }
     }
     
+    // MARK: - Custom Picker for Ingredients & Steps
     private var customPicker: some View {
         HStack(spacing: 0) {
             PickerTab(title: "Ingredients", isSelected: viewModel.currentTab == .ingredients) {
@@ -358,6 +343,7 @@ extension RecipeDetailView {
         .padding(6).background(mutedTeal.opacity(0.15)).clipShape(Capsule()).padding(.vertical, 10)
     }
     
+    // MARK: - Ingredients List & Steps List
     private var ingredientsList: some View {
         VStack(spacing: 12) {
             ForEach(recipe.ingredients, id: \.self) { ingredient in
@@ -371,6 +357,7 @@ extension RecipeDetailView {
         }
     }
     
+    // MARK: - Steps List with Numbered Indicators
     private var stepsList: some View {
         VStack(spacing: 12) {
             ForEach(Array(recipe.steps.enumerated()), id: \.element) { index, step in
@@ -385,6 +372,7 @@ extension RecipeDetailView {
     }
 }
 
+// MARK: - Custom Picker Tab Component
 struct PickerTab: View {
     let title: String
     let isSelected: Bool
@@ -396,10 +384,12 @@ struct PickerTab: View {
     }
 }
 
+// MARK: - Preview Provider with Live Data Fetching
 #Preview {
     PreviewLiveWrapper()
 }
 
+// MARK: - Wrapper View To Fetch Real Data For Preview
 struct PreviewLiveWrapper: View {
     @State private var fetchedRecipe: Recipe?
     @StateObject private var sharedViewModel = RecipeViewModel()
@@ -423,6 +413,7 @@ struct PreviewLiveWrapper: View {
         }
     }
     
+    // MARK: - Fetch A Random Recipe From TheMealDB For Realistic Preview
     func fetchRealData() async {
         do {
             let url = URL(string: "https://www.themealdb.com/api/json/v1/1/random.php")!

@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 
+// MARK: - CollectionEditView
 struct CollectionEditView: View {
     @Environment(\.dismiss) var dismiss
     
@@ -21,7 +22,6 @@ struct CollectionEditView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     
-    // 🚀 STATE MENTAHAN & DELETE
     @State private var rawImageData: Data?
     @State private var isImageDeleted: Bool = false
     
@@ -29,6 +29,7 @@ struct CollectionEditView: View {
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     
+    // MARK: - Innizializer for Pre-populating Data
     init(collectionToEdit: RecipeCollection, viewModel: CollectionViewModel) {
         self.collectionToEdit = collectionToEdit
         self.viewModel = viewModel
@@ -62,7 +63,6 @@ struct CollectionEditView: View {
             .overlay(alignment: .bottom) {
                 updateButton
             }
-            // 🚀 MUNCULKAN ERROR FIREBASE
             .alert("Update Failed", isPresented: Binding(
                 get: { !viewModel.operationError.isEmpty },
                 set: { if !$0 { viewModel.operationError = "" } }
@@ -75,8 +75,10 @@ struct CollectionEditView: View {
     }
 }
 
-// MARK: - Subviews
+// MARK: - Collection Edit Subview
 extension CollectionEditView {
+    
+    // MARK: - Photo Upload Section with Trash Button
     private var photoUploadSection: some View {
         ZStack(alignment: .topTrailing) {
             PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
@@ -84,7 +86,6 @@ extension CollectionEditView {
                     Image(uiImage: selectedImage).resizable().scaledToFill().frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
                 }
                 else if !collectionToEdit.collectionImage.isEmpty && !isImageDeleted {
-                    // 🚀 GANTI ASYNCIMAGE DENGAN BACA TEKS BASE64
                     if let imageData = Data(base64Encoded: collectionToEdit.collectionImage),
                        let uiImage = UIImage(data: imageData) {
                         Image(uiImage: uiImage)
@@ -105,13 +106,11 @@ extension CollectionEditView {
                     if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
                         self.selectedImage = image
                         self.isImageDeleted = false
-                        // 🚀 SIMPAN GAMBAR MENTAHAN
                         self.rawImageData = image.jpegData(compressionQuality: 1.0)
                     }
                 }
             }
             
-            // 🚀 TOMBOL TRASH KANAN ATAS
             if selectedImage != nil || (!collectionToEdit.collectionImage.isEmpty && !isImageDeleted) {
                 Button(action: {
                     withAnimation {
@@ -133,6 +132,7 @@ extension CollectionEditView {
         }
     }
     
+    // MARK: - Placeholder View for Photo Upload
     private var placeholderView: some View {
         VStack(spacing: 12) {
             Image(systemName: "photo.badge.plus").font(.system(size: 32))
@@ -142,6 +142,7 @@ extension CollectionEditView {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(mutedTeal.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8])))
     }
     
+    // MARK: - Reusable Input Section for Name and Other Future Fields
     private func inputSection(title: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -149,6 +150,7 @@ extension CollectionEditView {
         }
     }
     
+    // MARK: - Description Section with TextEditor and Placeholder
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("DESCRIPTION").font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -162,6 +164,7 @@ extension CollectionEditView {
         }
     }
     
+    // MARK: - Visibility Section with Custom Toggle Buttons
     private var visibilitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("VISIBILITY").font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -194,12 +197,12 @@ extension CollectionEditView {
         }
     }
     
+    // MARK: - Update Button with Loading State and Disabled Logic
     private var updateButton: some View {
         Button(action: {
             Task {
                 guard let colId = collectionToEdit.id else { return }
                 
-                // 🚀 UPDATE MENGGUNAKAN GAMBAR MENTAH
                 let success = await viewModel.updateCollection(
                     collectionId: colId,
                     name: name,
@@ -225,6 +228,7 @@ extension CollectionEditView {
     }
 }
 
+// MARK: - Preview
 #Preview {
     CollectionEditView(collectionToEdit: RecipeCollection.mockCollections[0], viewModel: CollectionViewModel())
 }
