@@ -170,7 +170,6 @@ struct AuthView: View {
         if mode == .login {
             return !loginEmail.trimmingCharacters(in: .whitespaces).isEmpty && !loginPassword.isEmpty
         } else {
-            // 🚀 PERBAIKAN: Tombol aktif selama semua field diisi teks, agar validasi pesan error di dalam submit() bisa berjalan saat ditekan.
             return !regName.trimmingCharacters(in: .whitespaces).isEmpty &&
                    !regEmail.trimmingCharacters(in: .whitespaces).isEmpty &&
                    !regPassword.isEmpty &&
@@ -201,7 +200,6 @@ struct AuthView: View {
             let nameTrim = regName.trimmingCharacters(in: .whitespacesAndNewlines)
             let emailTrim = regEmail.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            // 🚀 PERBAIKAN LOGIKA VALIDASI: Diperiksa berurutan dari atas ke bawah
             guard !nameTrim.isEmpty else { authVM.errorMessage = "Input name."; return }
             guard emailTrim.contains("@") else { authVM.errorMessage = "Invalid email."; return }
             guard regPassword.count >= 8 else { authVM.errorMessage = "Password minimun 8 characters"; return }
