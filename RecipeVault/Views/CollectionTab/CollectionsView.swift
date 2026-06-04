@@ -7,12 +7,11 @@
 
 import SwiftUI
 
+// MARK: - Collections View
 struct CollectionsView: View {
-    // 🚀 TERIMA BINDING TAB
     @Binding var selectedTab: Int
     @State private var navResetID = UUID()
     
-    // 1. Injeksi ViewModel Autentikasi dan Profil
     @EnvironmentObject var authVM: AuthViewModel
     @StateObject private var profileVM = ProfileViewModel()
     
@@ -23,7 +22,6 @@ struct CollectionsView: View {
     @State private var collectionToDelete: RecipeCollection? = nil
     @State private var showingDeleteAlert = false
     
-    // 2. State untuk mengontrol kemunculan halaman Login/Register
     @State private var showAuthView = false
     @State private var authInitialMode: AuthMode = .login
     
@@ -43,7 +41,6 @@ struct CollectionsView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         headerSection
                         
-                        // 3. LOGIKA PENGECEKAN LOGIN DENGAN AUTHVM
                         if !authVM.isLoggedIn {
                             unauthenticatedArea
                         } else {
@@ -56,14 +53,12 @@ struct CollectionsView: View {
                     }
                 }
                 
-                // 4. Sembunyikan tombol + jika belum login
                 if authVM.isLoggedIn {
                     floatingActionButton
                 }
             }
             .navigationBarHidden(true)
             .task {
-                // Saat layar dibuka, tarik profil (jika login)
                 if authVM.isLoggedIn {
                     await profileVM.initializeUserProfile()
                     
@@ -74,21 +69,17 @@ struct CollectionsView: View {
                     }
                 }
             }
-            // 5. PANTAU LOGOUT/LOGIN SECARA REAL-TIME
             .onChange(of: authVM.isLoggedIn) { isLoggedIn in
                 if isLoggedIn {
-                    // Jika baru login, muat data
                     Task {
                         await profileVM.initializeUserProfile()
                         await viewModel.loadMyCollections()
                     }
                 } else {
-                    // Jika logout, bersihkan layar secara instan
                     viewModel.myCollections.removeAll()
                     profileVM.userId = ""
                 }
             }
-            // INJEKSI VIEWMODEL KE SHEET LOGIN
             .sheet(isPresented: $showAuthView) {
                 AuthView(vm: profileVM, initialMode: authInitialMode)
             }
@@ -107,9 +98,8 @@ struct CollectionsView: View {
                 Text("Are you sure you want to delete '\(collection.name)'? Recipes inside will not be deleted.")
             }
         }
-        .id(navResetID) // 🚀 RESET LOGIC
+        .id(navResetID)
         .onChange(of: selectedTab) { newTab in
-            // Jika keluar dari tab Collections (index 3), reset halamannya!
             if newTab != 3 {
                 navResetID = UUID()
             }
@@ -119,13 +109,14 @@ struct CollectionsView: View {
 
 // MARK: - Subviews
 extension CollectionsView {
+    
+    // MARK: - Header Section
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("My Collections")
-                .font(.merriweather(36, weight: .bold)) // 🚀 FONT
+                .font(.merriweather(36, weight: .bold))
                 .foregroundColor(darkText)
             
-            // Filter controls (Hanya relevan jika user login)
             if authVM.isLoggedIn {
                 HStack {
                     Button(action: {}) {
@@ -139,7 +130,7 @@ extension CollectionsView {
         .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 16)
     }
     
-    // TAMPILAN JIKA USER BELUM LOGIN
+    // MARK: - Unauthenticated Area
     private var unauthenticatedArea: some View {
         VStack(spacing: 24) {
             Spacer().frame(height: 40)
@@ -193,6 +184,7 @@ extension CollectionsView {
         .frame(maxWidth: .infinity)
     }
     
+    // MARK: - Grid Section
     private var gridSection: some View {
         LazyVGrid(columns: columns, spacing: 20) {
             ForEach(viewModel.myCollections, id: \.name) { collection in
@@ -215,6 +207,7 @@ extension CollectionsView {
         }.padding(.horizontal, 20).padding(.bottom, 120)
     }
     
+    // MARK: - Empty State View
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "square.grid.2x2.fill")
@@ -235,6 +228,7 @@ extension CollectionsView {
         .padding(.top, 60)
     }
     
+    // MARK: - Floating Action Button
     private var floatingActionButton: some View {
         Button(action: { showingCreateSheet = true }) {
             Image(systemName: "plus").font(.system(size: 24, weight: .semibold)).foregroundColor(.white)

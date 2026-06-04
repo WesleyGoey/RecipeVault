@@ -5,10 +5,12 @@
 //  Created by Nicholas Gerwin Mawardji on 29/05/26.
 //
 
+
 import Foundation
 import SwiftUI
 import Combine
 
+// MARK: - HomeViewModel Class
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var recipeOfTheDay: Recipe?
@@ -20,6 +22,7 @@ class HomeViewModel: ObservableObject {
     @Published var feedRecipes: [Recipe] = []
     @Published var isLoadingFeed: Bool = true
     
+    // MARK: - Initializer
     init() {
         Task {
             await fetchRecipeOfTheDay()
@@ -28,6 +31,7 @@ class HomeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Fetch Recipe Of The Day
     func fetchRecipeOfTheDay() async {
         isLoadingHero = true
         do {
@@ -45,6 +49,7 @@ class HomeViewModel: ObservableObject {
         isLoadingHero = false
     }
     
+    // MARK: - Fetch Categories
     func fetchCategories() async {
         do {
             guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/list.php?c=list") else { return }
@@ -62,6 +67,7 @@ class HomeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Select Category
     func selectCategory(_ category: String) {
         guard selectedCategory != category else { return }
         selectedCategory = category
@@ -70,6 +76,7 @@ class HomeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Fetch Feed
     func fetchFeed(for category: String) async {
         isLoadingFeed = true
         feedRecipes = []
@@ -77,7 +84,6 @@ class HomeViewModel: ObservableObject {
         do {
             let urlString: String
             if category == "All" {
-                // 🚀 RANDOMIZE HACK: Pick a random letter that is known to have good results
                 let letters = ["a", "b", "c", "m", "p", "s"]
                 let randomLetter = letters.randomElement() ?? "c"
                 urlString = "https://www.themealdb.com/api/json/v1/1/search.php?f=\(randomLetter)"
@@ -92,7 +98,6 @@ class HomeViewModel: ObservableObject {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let meals = json["meals"] as? [[String: Any]] {
                 
-                // 🚀 .shuffled() ensures the cards appear in a random order every time
                 self.feedRecipes = meals.compactMap { parseMeal($0, forceCategory: category == "All" ? nil : category) }.shuffled()
             }
         } catch {
@@ -101,6 +106,7 @@ class HomeViewModel: ObservableObject {
         isLoadingFeed = false
     }
     
+    // MARK: - Parse Meal
     private func parseMeal(_ meal: [String: Any], forceCategory: String? = nil) -> Recipe {
         let id = meal["idMeal"] as? String ?? UUID().uuidString
         let title = meal["strMeal"] as? String ?? "Unknown"

@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseFirestore
 
+// MARK: - Recipe Detail View
 struct RecipeDetailView: View {
     @State private var recipe: Recipe
     @ObservedObject var viewModel: RecipeViewModel
@@ -26,6 +27,7 @@ struct RecipeDetailView: View {
     let mutedTeal = Color(hex: "43766c")
     let darkText = Color.primary
     
+    // MARK: - Initializer For Live Data Update
     init(recipe: Recipe, viewModel: RecipeViewModel) {
         self._recipe = State(initialValue: recipe)
         self.viewModel = viewModel
@@ -35,14 +37,11 @@ struct RecipeDetailView: View {
         ScrollView {
             VStack(spacing: 0) {
                 heroImageSection
-                
                 authorSection
-                
                 VStack(alignment: .leading, spacing: 20) {
                     titleSection
                     tagsSection
                     customPicker
-                    
                     if isLoadingDetails {
                         ProgressView().scaleEffect(1.5).frame(maxWidth: .infinity).padding(.top, 40)
                     } else {
@@ -68,9 +67,7 @@ struct RecipeDetailView: View {
             }
         }
         .task {
-            // 🔴 PERBAIKAN: Cek juga apakah gambarnya kosong. Jika ya, jalankan fetchFullDetails.
-            let isImageEmpty = recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            if (recipe.ingredients.isEmpty || isImageEmpty), let mealId = recipe.id {
+            if recipe.ingredients.isEmpty, let mealId = recipe.id {
                 await fetchFullDetails(id: mealId)
             }
             
@@ -114,6 +111,7 @@ struct RecipeDetailView: View {
         }
     }
     
+    // MARK: - Fetch Full Recipe Details from TheMealDB
     private func fetchFullDetails(id: String) async {
         isLoadingDetails = true
         guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/lookup.php?i=\(id)") else { return }
@@ -160,6 +158,7 @@ struct RecipeDetailView: View {
     }
 }
 
+// MARK: - Subviews & Components
 extension RecipeDetailView {
     // MARK: - Hero Image Section
     private var heroImageSection: some View {
@@ -169,9 +168,8 @@ extension RecipeDetailView {
             if cleanImg.isEmpty {
                 defaultPlaceholder
             }
-            // RENDER GAMBAR URL
-            else if cleanImg.hasPrefix("http") {
-                AsyncImage(url: URL(string: cleanImg)) { phase in
+            else if recipe.recipeImage.starts(with: "http") {
+                AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
                     if let image = phase.image {
                         image.resizable().scaledToFill()
                     } else if phase.error != nil {
@@ -185,8 +183,7 @@ extension RecipeDetailView {
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }
-            // RENDER GAMBAR BASE64
-            else if let imageData = Data(base64Encoded: cleanImg),
+            else if let imageData = Data(base64Encoded: recipe.recipeImage),
                     let uiImage = UIImage(data: imageData) {
                 Color.clear.overlay(
                     Image(uiImage: uiImage).resizable().scaledToFill()
@@ -195,7 +192,6 @@ extension RecipeDetailView {
             } else {
                 defaultPlaceholder
             }
-            
             LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.6)]), startPoint: .center, endPoint: .bottom)
                 .frame(height: 300)
             
@@ -234,7 +230,7 @@ extension RecipeDetailView {
                 .foregroundColor(darkText)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer()
-            
+
             HStack(spacing: 12) {
                 Button(action: { Task { await viewModel.openCollectionSheet(for: recipe) } }) {
                     Image(systemName: "plus")
@@ -260,6 +256,7 @@ extension RecipeDetailView {
         }
     }
     
+    // MARK: - Author Info Section
     private var authorSection: some View {
         Group {
             if recipe.userId == "themealdb" {
@@ -272,7 +269,8 @@ extension RecipeDetailView {
                     Spacer()
                 }
                 .padding(20).background(bgYellow)
-            } else {
+            }
+            else {
                 NavigationLink(destination: OtherProfileView(creatorId: recipe.userId)) {
                     HStack(spacing: 12) {
                         ZStack {
@@ -316,6 +314,7 @@ extension RecipeDetailView {
         }
     }
     
+    // MARK: - Tags Section
     private var tagsSection: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
@@ -336,6 +335,7 @@ extension RecipeDetailView {
         }
     }
     
+    // MARK: - Custom Picker for Ingredients & Steps
     private var customPicker: some View {
         HStack(spacing: 0) {
             PickerTab(title: "Ingredients", isSelected: viewModel.currentTab == .ingredients) {
@@ -348,6 +348,7 @@ extension RecipeDetailView {
         .padding(6).background(mutedTeal.opacity(0.15)).clipShape(Capsule()).padding(.vertical, 10)
     }
     
+    // MARK: - Ingredients List & Steps List
     private var ingredientsList: some View {
         VStack(spacing: 12) {
             ForEach(recipe.ingredients, id: \.self) { ingredient in
@@ -361,6 +362,7 @@ extension RecipeDetailView {
         }
     }
     
+    // MARK: - Steps List with Numbered Indicators
     private var stepsList: some View {
         VStack(spacing: 12) {
             ForEach(Array(recipe.steps.enumerated()), id: \.element) { index, step in
@@ -375,7 +377,7 @@ extension RecipeDetailView {
     }
 }
 
-// MARK: - PickerTab Component Component
+// MARK: - Custom Picker Tab Component
 struct PickerTab: View {
     let title: String
     let isSelected: Bool
@@ -396,10 +398,13 @@ struct PickerTab: View {
         }
     }
 }
+
+// MARK: - Preview Provider with Live Data Fetching
 #Preview {
     PreviewLiveWrapper()
 }
 
+// MARK: - Wrapper View To Fetch Real Data For Preview
 struct PreviewLiveWrapper: View {
     @State private var fetchedRecipe: Recipe?
     @StateObject private var sharedViewModel = RecipeViewModel()
@@ -423,6 +428,7 @@ struct PreviewLiveWrapper: View {
         }
     }
     
+    // MARK: - Fetch A Random Recipe From TheMealDB For Realistic Preview
     func fetchRealData() async {
         do {
             let url = URL(string: "https://www.themealdb.com/api/json/v1/1/random.php")!

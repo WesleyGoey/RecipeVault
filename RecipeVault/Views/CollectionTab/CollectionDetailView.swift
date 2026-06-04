@@ -8,6 +8,7 @@
 import FirebaseFirestore
 import SwiftUI
 
+// MARK: - Collection Detail View
 struct CollectionDetailView: View {
     let collection: RecipeCollection
     @ObservedObject var viewModel: CollectionViewModel
@@ -16,14 +17,11 @@ struct CollectionDetailView: View {
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
 
-    // 🚀 State untuk menampung nama pembuat koleksi (Real Data)
     @State private var creatorName: String = "Loading..."
     @State private var creatorProfilePic: String = ""
     
-    // Injeksi RecipeViewModel untuk fitur 3-Dot Menu
     @StateObject private var recipeVM = RecipeViewModel()
 
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let mutedTeal = Color(hex: "43766c")
     let burntOrange = Color(hex: "cd4b12")
@@ -57,7 +55,6 @@ struct CollectionDetailView: View {
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea(.top)
         
-        // BOTTOM SHEET UNTUK MENYIMPAN RESEP
         .sheet(isPresented: $recipeVM.showCollectionSheet) {
             CollectionSelectionSheet(viewModel: recipeVM)
         }
@@ -65,9 +62,8 @@ struct CollectionDetailView: View {
         .task {
             guard let id = collection.id else { return }
             await viewModel.loadRecipesForCollection(collectionId: id)
-            await recipeVM.loadFavoriteIds() // Muat status favorit
+            await recipeVM.loadFavoriteIds()
 
-            // 🚀 AMBIL DATA AUTHOR
             do {
                 let db = Firestore.firestore()
                 let doc = try await db.collection("users").document(collection.userId).getDocument()
@@ -90,7 +86,6 @@ struct CollectionDetailView: View {
             CollectionEditView(collectionToEdit: collection, viewModel: viewModel)
         }
         
-        // 🚀 LOGIKA DISMISS INSTAN
         .alert("Delete Collection", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
@@ -106,9 +101,10 @@ struct CollectionDetailView: View {
     }
 }
 
-// MARK: - Subviews
+// MARK: - Collection Detail Subview
 extension CollectionDetailView {
 
+    // MARK: - Hero Image Section
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
             Color.clear
@@ -147,7 +143,6 @@ extension CollectionDetailView {
                 }
                 Spacer()
                 
-                // 3-DOT MENU UNTUK EDIT/DELETE KOLEKSI
                 if viewModel.isOwner(collection: collection) {
                     Menu {
                         Button {
@@ -195,12 +190,10 @@ extension CollectionDetailView {
         }
     }
 
-    // 🚀 BISA DI-KLIK & MENAMPILKAN FOTO PROFIL AUTHOR
+    // MARK: - Author Section with NavigationLink to Profile
     private var authorSection: some View {
         NavigationLink(destination: OtherProfileView(creatorId: collection.userId)) {
             HStack(spacing: 12) {
-                
-                // 🚀 LOGIKA FOTO PROFIL AUTHOR
                 ZStack {
                     Circle().fill(mutedTeal).frame(width: 46, height: 46)
                     if !creatorProfilePic.isEmpty {
@@ -242,7 +235,8 @@ extension CollectionDetailView {
         }
         .buttonStyle(PlainButtonStyle())
     }
-
+    
+    // MARK: - Recipes List Section
     private var recipesListSection: some View {
         LazyVStack(spacing: 16) {
             ForEach(viewModel.recipesInCollection, id: \.id) { recipe in
@@ -258,11 +252,9 @@ struct CollectionRecipeRow: View {
     let recipe: Recipe
     let parentCollection: RecipeCollection
     
-    // Injeksi ViewModels
     @EnvironmentObject var recipeVM: RecipeViewModel
     @ObservedObject var collectionVM: CollectionViewModel
     
-    // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
     let darkText = Color.primary
     let mutedTeal = Color(hex: "43766c")
@@ -272,11 +264,13 @@ struct CollectionRecipeRow: View {
             HStack(spacing: 16) {
                 
                 Group {
-                    if recipe.recipeImage.isEmpty {
+                    let cleanImageString = recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    if cleanImageString.isEmpty {
                         placeholderImage
                     }
-                    else if recipe.recipeImage.starts(with: "http") {
-                        AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
+                    else if cleanImageString.starts(with: "http") {
+                        AsyncImage(url: URL(string: cleanImageString)) { phase in
                             if let image = phase.image {
                                 image.resizable().scaledToFill()
                             } else if phase.error != nil {
@@ -289,7 +283,7 @@ struct CollectionRecipeRow: View {
                             }
                         }
                     }
-                    else if let imageData = Data(base64Encoded: recipe.recipeImage),
+                    else if let imageData = Data(base64Encoded: cleanImageString),
                             let uiImg = UIImage(data: imageData) {
                         Image(uiImage: uiImg).resizable().scaledToFill()
                     }
@@ -307,22 +301,23 @@ struct CollectionRecipeRow: View {
                         .lineLimit(1)
                         .multilineTextAlignment(.leading)
                     
-                    HStack(spacing: 8) {
-                        Text(recipe.category)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(burntOrange).clipShape(Capsule())
-                        
-                        HStack(spacing: 4) {
-                            Image(systemName: "clock")
-                            Text("30 min")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            let tags = recipe.category.components(separatedBy: ",")
+                                .map { $0.trimmingCharacters(in: .whitespaces) }
+                                .filter { !$0.isEmpty }
+                            
+                            ForEach(tags, id: \.self) { tag in
+                                Text(tag)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(burntOrange).clipShape(Capsule())
+                            }
                         }
-                        .font(.caption)
-                        .foregroundColor(.gray)
                     }
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 
                 Menu {
                     Button {
@@ -364,7 +359,7 @@ struct CollectionRecipeRow: View {
         .buttonStyle(PlainButtonStyle())
     }
     
-    // Tampilan placeholder untuk resep tanpa gambar
+    // MARK: - Placeholder Image View
     private var placeholderImage: some View {
         ZStack {
             mutedTeal.opacity(0.15)
@@ -375,6 +370,7 @@ struct CollectionRecipeRow: View {
     }
 }
 
+// MARK: - Preview 
 #Preview {
     CollectionDetailView(
         collection: RecipeCollection.mockCollections[0],

@@ -9,6 +9,7 @@
 import Foundation
 import FirebaseFirestore
 
+// MARK: - Recipe Model
 struct Recipe: Codable, Identifiable, Equatable {
     @DocumentID var id: String?
     var userId: String
@@ -18,9 +19,9 @@ struct Recipe: Codable, Identifiable, Equatable {
     var steps: [String]
     var category: String
     var recipeImage: String
-    @ServerTimestamp var createdAt: Date? // Firebase will automatically set the exact server time!
+    @ServerTimestamp var createdAt: Date?
     
-    // Helper method from your class diagram
+    // MARK: - Check Ownership
     func isOwnedBy(currentUserId: String) -> Bool {
         return userId == currentUserId
     }

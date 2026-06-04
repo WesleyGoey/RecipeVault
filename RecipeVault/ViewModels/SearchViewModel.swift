@@ -8,28 +8,29 @@
 import Foundation
 import SwiftUI
 import Combine
-import FirebaseFirestore
+import FirebaseFirestore // 🚀 Wajib ditambahkan untuk mem-bypass error Firebase Index
 
+// MARK: - SearchViewModel Class
 @MainActor
 class SearchViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var isSearching: Bool = false
     @Published var selectedTab: SearchTab = .theMealDB
+    
     @Published var isLoading: Bool = false
-    
-    @Published var mealDBRecipes: [Recipe] = []
-    
-    @Published var collections: [RecipeCollection] = []
     @Published var isLoadingCollections: Bool = false
     
-    // 🚀 Dictionary untuk menyimpan nama pembuat koleksi (userId : Nama)
+    @Published var mealDBRecipes: [Recipe] = []
+    @Published var collections: [RecipeCollection] = []
+    
+    // 🚀 INI DIA PENYEBAB ERROR-NYA: Variabel ini sebelumnya tertinggal!
+    @Published var featuredCollections: [RecipeCollection] = []
+    
     @Published var creatorNames: [String: String] = [:]
     
-    enum SearchTab {
-        case theMealDB
-        case collections
-    }
+    private let mealDBService = TheMealDBService.shared
     
+    // MARK: - Initializer
     init() {
         Task {
             await performSearch(query: "Chicken")
@@ -37,6 +38,7 @@ class SearchViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Perform Search
     func performSearch(query: String? = nil) async {
         let searchQuery = query ?? searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !searchQuery.isEmpty else { return }
@@ -45,14 +47,20 @@ class SearchViewModel: ObservableObject {
         mealDBRecipes = []
         
         do {
-            let safeQuery = searchQuery.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/search.php?s=\(safeQuery)") else { return }
+            let results = try await mealDBService.searchMeals(query: searchQuery)
             
-            let (data, _) = try await URLSession.shared.data(from: url)
-            
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let meals = json["meals"] as? [[String: Any]] {
-                self.mealDBRecipes = meals.compactMap { parseMeal($0) }
+            self.mealDBRecipes = results.map { meal in
+                Recipe(
+                    id: meal.idMeal,
+                    userId: "themealdb",
+                    title: meal.strMeal,
+                    description: "A classic dish from TheMealDB.",
+                    ingredients: [],
+                    steps: [],
+                    category: meal.strCategory ?? "General",
+                    recipeImage: meal.strMealThumb ?? "",
+                    createdAt: Date()
+                )
             }
         } catch {
             print("Failed to search recipes: \(error.localizedDescription)")
@@ -60,72 +68,57 @@ class SearchViewModel: ObservableObject {
         isLoading = false
     }
     
+    // MARK: - Fetch Public Collections
     func fetchPublicCollections() async {
         isLoadingCollections = true
-        collections = []
         
         do {
             let db = Firestore.firestore()
-            let snapshot = try await db.collection("collections")
-                .whereField("visibility", isEqualTo: "PUBLIC")
-                .getDocuments()
+            // 🚀 Tarik seluruh koleksi lalu filter manual agar tidak terkena limitasi Index Firebase
+            let snapshot = try await db.collection("collections").getDocuments()
             
-            let fetchedCollections = snapshot.documents.compactMap { doc in
-                try? doc.data(as: RecipeCollection.self)
-            }
-            self.collections = fetchedCollections
-            
-            // 🚀 FETCH NAMA USER PEMBUAT KOLEKSI
+            var fetchedCollections: [RecipeCollection] = []
             var namesDict: [String: String] = [:]
-            let uniqueUserIds = Array(Set(fetchedCollections.map { $0.userId }))
             
-            for uid in uniqueUserIds {
-                if let userDoc = try? await db.collection("users").document(uid).getDocument(),
-                   let userData = userDoc.data(),
-                   let userName = userData["name"] as? String {
-                    namesDict[uid] = userName
+            for doc in snapshot.documents {
+                let data = doc.data()
+                let visibilityString = data["visibility"] as? String ?? ""
+                
+                // Hanya masukkan koleksi yang bersifat public
+                if visibilityString.lowercased().contains("public") {
+                    let userId = data["userId"] as? String ?? ""
+                    
+                    var collection = RecipeCollection(
+                        userId: userId,
+                        name: data["name"] as? String ?? "",
+                        description: data["description"] as? String ?? "",
+                        collectionImage: data["collectionImage"] as? String ?? "",
+                        visibility: .publicVisibility
+                    )
+                    collection.id = doc.documentID
+                    fetchedCollections.append(collection)
+                    
+                    // Tarik nama user (Kreator)
+                    if namesDict[userId] == nil {
+                        let userDoc = try? await db.collection("users").document(userId).getDocument()
+                        if let userName = userDoc?.data()?["name"] as? String {
+                            namesDict[userId] = userName
+                        } else {
+                            namesDict[userId] = "Chef"
+                        }
+                    }
                 }
             }
+            
+            self.collections = fetchedCollections
+        
+            self.featuredCollections = Array(fetchedCollections.shuffled().prefix(2))
+            
             self.creatorNames = namesDict
             
         } catch {
             print("Error fetching public collections: \(error.localizedDescription)")
         }
         isLoadingCollections = false
-    }
-    
-    private func parseMeal(_ meal: [String: Any]) -> Recipe {
-        let id = meal["idMeal"] as? String ?? UUID().uuidString
-        let title = meal["strMeal"] as? String ?? "Unknown"
-        let category = meal["strCategory"] as? String ?? "General"
-        let image = meal["strMealThumb"] as? String ?? ""
-        let instructions = meal["strInstructions"] as? String ?? ""
-        
-        var parsedIngredients: [String] = []
-        for i in 1...20 {
-            if let ingredient = meal["strIngredient\(i)"] as? String, !ingredient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                let measure = (meal["strMeasure\(i)"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                let combined = measure.isEmpty ? ingredient : "\(measure) \(ingredient)"
-                parsedIngredients.append(combined)
-            }
-        }
-        
-        let parsedSteps = instructions
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        
-        var recipe = Recipe(
-            userId: "themealdb",
-            title: title,
-            description: "A classic dish from TheMealDB.",
-            ingredients: parsedIngredients,
-            steps: parsedSteps,
-            category: category,
-            recipeImage: image
-        )
-        recipe.id = id
-        recipe.createdAt = Date()
-        return recipe
     }
 }

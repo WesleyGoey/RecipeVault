@@ -1,12 +1,14 @@
 //
-// AuthMode.swift
-// RecipeVault
+//  AuthMode.swift
+//  RecipeVault
 //
+//  Created by Sean tandjaja on 01/06/26.
+//
+
 
 import Foundation
 
-// Shared enum used by AuthView / ProfileView etc.
-// Keep at top-level so both views reference same type.
+// MARK: - AuthMode
 enum AuthMode {
     case login
     case register

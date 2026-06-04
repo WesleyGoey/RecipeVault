@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 
+// MARK: - Recipe Edit View
 struct RecipeEditView: View {
     @Environment(\.dismiss) var dismiss
     let recipeToEdit: Recipe
@@ -22,9 +23,7 @@ struct RecipeEditView: View {
     
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
-    // 🚀 STATE BARU
     @State private var rawImageData: Data?
-    
     @State private var isImageDeleted: Bool = false
     
     let categories = ["Beef", "Chicken", "Lamb", "Seafood", "Pasta", "Vegetarian", "Dessert", "Vegan", "Pork", "Side", "Starter", "Breakfast", "Soup", "Spicy", "Gluten-Free", "Dairy-Free", "Miscellaneous"]
@@ -33,6 +32,7 @@ struct RecipeEditView: View {
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     
+    // MARK: - Initializer with Pre-filled Data
     init(recipeToEdit: Recipe, viewModel: RecipeViewModel) {
         self.recipeToEdit = recipeToEdit
         self.viewModel = viewModel
@@ -71,7 +71,6 @@ struct RecipeEditView: View {
             .overlay(alignment: .bottom) {
                 updateButton
             }
-            // 🚀 TAMBAHAN: MUNCULKAN ERROR FIREBASE AGAR KAMU TAHU JIKA GAGAL
             .alert("Update Failed", isPresented: Binding(
                 get: { !viewModel.operationError.isEmpty },
                 set: { if !$0 { viewModel.operationError = "" } }
@@ -84,17 +83,16 @@ struct RecipeEditView: View {
     }
 }
 
+// MARK: - Recipe Edit View Subcomponents
 extension RecipeEditView {
-    
+    // MARK: - Photo Upload Section
     private var photoUploadSection: some View {
         ZStack(alignment: .topTrailing) {
-            
             PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
                 if let selectedImage {
                     Image(uiImage: selectedImage).resizable().scaledToFill().frame(height: 180).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
                 }
                 else if !recipeToEdit.recipeImage.isEmpty && !isImageDeleted {
-                    // 🚀 DECODE BASE64 LANGSUNG
                     if let imageData = Data(base64Encoded: recipeToEdit.recipeImage),
                        let uiImage = UIImage(data: imageData) {
                         Image(uiImage: uiImage)
@@ -142,6 +140,7 @@ extension RecipeEditView {
         }
     }
     
+    // MARK: - Placeholder View For Photo Upload
     private var placeholderView: some View {
         VStack(spacing: 12) {
             Image(systemName: "photo.badge.plus").font(.system(size: 32))
@@ -152,6 +151,7 @@ extension RecipeEditView {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(mutedTeal.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8])))
     }
     
+    // MARK: - Reusable Input Section For Title And Similar Fields
     private func inputSection(title: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -159,6 +159,7 @@ extension RecipeEditView {
         }
     }
     
+    // MARK: - Description Section With Placeholder And TextEditor
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("DESCRIPTION").font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -174,6 +175,7 @@ extension RecipeEditView {
         }
     }
     
+    // MARK: - Category Selection Section With Flow Layout And Multi-Select Buttons
     private var categorySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -196,6 +198,7 @@ extension RecipeEditView {
         }
     }
     
+    // MARK: - Dynamic List Section For Ingredients And Steps With Add/Remove Functionality
     private func dynamicListSection(title: String, items: Binding<[String]>, addPlaceholder: String, isNumbered: Bool) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title).font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -228,6 +231,7 @@ extension RecipeEditView {
         }
     }
     
+    // MARK: - Update Button With Loading State And Disabled Logic
     private var updateButton: some View {
         Button(action: {
             Task {
@@ -261,6 +265,7 @@ extension RecipeEditView {
     }
 }
 
+// MARK: - Preview
 #Preview {
     RecipeEditView(recipeToEdit: Recipe.mockRecipes[0], viewModel: RecipeViewModel())
 }

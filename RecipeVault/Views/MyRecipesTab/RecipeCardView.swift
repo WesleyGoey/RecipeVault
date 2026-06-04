@@ -7,19 +7,15 @@
 
 import SwiftUI
 
+// MARK: - Recipe Card View
 struct RecipeCardView: View {
-    
-    // MARK: - Properties
     let recipe: Recipe
     
-    // INJEKSI VIEWMODEL UNTUK MENGAKSES FUNGSI FAVORITE & COLLECTION
     @ObservedObject var viewModel: RecipeViewModel
     
-    // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     
-    // MARK: - Body
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             imageSection
@@ -33,15 +29,12 @@ struct RecipeCardView: View {
 
 // MARK: - Subviews
 extension RecipeCardView {
-    
     // MARK: - Image Section & Placeholder
     private var imageSection: some View {
         Group {
-            // 1. JIKA GAMBAR KOSONG
             if recipe.recipeImage.isEmpty {
                 placeholderImage
             }
-            // 🚀 2. JIKA BERUPA URL (Data dari TheMealDB)
             else if recipe.recipeImage.starts(with: "http") {
                 AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
                     if let image = phase.image {
@@ -59,24 +52,22 @@ extension RecipeCardView {
                     }
                 }
             }
-            // 🚀 3. JIKA BERUPA BASE64 (Data buatan User dari Firebase)
             else if let imageData = Data(base64Encoded: recipe.recipeImage),
                     let uiImage = UIImage(data: imageData) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             }
-            // 4. FALLBACK JIKA SEMUA GAGAL
             else {
                 placeholderImage
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity)
         .frame(height: 150)
-        .clipped() // Mencegah gambar meluap keluar dari batas 150
+        .clipped()
     }
     
-    // Tampilan garpu pisau default yang diekstrak agar tidak berulang
+    // MARK: - Placeholder Image For Missing/Invalid URLs
     private var placeholderImage: some View {
         ZStack {
             mutedTeal.opacity(0.15)
@@ -90,7 +81,6 @@ extension RecipeCardView {
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(recipe.title)
-                // 🚀 Font Fix menggunakan extension-mu
                 .font(.merriweather(16, weight: .bold))
                 .foregroundColor(.primary)
                 .lineLimit(2)
@@ -100,7 +90,6 @@ extension RecipeCardView {
             HStack(spacing: 12) {
                 Spacer()
                 
-                // TOMBOL ADD TO COLLECTION
                 Button(action: {
                     Task { await viewModel.openCollectionSheet(for: recipe) }
                 }) {
@@ -112,7 +101,6 @@ extension RecipeCardView {
                         .clipShape(Circle())
                 }
                 
-                // TOMBOL FAVORITE DENGAN LOGIKA NYATA
                 let isFav = viewModel.isFavorite(recipe: recipe)
                 Button(action: {
                     Task { await viewModel.toggleFavorite(recipe: recipe) }
@@ -139,7 +127,6 @@ extension RecipeCardView {
         
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
             
-            // 1. Kartu DENGAN Gambar URL (TheMealDB)
             RecipeCardView(
                 recipe: Recipe(
                     userId: "themealdb",
@@ -153,7 +140,6 @@ extension RecipeCardView {
                 viewModel: RecipeViewModel()
             )
             
-            // 2. Kartu TANPA Gambar (Fallback)
             RecipeCardView(
                 recipe: Recipe(
                     userId: "123",
@@ -162,7 +148,7 @@ extension RecipeCardView {
                     ingredients: [],
                     steps: [],
                     category: "Secret",
-                    recipeImage: "" // Sengaja dikosongkan
+                    recipeImage: ""
                 ),
                 viewModel: RecipeViewModel()
             )

@@ -8,17 +8,7 @@
 
 import Foundation
 
+// MARK: - MealResponse Model
 struct MealResponse: Codable {
     let meals: [MealDBRecipe]?
-}
-
-struct MealDBRecipe: Codable, Identifiable {
-    let idMeal: String
-    let strMeal: String
-    let strCategory: String?
-    let strArea: String?
-    let strInstructions: String?
-    let strMealThumb: String?
-    
-    var id: String { idMeal }
 }

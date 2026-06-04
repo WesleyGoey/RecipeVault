@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+// MARK: - Profile View
 struct ProfileView: View {
     @Binding var selectedTab: Int
     @State private var navResetID = UUID()
@@ -15,14 +16,13 @@ struct ProfileView: View {
     @EnvironmentObject var recipeVM: RecipeViewModel
     @StateObject private var vm = ProfileViewModel()
 
-    @State private var selectedSegment: Int = 0  // 0 = Collections, 1 = Favorites
+    @State private var selectedSegment: Int = 0
 
     @State private var showAuthView: Bool = false
     @State private var authInitialMode: AuthMode = .login
 
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
-    // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     let bgYellow = Color(hex: "FBF9EC")
@@ -34,7 +34,6 @@ struct ProfileView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        // Header (common)
                         headerSection
                             .padding(.horizontal)
 

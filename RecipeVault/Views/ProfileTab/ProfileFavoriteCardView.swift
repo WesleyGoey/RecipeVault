@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseAuth
 
+// MARK: - Profile Favorite Card View
 struct ProfileFavoriteCardView: View {
     let recipe: Recipe
     
@@ -23,17 +24,20 @@ struct ProfileFavoriteCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // MARK: - Image & Heart Button
             ZStack(alignment: .topTrailing) {
                 Group {
                     let cleanImageString = displayImage.trimmingCharacters(in: .whitespacesAndNewlines)
                     
-                    if cleanImageString.isEmpty {
-                        placeholderView
+                    if imageUrl.isEmpty {
+                        ZStack {
+                            mutedTeal.opacity(0.15)
+                            Image(systemName: "fork.knife")
+                                .font(.system(size: 30))
+                                .foregroundColor(mutedTeal.opacity(0.5))
+                        }
                     }
-                    // 1. Jika dari Internet (TheMealDB URL)
-                    else if cleanImageString.hasPrefix("http") {
-                        AsyncImage(url: URL(string: cleanImageString)) { phase in
+                    else if imageUrl.starts(with: "http") {
+                        AsyncImage(url: URL(string: imageUrl)) { phase in
                             switch phase {
                             case .empty:
                                 Rectangle()
@@ -50,14 +54,12 @@ struct ProfileFavoriteCardView: View {
                             }
                         }
                     }
-                    // 2. Jika dari Firebase / Local Upload (Base64)
-                    else if let imageData = Data(base64Encoded: cleanImageString),
-                             let uiImage = UIImage(data: imageData) {
+                    else if let imageData = Data(base64Encoded: imageUrl),
+                            let uiImage = UIImage(data: imageData) {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFill()
                     }
-                    // 3. Fallback Cadangan
                     else {
                         placeholderView
                     }
@@ -84,7 +86,6 @@ struct ProfileFavoriteCardView: View {
                 .padding(12)
             }
             
-            // MARK: - Title & Ownership
             VStack(alignment: .leading, spacing: 6) {
                 Text(recipe.title)
                     .font(.merriweather(16, weight: .bold))
@@ -155,7 +156,7 @@ struct ProfileFavoriteCardView: View {
                     ingredients: [],
                     steps: [],
                     category: "Thai",
-                    recipeImage: ""
+                    recipeImage: "" 
                 ),
                 recipeVM: RecipeViewModel(),
                 profileVM: ProfileViewModel()

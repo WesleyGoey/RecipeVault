@@ -8,10 +8,10 @@
 import SwiftUI
 import PhotosUI
 
+// MARK: - Collection Create View
 struct CollectionCreateView: View {
     @Environment(\.dismiss) var dismiss
     
-    // 🚀 INJEKSI VIEWMODEL
     @ObservedObject var viewModel: CollectionViewModel
     
     @State private var name = ""
@@ -20,7 +20,6 @@ struct CollectionCreateView: View {
     
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
-    // 🚀 STATE BARU: Menyimpan data mentah agar HP tidak freeze
     @State private var rawImageData: Data?
     
     let bgYellow = Color(hex: "f8fae5")
@@ -46,13 +45,12 @@ struct CollectionCreateView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                         .foregroundColor(burntOrange)
-                        .font(.merriweather(16, weight: .bold)) // 🚀 FONT
+                        .font(.merriweather(16, weight: .bold))
                 }
             }
             .overlay(alignment: .bottom) {
                 saveButton
             }
-            // 🚀 TAMBAHAN: MUNCULKAN ERROR FIREBASE JIKA DATA DITOLAK
             .alert("Upload Failed", isPresented: Binding(
                 get: { !viewModel.operationError.isEmpty },
                 set: { if !$0 { viewModel.operationError = "" } }
@@ -65,8 +63,10 @@ struct CollectionCreateView: View {
     }
 }
 
-// MARK: - Subviews
+// MARK: - Collection Create Subview
 extension CollectionCreateView {
+    
+    // MARK: - Photo Upload Section with PhotosPicker
     private var photoUploadSection: some View {
         PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
             if let selectedImage {
@@ -90,7 +90,8 @@ extension CollectionCreateView {
             }
         }
     }
-    
+     
+    // MARK: - Input Section (Name & Description)
     private func inputSection(title: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -98,6 +99,7 @@ extension CollectionCreateView {
         }
     }
     
+    // MARK: - Description Section with TextEditor and Placeholder
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("DESCRIPTION").font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -111,6 +113,7 @@ extension CollectionCreateView {
         }
     }
     
+    // MARK: - Visibility Section with Custom Toggle Buttons
     private var visibilitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("VISIBILITY").font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -143,15 +146,15 @@ extension CollectionCreateView {
         }
     }
     
+    // MARK: - Save Button with Loading State and Disabled State
     private var saveButton: some View {
         Button(action: {
             Task {
-                // 🚀 Mengirimkan data gambar mentah (Data?) ke ViewModel
                 let success = await viewModel.createCollection(
                     name: name,
                     description: description,
                     visibility: visibility,
-                    imageData: rawImageData // Ini didapat dari PhotosPicker
+                    imageData: rawImageData
                 )
                 if success { dismiss() }
             }
@@ -170,6 +173,7 @@ extension CollectionCreateView {
     }
 }
 
+// MARK: - Preview
 #Preview {
     CollectionCreateView(viewModel: CollectionViewModel())
 }

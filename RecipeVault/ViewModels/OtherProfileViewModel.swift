@@ -5,83 +5,60 @@
 //  Created by Sean tandjaja on 01/06/26.
 //
 
+
 import Foundation
 import SwiftUI
 import Combine
-import FirebaseFirestore
 
+// MARK: - OtherProfileViewModel Class
 @MainActor
 class OtherProfileViewModel: ObservableObject {
-    @Published var creatorName: String = ""
-    @Published var profilePictureURL: String = "" // Menyimpan Base64
+    private let profileService = ProfileService.shared
+    private let collectionService = CollectionService.shared
+    let creatorId: String
     
+    @Published var creatorName: String = ""
+    @Published var profilePictureURL: String = ""
     @Published var publicCollections: [RecipeCollection] = []
     @Published var collectionCounts: [String: Int] = [:]
     
     @Published var isLoading: Bool = true
+    @Published var operationError: String = ""
     
-    let creatorId: String
-    private let db = Firestore.firestore()
-    private let collectionService = CollectionService.shared // 🚀 Gunakan service untuk count
-    
+    // MARK: - Initializer
     init(creatorId: String) {
         self.creatorId = creatorId
     }
     
+    // MARK: - Load Creator Data
     func loadCreatorData() async {
         isLoading = true
-        await fetchCreatorProfile()
-        await fetchPublicCollections()
-        isLoading = false
-    }
-    
-    private func fetchCreatorProfile() async {
+        operationError = ""
+        
         do {
-            let doc = try await db.collection("users").document(creatorId).getDocument()
-            if let data = doc.data() {
-                self.creatorName = data["name"] as? String ?? "Unknown Creator"
-                // 🚀 PERBAIKAN: Gunakan key "profilePicture", bukan "profilePictureURL"
-                self.profilePictureURL = data["profilePicture"] as? String ?? ""
+            if let profileData = try await profileService.getUserProfile(userId: creatorId) {
+                self.creatorName = profileData["name"] as? String ?? "Unknown Creator"
+                self.profilePictureURL = profileData["profilePicture"] as? String ?? ""
             }
-        } catch {
-            print("Error fetching creator profile: \(error)")
-            self.creatorName = "Unknown Creator"
-        }
-    }
-    
-    private func fetchPublicCollections() async {
-        do {
-            let snapshot = try await db.collection("collections")
-                .whereField("userId", isEqualTo: creatorId)
-                .getDocuments()
             
-            var fetchedCollections: [RecipeCollection] = []
+            let allCollections = try await collectionService.getUserCollections(userId: creatorId)
+            let filteredPublic = allCollections.filter { $0.visibility == .publicVisibility }
             
-            for doc in snapshot.documents {
-                let data = doc.data()
-                let visibilityString = data["visibility"] as? String ?? ""
-                
-                if visibilityString.lowercased().contains("public") {
-                    var collection = RecipeCollection(
-                        userId: creatorId,
-                        name: data["name"] as? String ?? "",
-                        description: data["description"] as? String ?? "",
-                        collectionImage: data["collectionImage"] as? String ?? "",
-                        visibility: .publicVisibility
-                    )
-                    collection.id = doc.documentID
-                    
-                    // 🚀 PERBAIKAN: Gunakan Junction Table melalui CollectionService
-                    let count = (try? await collectionService.getRecipeCountInCollection(collectionId: doc.documentID)) ?? 0
-                    self.collectionCounts[doc.documentID] = count
-                    
-                    fetchedCollections.append(collection)
+            var tempCounts: [String: Int] = [:]
+            for collection in filteredPublic {
+                if let colId = collection.id {
+                    let count = (try? await collectionService.getRecipeCountInCollection(collectionId: colId)) ?? 0
+                    tempCounts[colId] = count
                 }
             }
             
-            self.publicCollections = fetchedCollections
+            self.publicCollections = filteredPublic
+            self.collectionCounts = tempCounts
+            
         } catch {
-            print("Error fetching public collections: \(error)")
+            self.operationError = error.localizedDescription
         }
+        
+        isLoading = false
     }
 }

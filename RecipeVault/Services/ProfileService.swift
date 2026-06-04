@@ -5,31 +5,27 @@
 //  Created by Wesley Goey on 31/05/26.
 //
 
-
 import Foundation
 import UIKit
 
+// MARK: - ProfileService Class
 class ProfileService: ProfileServiceProtocol {
-    
     static let shared = ProfileService(
-        firestoreRepo: FirestoreRepository.shared,
-        storageRepo: CloudStorageRepository.shared
+        firestoreRepo: FirestoreRepository.shared
     )
-    
     private let firestoreRepo: FirestoreRepositoryProtocol
-    private let storageRepo: CloudStorageRepositoryProtocol
     
-    init(firestoreRepo: FirestoreRepositoryProtocol, storageRepo: CloudStorageRepositoryProtocol) {
+    // MARK: - Initializer
+    init(firestoreRepo: FirestoreRepositoryProtocol) {
         self.firestoreRepo = firestoreRepo
-        self.storageRepo = storageRepo
     }
     
-    // MARK: - READ
+    // MARK: - Get User Profile
     func getUserProfile(userId: String) async throws -> [String: Any]? {
         return try await firestoreRepo.getUserProfile(userId: userId)
     }
     
-    // MARK: - UPDATE
+    // MARK: - Save User Profile
     func saveUserProfile(userId: String, name: String, email: String, currentImageURL: String, newImageData: Data?) async throws -> String {
         var finalBase64String = currentImageURL
         
@@ -38,6 +34,7 @@ class ProfileService: ProfileServiceProtocol {
         }
         
         try await firestoreRepo.saveUserProfile(userId: userId, name: name, email: email, profilePicture: finalBase64String)
+        
         return finalBase64String
     }
 }

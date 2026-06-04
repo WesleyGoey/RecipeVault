@@ -1,5 +1,13 @@
+//
+//  FeedCardView.swift
+//  RecipeVault
+//
+//  Created by Nicholas Gerwin Mawardji on 29/05/26.
+//
+
 import SwiftUI
 
+// MARK: - Feed Card View
 struct FeedCardView: View {
     let recipe: Recipe
     let cardHeight: CGFloat
@@ -11,8 +19,6 @@ struct FeedCardView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 0) {
-                
-                // 🚀 KUNCI PERBAIKAN: Sama seperti HomeCardView
                 Color.clear
                     .overlay(imageSection)
                     .clipped()
@@ -45,7 +51,9 @@ struct FeedCardView: View {
     }
 }
 
+// MARK: - Feed Card Subviews & Logic
 extension FeedCardView {
+    // MARK: - Favorite Button Logic
     private var favoriteButton: some View {
         let isFav = recipeVM.isFavorite(recipe: recipe)
         return Button(action: {
@@ -61,6 +69,7 @@ extension FeedCardView {
         }
     }
     
+    // MARK: - Image Handling with Multiple Sources
     private var imageSection: some View {
         Group {
             if recipe.recipeImage.isEmpty {
@@ -87,6 +96,7 @@ extension FeedCardView {
         }
     }
     
+    // MARK: - Image Placeholder for Missing or Failed Images
     private var placeholderImage: some View {
         ZStack {
             mutedTeal.opacity(0.15)
@@ -97,6 +107,7 @@ extension FeedCardView {
     }
 }
 
+// MARK: - Preview
 #Preview {
     FeedCardView(recipe: Recipe(userId: "1", title: "Test Recipe", description: "", ingredients: [], steps: [], category: "Dessert", recipeImage: ""), cardHeight: 250)
         .environmentObject(RecipeViewModel())

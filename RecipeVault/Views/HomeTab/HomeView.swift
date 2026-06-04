@@ -7,16 +7,15 @@
 
 import SwiftUI
 
+// MARK: - Home View
 struct HomeView: View {
     @Binding var selectedTab: Int
     
     @StateObject private var viewModel = HomeViewModel()
     @EnvironmentObject var recipeVM: RecipeViewModel
-    
-    // 🚀 State untuk mereset navigation
+
     @State private var navResetID = UUID()
     
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let mutedTeal = Color(hex: "43766c")
     let darkText = Color.primary
@@ -25,15 +24,12 @@ struct HomeView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 32) {
-                    
-                    // MARK: - 1. Title Area
                     Text("Recipe Vault")
                         .font(.merriweather(40, weight: .bold))
                         .foregroundColor(darkText)
                         .padding(.horizontal, 24)
                         .padding(.top, 20)
                     
-                    // MARK: - 2. Hero Section (Recipe of the Day)
                     if viewModel.isLoadingHero {
                         ProgressView()
                             .frame(height: 320)
@@ -46,7 +42,6 @@ struct HomeView: View {
                         .padding(.horizontal, 24)
                     }
                     
-                    // MARK: - 3. Quick Browse (Category Filter)
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Quick Browse")
                             .font(.merriweather(20, weight: .bold))
@@ -70,9 +65,7 @@ struct HomeView: View {
                         }
                     }
                     
-                    // MARK: - 4. Dynamic Feed Area (Zig-Zag / Masonry)
                     VStack(alignment: .leading, spacing: 20) {
-                        // Feed Header
                         HStack(alignment: .bottom) {
                             Text(viewModel.selectedCategory == "All" ? "Today's Feed" : viewModel.selectedCategory)
                                 .font(.merriweather(24, weight: .bold))
@@ -89,7 +82,6 @@ struct HomeView: View {
                         }
                         .padding(.horizontal, 24)
                         
-                        // Feed Content
                         if viewModel.isLoadingFeed {
                             ProgressView()
                                 .scaleEffect(1.5)
@@ -107,10 +99,7 @@ struct HomeView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.top, 40)
                         } else {
-                            // 🚀 MASONRY / ZIG-ZAG LAYOUT
                             HStack(alignment: .top, spacing: 16) {
-                                
-                                // KOLOM KIRI
                                 VStack(spacing: 16) {
                                     ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 == 0 }, id: \.element.id) { index, recipe in
                                         NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
@@ -120,7 +109,6 @@ struct HomeView: View {
                                     }
                                 }
                                 
-                                // KOLOM KANAN
                                 VStack(spacing: 16) {
                                     ForEach(Array(viewModel.feedRecipes.enumerated()).filter { $0.offset % 2 != 0 }, id: \.element.id) { index, recipe in
                                         NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
@@ -139,9 +127,8 @@ struct HomeView: View {
             }
             .background(bgYellow.ignoresSafeArea())
         }
-        .id(navResetID) // 🚀 Pasang UUID dinamis untuk pop ke root secara instan
+        .id(navResetID)
         .onChange(of: selectedTab) { newTab in
-            // Jika kita berpindah keluar dari tab HOME (index 0), reset halaman navigasinya
             if newTab != 0 {
                 navResetID = UUID()
             }
@@ -149,7 +136,7 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Helper Component: Category Pill Button
+// MARK: - Category Pill Button
 struct CategoryPill: View {
     let title: String
     let isSelected: Bool
@@ -175,8 +162,8 @@ struct CategoryPill: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
-    // Memberikan mockup binding statis semata-mata untuk preview
     HomeView(selectedTab: .constant(0))
-        .environmentObject(RecipeViewModel()) // Wajib untuk mencegah Preview Crash
+        .environmentObject(RecipeViewModel())
 }

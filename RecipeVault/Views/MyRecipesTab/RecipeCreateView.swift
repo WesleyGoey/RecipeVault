@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 
+// MARK: - Recipe Create View
 struct RecipeCreateView: View {
     @Environment(\.dismiss) var dismiss
     
@@ -21,7 +22,6 @@ struct RecipeCreateView: View {
     
     @State private var photoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
-    // 🚀 STATE BARU: Menyimpan data mentah agar HP tidak freeze saat disave
     @State private var rawImageData: Data?
     
     let categories = ["Beef", "Chicken", "Lamb", "Seafood", "Pasta", "Vegetarian", "Dessert", "Vegan", "Pork", "Side", "Starter", "Breakfast", "Soup", "Spicy", "Gluten-Free", "Dairy-Free", "Miscellaneous"]
@@ -57,7 +57,6 @@ struct RecipeCreateView: View {
             .overlay(alignment: .bottom) {
                 saveButton
             }
-            // 🚀 TAMBAHAN: MUNCULKAN ERROR FIREBASE AGAR KAMU TAHU JIKA GAGAL
             .alert("Upload Failed", isPresented: Binding(
                 get: { !viewModel.operationError.isEmpty },
                 set: { if !$0 { viewModel.operationError = "" } }
@@ -70,7 +69,9 @@ struct RecipeCreateView: View {
     }
 }
 
+// MARK: - View Components
 extension RecipeCreateView {
+    // MARK: - Photo Upload Section With Conditional UI Based On Whether An Image Is Selected
     private var photoUploadSection: some View {
         PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
             if let selectedImage {
@@ -89,15 +90,13 @@ extension RecipeCreateView {
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self), let image = UIImage(data: data) {
                     self.selectedImage = image
-                    
-                    // 🚀 KOMPRESI DILAKUKAN DI SINI, BUKAN DI TOMBOL SAVE
-                    // Gunakan 0.2 agar aman dari limit 1MB Firestore. Jika pakai 1.0 pasti akan error!
                     self.rawImageData = image.jpegData(compressionQuality: 0.2)
                 }
             }
         }
     }
     
+    // MARK: - Reusable Input Section For Title And Other Simple Text Fields
     private func inputSection(title: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -105,6 +104,7 @@ extension RecipeCreateView {
         }
     }
     
+    // MARK: - Description Section With Placeholder Logic Using ZStack And TextEditor
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("DESCRIPTION").font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -121,6 +121,7 @@ extension RecipeCreateView {
         }
     }
     
+    // MARK: - Category Selection With Flow Layout And Multi-Select Logic
     private var categorySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -143,6 +144,7 @@ extension RecipeCreateView {
         }
     }
     
+    // MARK: - Dynamic List Section For Ingredients And Steps
     private func dynamicListSection(title: String, items: Binding<[String]>, addPlaceholder: String, isNumbered: Bool) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title).font(.merriweather(12, weight: .bold)).foregroundColor(.gray)
@@ -175,12 +177,12 @@ extension RecipeCreateView {
         }
     }
     
+    // MARK: - Save Button With Loading State And Validation
     private var saveButton: some View {
         Button(action: {
             Task {
                 let catString = selectedCategories.joined(separator: ", ")
                 
-                // 🚀 Data gambar langsung dipakai, UI tidak akan macet/freeze lagi!
                 let success = await viewModel.createRecipe(title: title, description: description, category: catString, ingredients: ingredients, steps: steps, imageData: rawImageData)
                 
                 if success { dismiss() }
@@ -201,19 +203,25 @@ extension RecipeCreateView {
 // MARK: - FlowLayout Component
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
+    // MARK: - Layout Protocol Methods
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let result = FlowResult(in: proposal.width ?? 0, subviews: subviews, spacing: spacing)
         return result.size
     }
+    // MARK: - Core Logic For Placing Subviews In A Flow Layout
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let result = FlowResult(in: bounds.width, subviews: subviews, spacing: spacing)
         for (index, subview) in subviews.enumerated() {
             subview.place(at: CGPoint(x: bounds.minX + result.points[index].x, y: bounds.minY + result.points[index].y), proposal: .unspecified)
         }
     }
+    
+    // MARK: - Helper Struct To Calculate Positions And Total Size For Flow Layout
     struct FlowResult {
         var size: CGSize = .zero
         var points: [CGPoint] = []
+        
+        // MARK: - Innitializer To Calculate Positions For Each Subview And Total Size Based On Max Width
         init(in maxWidth: CGFloat, subviews: Subviews, spacing: CGFloat) {
             var currentX: CGFloat = 0; var currentY: CGFloat = 0; var lineHeight: CGFloat = 0
             for subview in subviews {

@@ -9,28 +9,23 @@ import SwiftUI
 
 // MARK: - My Recipes Main View
 struct MyRecipesView: View {
-    // TERIMA BINDING TAB & RESET LOGIC
     @Binding var selectedTab: Int
     @State private var navResetID = UUID()
     
-    // 🚀 1. Injeksi ViewModel Autentikasi dan Profil
     @EnvironmentObject var authVM: AuthViewModel
     @StateObject private var profileVM = ProfileViewModel()
     @StateObject private var viewModel = RecipeViewModel()
     
-    // UI States
     @State private var showingCreateSheet = false
     @State private var recipeToEdit: Recipe? = nil
     @State private var recipeToDelete: Recipe? = nil
     @State private var showingDeleteAlert = false
     
-    // 🚀 2. State untuk mengontrol kemunculan halaman Login/Register
     @State private var showAuthView = false
     @State private var authInitialMode: AuthMode = .login
     
     private let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
     
-    // Theme Colors
     let bgYellow = Color(hex: "f8fae5")
     let mutedTeal = Color(hex: "43766c")
     let burntOrange = Color(hex: "cd4b12")
@@ -40,12 +35,10 @@ struct MyRecipesView: View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
                 bgYellow.ignoresSafeArea()
-                
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         headerSection
                         
-                        // 🚀 3. LOGIKA PENGECEKAN LOGIN DENGAN AUTHVM
                         if !authVM.isLoggedIn {
                             unauthenticatedArea
                         } else {
@@ -57,15 +50,12 @@ struct MyRecipesView: View {
                         }
                     }
                 }
-                
-                // 🚀 4. Sembunyikan tombol + jika belum login
                 if authVM.isLoggedIn {
                     floatingActionButton
                 }
             }
             .navigationBarHidden(true)
             .task {
-                // Saat layar dibuka, tarik data (jika login)
                 if authVM.isLoggedIn {
                     await profileVM.initializeUserProfile()
                     
@@ -76,22 +66,18 @@ struct MyRecipesView: View {
                     }
                 }
             }
-            // 🚀 5. PANTAU LOGOUT/LOGIN SECARA REAL-TIME
             .onChange(of: authVM.isLoggedIn) { isLoggedIn in
                 if isLoggedIn {
-                    // Jika baru login, muat data
                     Task {
                         await profileVM.initializeUserProfile()
                         await viewModel.loadMyRecipes()
                     }
                 } else {
-                    // Jika logout, bersihkan layar secara instan
                     viewModel.myRecipes.removeAll()
                     profileVM.userId = ""
                 }
             }
             
-            // 🚀 INJEKSI VIEWMODEL KE SHEET LOGIN
             .sheet(isPresented: $showAuthView) {
                 AuthView(vm: profileVM, initialMode: authInitialMode)
             }
@@ -121,9 +107,8 @@ struct MyRecipesView: View {
                 Text(viewModel.operationError)
             }
         }
-        .id(navResetID) // RESET LOGIC
+        .id(navResetID)
         .onChange(of: selectedTab) { newTab in
-            // Jika keluar dari tab MyRecipes (index 2), reset halamannya!
             if newTab != 2 {
                 navResetID = UUID()
             }
@@ -134,6 +119,7 @@ struct MyRecipesView: View {
 // MARK: - Subviews Extension
 extension MyRecipesView {
     
+    // MARK: - Header Section
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("My Recipes")
@@ -151,7 +137,7 @@ extension MyRecipesView {
         .padding(.bottom, 16)
     }
     
-    // 🚀 TAMPILAN JIKA USER BELUM LOGIN
+    // MARK: - Tampilan Jika Belum Login
     private var unauthenticatedArea: some View {
         VStack(spacing: 24) {
             Spacer().frame(height: 40)
@@ -205,7 +191,7 @@ extension MyRecipesView {
         .frame(maxWidth: .infinity)
     }
     
-    // 🚀 TAMPILAN JIKA RESEP KOSONG
+    // MARK: - Tampilan Jika Sudah Login Tapi Belum Punya Resep
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "fork.knife.circle.fill")
@@ -226,6 +212,7 @@ extension MyRecipesView {
         .padding(.top, 60)
     }
     
+    // MARK: - Grid Section for Displaying User's Recipes
     private var gridSection: some View {
         LazyVGrid(columns: columns, spacing: 16) {
             ForEach(viewModel.myRecipes, id: \.title) { recipe in
@@ -248,6 +235,7 @@ extension MyRecipesView {
         .padding(.bottom, 120)
     }
     
+    // MARK: - Floating Action Button for Creating New Recipe
     private var floatingActionButton: some View {
         Button(action: { showingCreateSheet = true }) {
             Image(systemName: "plus")
@@ -267,7 +255,6 @@ extension MyRecipesView {
 struct CollectionSelectionSheet: View {
     @ObservedObject var viewModel: RecipeViewModel
     
-    // Theme Colors
     let burntOrange = Color(hex: "cd4b12")
     let mutedTeal = Color(hex: "43766c")
     let bgYellow = Color(hex: "f8fae5")
@@ -275,12 +262,9 @@ struct CollectionSelectionSheet: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                
-                // 1. Daftar Koleksi
                 List(viewModel.userCollections, id: \.id) { collection in
                     Button(action: {
                         if let id = collection.id {
-                            // Animasi agar centang terasa responsif
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 viewModel.toggleCollectionSelection(collectionId: id)
                             }
@@ -303,14 +287,13 @@ struct CollectionSelectionSheet: View {
                             
                             Spacer()
                         }
-                        .contentShape(Rectangle()) // Area tap lebih besar
+                        .contentShape(Rectangle())
                     }
                     .padding(.vertical, 8)
                 }
                 .listStyle(.plain)
-                .padding(.bottom, 80) // Ruang bernapas agar tidak tertutup tombol Save
+                .padding(.bottom, 80)
                 
-                // 2. Tombol Save di bagian bawah
                 if !viewModel.userCollections.isEmpty {
                     Button(action: {
                         Task { await viewModel.saveToSelectedCollections() }
@@ -376,5 +359,5 @@ extension Recipe {
 // MARK: - Preview
 #Preview {
     MyRecipesView(selectedTab: .constant(2))
-        .environmentObject(AuthViewModel()) // Wajib untuk preview
+        .environmentObject(AuthViewModel())
 }

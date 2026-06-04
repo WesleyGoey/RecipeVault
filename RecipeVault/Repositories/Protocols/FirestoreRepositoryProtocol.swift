@@ -7,36 +7,85 @@
 
 
 import Foundation
-// ... existing contents ...
 
+import Foundation
+
+// MARK: - FirestoreRepository Protocol
 protocol FirestoreRepositoryProtocol {
+    // MARK: - User Section
+    
+    // MARK: - Get User Profile
     func getUserProfile(userId: String) async throws -> [String: Any]?
+    
+    // MARK: - Save User Profile
     func saveUserProfile(userId: String, name: String, email: String, profilePicture: String) async throws
 
-    // 🚀 FULL CRUD RECIPE
+
+    // MARK: - Recipe Section
+    
+    // MARK: - Create Recipe
     func createRecipe(recipe: Recipe) async throws
-    func getUserRecipes(userId: String) async throws -> [Recipe] // READ
-    func updateRecipe(recipe: Recipe) async throws               // UPDATE
-    func deleteRecipe(recipeId: String) async throws             // DELETE
-
-    // NEW: allow service to query and save single recipe by id (used for mirroring TheMealDB)
+    
+    // MARK: - Get User Recipes
+    func getUserRecipes(userId: String) async throws -> [Recipe]
+    
+    // MARK: - Get Recipe By ID
     func getRecipeById(recipeId: String) async throws -> Recipe?
+    
+    // MARK: - Update Recipe
+    func updateRecipe(recipe: Recipe) async throws
+    
+    // MARK: - Delete Recipe
+    func deleteRecipe(recipeId: String) async throws
+    
+    // MARK: - Save Recipe If Needed
     func saveRecipeIfNeeded(recipe: Recipe) async throws
-    func createCollection(collection: RecipeCollection) async throws
-    func getPublicCollections() async throws -> [RecipeCollection]
-    func getUserCollections(userId: String) async throws -> [RecipeCollection]
-    func getRecipeCountInCollection(collectionId: String) async throws -> Int
-    func updateCollection(collection: RecipeCollection) async throws   
-    func deleteCollection(collectionId: String) async throws
-    func getCollectionIdsForRecipe(recipeId: String) async throws -> [String]
 
-    /// 🚀 FAVORITES
+
+    // MARK: - Collection Section
+    
+    // MARK: - Create Collection
+    func createCollection(collection: RecipeCollection) async throws
+    
+    // MARK: - Get Public Collections
+    func getPublicCollections() async throws -> [RecipeCollection]
+    
+    // MARK: - Get User Collections
+    func getUserCollections(userId: String) async throws -> [RecipeCollection]
+    
+    // MARK: - Update Collection
+    func updateCollection(collection: RecipeCollection) async throws
+    
+    // MARK: - Delete Collection
+    func deleteCollection(collectionId: String) async throws
+
+
+    // MARK: - Favorite Section
+    
+    // MARK: - Toggle Favorite
     func toggleFavorite(userId: String, recipeId: String, isFavorite: Bool) async throws
+    
+    // MARK: - Get Favorite Recipe IDs
     func getFavoriteRecipeIds(userId: String) async throws -> [String]
+    
+    // MARK: - Get Favorite Recipes
     func getFavoriteRecipes(userId: String) async throws -> [Recipe]
 
-    // 🚀 RELASI (Add to Collection)
+
+    // MARK: - Junction Table Section
+    
+    // MARK: - Add Recipe To Collection
     func addRecipeToCollection(collectionId: String, recipeId: String) async throws
+    
+    // MARK: - Remove Recipe From Collection
     func removeRecipeFromCollection(collectionId: String, recipeId: String) async throws
+    
+    // MARK: - Get Recipes In Collection
     func getRecipesInCollection(collectionId: String) async throws -> [Recipe]
+    
+    // MARK: - Get Recipe Count In Collection
+    func getRecipeCountInCollection(collectionId: String) async throws -> Int
+    
+    // MARK: - Get Collection IDs For Recipe
+    func getCollectionIdsForRecipe(recipeId: String) async throws -> [String]
 }

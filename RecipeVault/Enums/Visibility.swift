@@ -9,7 +9,7 @@
 import Foundation
 import FirebaseFirestore
 
-// M-07: Visibility Enum
+// MARK: - Visibility
 enum Visibility: String, Codable {
     case publicVisibility = "PUBLIC"
     case privateVisibility = "PRIVATE"

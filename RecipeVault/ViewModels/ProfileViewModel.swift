@@ -5,32 +5,30 @@
 //  Created by Kristoforus Bertrand Wahyudi on 29/05/26.
 //
 
+
 import Foundation
 import SwiftUI
 import FirebaseAuth
 import Combine
 import FirebaseFirestore
 
+// MARK: - ProfileViewModel Class
 @MainActor
 final class ProfileViewModel: ObservableObject {
-    // MARK: - User State
     @Published var userId: String = ""
     @Published var name: String = ""
     @Published var email: String = ""
-    @Published var profilePictureURL: String = "" // Ini berisi teks Base64
+    @Published var profilePictureURL: String = ""
     
-    // 🚀 STATE UNTUK EDIT FOTO
     @Published var selectedUIImage: UIImage? = nil
     @Published var selectedImageData: Data? = nil
-    @Published var isImageDeleted: Bool = false // <-- WAJIB ADA UNTUK FITUR TRASH
+    @Published var isImageDeleted: Bool = false
     
-    // MARK: - Content State
     @Published var publicCollections: [RecipeCollection] = []
     @Published var collectionCounts: [String: Int] = [:]
     @Published var favoriteRecipes: [Recipe] = []
     @Published var authorNamesCache: [String: String] = [:]
     
-    // MARK: - UI & Form State
     @Published var isLoading: Bool = false
     @Published var operationError: String = ""
     @Published var showingEditProfile: Bool = false
@@ -39,7 +37,6 @@ final class ProfileViewModel: ObservableObject {
     @Published var newPassword: String = ""
     @Published var confirmNewPassword: String = ""
     
-    // MARK: - Services
     private let profileService = ProfileService.shared
     private let collectionService = CollectionService.shared
     private let recipeService = RecipeService.shared
@@ -60,6 +57,7 @@ final class ProfileViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
+    // MARK: - Initialize User Profile
     func initializeUserProfile() async {
         if let uid = Auth.auth().currentUser?.uid {
             self.userId = uid
@@ -80,7 +78,6 @@ final class ProfileViewModel: ObservableObject {
             if let data = try await profileService.getUserProfile(userId: uid) {
                 self.name = data["name"] as? String ?? ""
                 self.email = data["email"] as? String ?? ""
-                // Pastikan key-nya "profilePicture" sesuai dengan di FirestoreRepository
                 self.profilePictureURL = data["profilePicture"] as? String ?? ""
             }
         } catch {
@@ -88,13 +85,13 @@ final class ProfileViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Save Profile Changes
     func saveProfileChanges() async {
         guard !userId.isEmpty else { return }
         isLoading = true
         operationError = ""
         
         do {
-            // 🚀 LOGIKA TRASH: Jika dihapus, kirim URL/Base64 kosong ke Service
             let finalCurrentURL = isImageDeleted ? "" : profilePictureURL
             
             let updatedURL = try await profileService.saveUserProfile(
@@ -102,12 +99,12 @@ final class ProfileViewModel: ObservableObject {
                 name: name,
                 email: email,
                 currentImageURL: finalCurrentURL,
-                newImageData: selectedImageData // Ingat: Di ProfileService harus pakai Base64Helper / encode ya
+                newImageData: selectedImageData
             )
             
             self.profilePictureURL = updatedURL
             self.showingEditProfile = false
-            self.isImageDeleted = false // Reset state
+            self.isImageDeleted = false
         } catch {
             self.operationError = "Gagal menyimpan profil: \(error.localizedDescription)"
         }
@@ -115,7 +112,7 @@ final class ProfileViewModel: ObservableObject {
         isLoading = false
     }
     
-    // MARK: - Password
+    // MARK: - Change Password
     func changePassword() async {
         guard let user = Auth.auth().currentUser else {
             operationError = "Tidak ada user yang login."
@@ -150,6 +147,7 @@ final class ProfileViewModel: ObservableObject {
         isLoading = false
     }
     
+    // MARK: - Load Public Collections
     func loadPublicCollections() async {
         guard !userId.isEmpty else { return }
         isLoading = true
@@ -171,6 +169,7 @@ final class ProfileViewModel: ObservableObject {
         isLoading = false
     }
     
+    // MARK: - Load Favorite Recipes
     func loadFavoriteRecipes() async {
         guard !userId.isEmpty else { return }
         isLoading = true
@@ -185,14 +184,15 @@ final class ProfileViewModel: ObservableObject {
         isLoading = false
     }
     
+    // MARK: - Fetch Author Name
     func fetchAuthorName(for recipeUserId: String) async -> String {
         if recipeUserId == "themealdb" { return "TheMealDB" }
         if recipeUserId == Auth.auth().currentUser?.uid { return "Me" }
         if let cachedName = authorNamesCache[recipeUserId] { return cachedName }
         
         do {
-            let doc = try await Firestore.firestore().collection("users").document(recipeUserId).getDocument()
-            if let name = doc.data()?["name"] as? String {
+            if let data = try await profileService.getUserProfile(userId: recipeUserId),
+               let name = data["name"] as? String {
                 self.authorNamesCache[recipeUserId] = name
                 return name
             }
