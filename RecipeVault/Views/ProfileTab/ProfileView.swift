@@ -63,11 +63,9 @@ struct ProfileView: View {
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showAuthView) {
-                            AuthView(vm: vm, initialMode: authInitialMode)
-                                .environmentObject(authVM)
-                                // 🚀 PERBAIKAN: Paksa SwiftUI membuat sheet baru saat mode berubah
-                                .id(authInitialMode)
-                        }
+                AuthView(vm: vm, initialMode: authInitialMode)
+                    .environmentObject(authVM)
+            }
             .sheet(isPresented: $vm.showingEditProfile) {
                 EditProfileView(vm: vm)
             }
