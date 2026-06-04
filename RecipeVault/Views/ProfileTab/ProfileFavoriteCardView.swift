@@ -93,23 +93,29 @@ struct ProfileFavoriteCardView: View {
             .buttonStyle(PlainButtonStyle()) // Mencegah teks menjadi warna biru bawaan iOS
             
             // 2. TOMBOL HEART (MELAYANG BEBAS DI ATAS NAVIGATION LINK)
-            Button(action: {
-                Task {
-                    // Cabut dari favorit
-                    await recipeVM.toggleFavorite(recipe: recipe)
-                    // Trigger manual refresh agar resep langsung lenyap dari halaman
-                    await profileVM.loadFavoriteRecipes()
-                }
-            }) {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(burntOrange)
-                    .padding(10)
-                    .background(Color.white)
-                    .clipShape(Circle())
-                    .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
-            }
-            .padding(12) // Mengatur posisinya tetap di pojok kanan atas
+            Image(systemName: "heart.fill")
+                .font(.system(size: 18))
+                .foregroundColor(burntOrange)
+                .padding(10)
+                .background(Color.white)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                .padding(12) // Posisikan di pojok
+                .contentShape(Circle()) // Batasi area sentuh agar presisi
+                .highPriorityGesture(
+                    TapGesture().onEnded {
+                        // 🚀 OPTIMISTIC UI UPDATE:
+                        // Hapus langsung dari layar secara visual agar pengguna merasa aplikasi sangat cepat!
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            profileVM.favoriteRecipes.removeAll { $0.id == recipe.id }
+                        }
+                        
+                        // Proses penghapusan asli di database Firebase berjalan di latar belakang
+                        Task {
+                            await recipeVM.toggleFavorite(recipe: recipe)
+                        }
+                    }
+                )
         }
         .task {
             self.displayImage = recipe.recipeImage
@@ -144,5 +150,28 @@ struct ProfileFavoriteCardView: View {
                 .font(.system(size: 30))
                 .foregroundColor(mutedTeal.opacity(0.5))
         }
+    }
+}
+
+// MARK: - Preview
+#Preview {
+    ZStack {
+        Color(hex: "f8fae5").ignoresSafeArea()
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+            ProfileFavoriteCardView(
+                recipe: Recipe(
+                    userId: "themealdb",
+                    title: "Thai Green Curry",
+                    description: "Authentic thai green curry.",
+                    ingredients: [],
+                    steps: [],
+                    category: "Thai",
+                    recipeImage: ""
+                ),
+                recipeVM: RecipeViewModel(),
+                profileVM: ProfileViewModel()
+            )
+        }
+        .padding(20)
     }
 }
