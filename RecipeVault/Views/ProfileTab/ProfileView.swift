@@ -108,7 +108,7 @@ struct ProfileView: View {
     }
 
     // MARK: - Subviews & Subcomponents
-    
+
     // 🚀 OPTIMASI: Menggabungkan logika penguraian inisial nama agar tidak duplikat di body view
     private var profileInitialsView: some View {
         Text(
@@ -168,17 +168,18 @@ struct ProfileView: View {
                         Circle()
                             .fill(Color(hex: "2F6B5E"))
                             .frame(width: 86, height: 86)
-                        
+
                         if let ui = vm.selectedUIImage {
                             Image(uiImage: ui)
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 86, height: 86)
                                 .clipShape(Circle())
-                        }
-                        else if !vm.profilePictureURL.isEmpty {
+                        } else if !vm.profilePictureURL.isEmpty {
                             if vm.profilePictureURL.hasPrefix("http") {
-                                AsyncImage(url: URL(string: vm.profilePictureURL)) { phase in
+                                AsyncImage(
+                                    url: URL(string: vm.profilePictureURL)
+                                ) { phase in
                                     switch phase {
                                     case .success(let image):
                                         image.resizable().scaledToFill()
@@ -187,7 +188,9 @@ struct ProfileView: View {
                                 }
                                 .frame(width: 86, height: 86)
                                 .clipShape(Circle())
-                            } else if let data = Data(base64Encoded: vm.profilePictureURL), let uiImage = UIImage(data: data) {
+                            } else if let data = Data(
+                                base64Encoded: vm.profilePictureURL
+                            ), let uiImage = UIImage(data: data) {
                                 Image(uiImage: uiImage)
                                     .resizable()
                                     .scaledToFill()
@@ -367,11 +370,13 @@ struct ProfileView: View {
                     Text("No public collections")
                         .font(.merriweather(18, weight: .bold))
                         .foregroundColor(Color(hex: "163A2B"))
-                    Text("Collections that you set as 'Public' will appear here.")
-                        .font(.merriweather(14))
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 36)
+                    Text(
+                        "Collections that you set as 'Public' will appear here."
+                    )
+                    .font(.merriweather(14))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 36)
                 }.padding(.top, 12)
             } else {
                 LazyVGrid(columns: columns, spacing: 18) {
@@ -384,7 +389,8 @@ struct ProfileView: View {
                         ) {
                             ProfileCollectionCardView(
                                 collection: col,
-                                recipeCount: vm.collectionCounts[col.id ?? ""] ?? 0
+                                recipeCount: vm.collectionCounts[col.id ?? ""]
+                                    ?? 0
                             )
                             .frame(height: 170)
                         }
@@ -405,28 +411,25 @@ struct ProfileView: View {
                     Text("Belum ada favorit")
                         .font(.merriweather(18, weight: .bold))
                         .foregroundColor(Color(hex: "163A2B"))
-                    Text("Simpan resep ke favorit untuk menemukannya lebih cepat.")
-                        .font(.merriweather(14))
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 36)
+                    Text(
+                        "Simpan resep ke favorit untuk menemukannya lebih cepat."
+                    )
+                    .font(.merriweather(14))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 36)
                 }.padding(.top, 12)
             } else {
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(vm.favoriteRecipes) { recipe in
-                        NavigationLink(
-                            destination: RecipeDetailView(
-                                recipe: recipe,
-                                viewModel: recipeVM
-                            )
-                        ) {
-                            ProfileFavoriteCardView(
-                                recipe: recipe,
-                                recipeVM: recipeVM,
-                                profileVM: vm
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+
+                        // 🚀 HAPUS BUNGKUS NAVIGATION LINK DAN PANGGIL KARTUNYA SAJA
+                        ProfileFavoriteCardView(
+                            recipe: recipe,
+                            recipeVM: recipeVM,
+                            profileVM: vm
+                        )
+
                     }
                 }
                 .padding(.bottom, 40)

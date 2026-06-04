@@ -106,7 +106,7 @@ final class ProfileViewModel: ObservableObject {
             self.showingEditProfile = false
             self.isImageDeleted = false
         } catch {
-            self.operationError = "Gagal menyimpan profil: \(error.localizedDescription)"
+            self.operationError = "Fail to save profile: \(error.localizedDescription)"
         }
         
         isLoading = false
@@ -141,7 +141,7 @@ final class ProfileViewModel: ObservableObject {
             _ = try await user.reauthenticate(with: credential)
             try await user.updatePassword(to: newPassword)
         } catch {
-            operationError = "Gagal mengganti password: \(error.localizedDescription)"
+            operationError = "Fail to change password: \(error.localizedDescription)"
         }
         
         isLoading = false
@@ -178,7 +178,7 @@ final class ProfileViewModel: ObservableObject {
         do {
             self.favoriteRecipes = try await recipeService.getFavoriteRecipes(userId: userId)
         } catch {
-            self.operationError = "Gagal memuat favorit: \(error.localizedDescription)"
+            self.operationError = "Fail to load favorite recipe: \(error.localizedDescription)"
             self.favoriteRecipes = []
         }
         isLoading = false

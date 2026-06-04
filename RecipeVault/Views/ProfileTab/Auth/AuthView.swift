@@ -184,7 +184,7 @@ struct AuthView: View {
 
         if mode == .login {
             guard !loginEmail.trimmingCharacters(in: .whitespaces).isEmpty, !loginPassword.isEmpty else {
-                authVM.errorMessage = "Email dan password dibutuhkan."
+                authVM.errorMessage = "Email and password needed."
                 return
             }
             
@@ -202,10 +202,10 @@ struct AuthView: View {
             let emailTrim = regEmail.trimmingCharacters(in: .whitespacesAndNewlines)
             
             // 🚀 PERBAIKAN LOGIKA VALIDASI: Diperiksa berurutan dari atas ke bawah
-            guard !nameTrim.isEmpty else { authVM.errorMessage = "Masukkan nama."; return }
-            guard emailTrim.contains("@") else { authVM.errorMessage = "Email tidak valid."; return }
-            guard regPassword.count >= 8 else { authVM.errorMessage = "Password minimal 8 karakter."; return }
-            guard regPassword == regConfirmPassword else { authVM.errorMessage = "Password dan konfirmasi tidak cocok."; return }
+            guard !nameTrim.isEmpty else { authVM.errorMessage = "Input name."; return }
+            guard emailTrim.contains("@") else { authVM.errorMessage = "Invalid email."; return }
+            guard regPassword.count >= 8 else { authVM.errorMessage = "Password minimun 8 characters"; return }
+            guard regPassword == regConfirmPassword else { authVM.errorMessage = "New and old password did not match."; return }
 
             authVM.name = nameTrim
             authVM.email = emailTrim

@@ -116,16 +116,6 @@ extension CollectionsView {
             Text("My Collections")
                 .font(.merriweather(36, weight: .bold))
                 .foregroundColor(darkText)
-            
-            if authVM.isLoggedIn {
-                HStack {
-                    Button(action: {}) {
-                        Label("Alphabetical", systemImage: "arrow.up.arrow.down").font(.merriweather(14, weight: .bold)).foregroundColor(darkText)
-                    }
-                    Spacer()
-                    Button(action: {}) { Image(systemName: "square.grid.2x2").font(.system(size: 20)).foregroundColor(darkText) }
-                }
-            }
         }
         .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 16)
     }
