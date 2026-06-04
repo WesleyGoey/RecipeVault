@@ -205,7 +205,7 @@ struct AuthView: View {
             guard !nameTrim.isEmpty else { authVM.errorMessage = "Input name."; return }
             guard emailTrim.contains("@") else { authVM.errorMessage = "Invalid email."; return }
             guard regPassword.count >= 8 else { authVM.errorMessage = "Password minimun 8 characters"; return }
-            guard regPassword == regConfirmPassword else { authVM.errorMessage = "New and old password did not match."; return }
+            guard regPassword == regConfirmPassword else { authVM.errorMessage = "Password did not match."; return }
 
             authVM.name = nameTrim
             authVM.email = emailTrim
