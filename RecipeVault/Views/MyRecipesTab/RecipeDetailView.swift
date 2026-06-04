@@ -18,7 +18,6 @@ struct RecipeDetailView: View {
     @State private var showingDeleteAlert = false
     @State private var isLoadingDetails = false
     
-    // 🚀 State untuk menampung nama & foto pembuat resep
     @State private var creatorName: String = "Loading..."
     @State private var creatorProfilePic: String = ""
     
@@ -69,12 +68,12 @@ struct RecipeDetailView: View {
             }
         }
         .task {
-            // Ambil detail bahan jika kosong (dari TheMealDB)
-            if recipe.ingredients.isEmpty, let mealId = recipe.id {
+            // 🔴 PERBAIKAN: Cek juga apakah gambarnya kosong. Jika ya, jalankan fetchFullDetails.
+            let isImageEmpty = recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if (recipe.ingredients.isEmpty || isImageEmpty), let mealId = recipe.id {
                 await fetchFullDetails(id: mealId)
             }
             
-            // 🚀 FETCH USER PROFILE NAME & PICTURE
             if recipe.userId == "themealdb" {
                 creatorName = "TheMealDB"
             } else {
@@ -84,7 +83,6 @@ struct RecipeDetailView: View {
                     if let data = doc.data() {
                         creatorName = data["name"] as? String ?? "Unknown Chef"
                         creatorProfilePic = data["profilePicture"] as? String ?? ""
-                        // Timpa "You" jika itu kita sendiri, tapi tetap ambil fotonya
                         if viewModel.isOwner(recipe: recipe) {
                             creatorName = "You"
                         }
@@ -96,17 +94,12 @@ struct RecipeDetailView: View {
                 }
             }
         }
-        
-        // BOTTOM SHEET KOLEKSI
         .sheet(isPresented: $viewModel.showCollectionSheet) {
             CollectionSelectionSheet(viewModel: viewModel)
         }
-        
         .sheet(isPresented: $showingEditSheet) {
             RecipeEditView(recipeToEdit: recipe, viewModel: viewModel)
         }
-        
-        // REVISI FITUR DELETE
         .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -130,6 +123,8 @@ struct RecipeDetailView: View {
                let meals = json["meals"] as? [[String: Any]],
                let fullMeal = meals.first {
                 
+                let mealThumb = fullMeal["strMealThumb"] as? String ?? ""
+                
                 var parsedIngredients: [String] = []
                 for i in 1...20 {
                     if let ingredient = fullMeal["strIngredient\(i)"] as? String,
@@ -144,8 +139,18 @@ struct RecipeDetailView: View {
                 let parsedSteps = instructions.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                 
                 withAnimation {
-                    recipe.ingredients = parsedIngredients
-                    recipe.steps = parsedSteps
+                    // Update bahan & langkah hanya jika sebelumnya kosong
+                    if recipe.ingredients.isEmpty {
+                        recipe.ingredients = parsedIngredients
+                    }
+                    if recipe.steps.isEmpty {
+                        recipe.steps = parsedSteps
+                    }
+                    
+                    // Update gambar jika sebelumnya kosong
+                    if recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !mealThumb.isEmpty {
+                        recipe.recipeImage = mealThumb
+                    }
                 }
             }
         } catch {
@@ -156,29 +161,21 @@ struct RecipeDetailView: View {
 }
 
 extension RecipeDetailView {
-    
     // MARK: - Hero Image Section
     private var heroImageSection: some View {
         ZStack(alignment: .top) {
-            if recipe.recipeImage.isEmpty {
-                ZStack {
-                    mutedTeal.opacity(0.15)
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 60))
-                        .foregroundColor(mutedTeal.opacity(0.5))
-                }
-                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+            let cleanImg = recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if cleanImg.isEmpty {
+                defaultPlaceholder
             }
-            // RENDER GAMBAR DARI THEMEALDB URL
-            else if recipe.recipeImage.starts(with: "http") {
-                AsyncImage(url: URL(string: recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines))) { phase in
+            // RENDER GAMBAR URL
+            else if cleanImg.hasPrefix("http") {
+                AsyncImage(url: URL(string: cleanImg)) { phase in
                     if let image = phase.image {
                         image.resizable().scaledToFill()
                     } else if phase.error != nil {
-                        ZStack {
-                            mutedTeal.opacity(0.15)
-                            Image(systemName: "fork.knife").font(.system(size: 60)).foregroundColor(mutedTeal.opacity(0.5))
-                        }
+                        defaultPlaceholder
                     } else {
                         ZStack {
                             mutedTeal.opacity(0.15)
@@ -188,26 +185,17 @@ extension RecipeDetailView {
                 }
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
             }
-            // RENDER GAMBAR DARI TEXT BASE64
-            else if let imageData = Data(base64Encoded: recipe.recipeImage),
+            // RENDER GAMBAR BASE64
+            else if let imageData = Data(base64Encoded: cleanImg),
                     let uiImage = UIImage(data: imageData) {
-                
                 Color.clear.overlay(
                     Image(uiImage: uiImage).resizable().scaledToFill()
                 ).clipped()
                 .frame(height: 300).frame(maxWidth: .infinity).clipped()
-                
             } else {
-                ZStack {
-                    mutedTeal.opacity(0.15)
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 60))
-                        .foregroundColor(mutedTeal.opacity(0.5))
-                }
-                .frame(height: 300).frame(maxWidth: .infinity).clipped()
+                defaultPlaceholder
             }
             
-            // Overlay Gradient agar tombol back terlihat jelas
             LinearGradient(gradient: Gradient(colors: [.clear, .black.opacity(0.6)]), startPoint: .center, endPoint: .bottom)
                 .frame(height: 300)
             
@@ -229,6 +217,16 @@ extension RecipeDetailView {
         }
     }
     
+    private var defaultPlaceholder: some View {
+        ZStack {
+            mutedTeal.opacity(0.15)
+            Image(systemName: "fork.knife")
+                .font(.system(size: 60))
+                .foregroundColor(mutedTeal.opacity(0.5))
+        }
+        .frame(height: 300).frame(maxWidth: .infinity).clipped()
+    }
+    
     private var titleSection: some View {
         HStack(alignment: .top) {
             Text(recipe.title)
@@ -238,8 +236,6 @@ extension RecipeDetailView {
             Spacer()
             
             HStack(spacing: 12) {
-                
-                // TOMBOL ADD TO COLLECTION
                 Button(action: { Task { await viewModel.openCollectionSheet(for: recipe) } }) {
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .bold))
@@ -249,7 +245,6 @@ extension RecipeDetailView {
                         .clipShape(Circle())
                 }
                 
-                // TOMBOL FAVORITE
                 let isFav = viewModel.isFavorite(recipe: recipe)
                 Button(action: { Task { await viewModel.toggleFavorite(recipe: recipe) } }) {
                     Image(systemName: isFav ? "heart.fill" : "heart")
@@ -265,10 +260,8 @@ extension RecipeDetailView {
         }
     }
     
-    // 🚀 BISA DI-KLIK & MENAMPILKAN FOTO PROFIL AUTHOR
     private var authorSection: some View {
         Group {
-            // JIKA DARI API THEMEALDB
             if recipe.userId == "themealdb" {
                 HStack {
                     Circle().fill(mutedTeal).frame(width: 46, height: 46).overlay(Text("TM").foregroundColor(.white).font(.system(size: 14, weight: .bold)))
@@ -279,18 +272,15 @@ extension RecipeDetailView {
                     Spacer()
                 }
                 .padding(20).background(bgYellow)
-            }
-            // JIKA DARI USER SUNGGUHAN
-            else {
+            } else {
                 NavigationLink(destination: OtherProfileView(creatorId: recipe.userId)) {
                     HStack(spacing: 12) {
-                        
-                        // 🚀 LOGIKA FOTO PROFIL AUTHOR
                         ZStack {
                             Circle().fill(mutedTeal).frame(width: 46, height: 46)
                             if !creatorProfilePic.isEmpty {
-                                if creatorProfilePic.hasPrefix("http") {
-                                    AsyncImage(url: URL(string: creatorProfilePic)) { phase in
+                                let cleanProfile = creatorProfilePic.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if cleanProfile.hasPrefix("http") {
+                                    AsyncImage(url: URL(string: cleanProfile)) { phase in
                                         if let image = phase.image {
                                             image.resizable().scaledToFill()
                                         } else {
@@ -299,7 +289,7 @@ extension RecipeDetailView {
                                         }
                                     }
                                     .frame(width: 46, height: 46).clipShape(Circle())
-                                } else if let data = Data(base64Encoded: creatorProfilePic), let uiImg = UIImage(data: data) {
+                                } else if let data = Data(base64Encoded: cleanProfile), let uiImg = UIImage(data: data) {
                                     Image(uiImage: uiImg).resizable().scaledToFill().frame(width: 46, height: 46).clipShape(Circle())
                                 } else {
                                     Text(String(creatorName.prefix(2)).uppercased())
@@ -385,17 +375,27 @@ extension RecipeDetailView {
     }
 }
 
+// MARK: - PickerTab Component Component
 struct PickerTab: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
+    
+    let burntOrange = Color(hex: "cd4b12")
+    let mutedTeal = Color(hex: "43766c")
+    
     var body: some View {
         Button(action: action) {
-            Text(title).font(.merriweather(16, weight: .bold)).foregroundColor(isSelected ? .black : .gray).frame(maxWidth: .infinity).padding(.vertical, 12).background(isSelected ? Color.white : Color.clear).clipShape(Capsule()).shadow(color: isSelected ? .black.opacity(0.05) : .clear, radius: 4, x: 0, y: 2)
+            Text(title)
+                .font(.merriweather(16, weight: .bold))
+                .foregroundColor(isSelected ? .white : mutedTeal)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(isSelected ? burntOrange : Color.clear)
+                .clipShape(Capsule())
         }
     }
 }
-
 #Preview {
     PreviewLiveWrapper()
 }

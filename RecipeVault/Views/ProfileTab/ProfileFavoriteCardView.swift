@@ -15,6 +15,7 @@ struct ProfileFavoriteCardView: View {
     @ObservedObject var profileVM: ProfileViewModel
     
     @State private var authorName: String = "Loading..."
+    @State private var displayImage: String = ""
     
     let burntOrange = Color(hex: "cd4b12")
     let darkText = Color.primary
@@ -25,59 +26,52 @@ struct ProfileFavoriteCardView: View {
             // MARK: - Image & Heart Button
             ZStack(alignment: .topTrailing) {
                 Group {
-                    let imageUrl = recipe.recipeImage.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let cleanImageString = displayImage.trimmingCharacters(in: .whitespacesAndNewlines)
                     
-                    // 1. Jika Kosong
-                    if imageUrl.isEmpty {
-                        ZStack {
-                            mutedTeal.opacity(0.15)
-                            Image(systemName: "fork.knife")
-                                .font(.system(size: 30))
-                                .foregroundColor(mutedTeal.opacity(0.5))
-                        }
+                    if cleanImageString.isEmpty {
+                        placeholderView
                     }
-                    // 2. Jika dari Internet (TheMealDB)
-                    else if imageUrl.starts(with: "http") {
-                        AsyncImage(url: URL(string: imageUrl)) { phase in
+                    // 1. Jika dari Internet (TheMealDB URL)
+                    else if cleanImageString.hasPrefix("http") {
+                        AsyncImage(url: URL(string: cleanImageString)) { phase in
                             switch phase {
                             case .empty:
-                                Rectangle().fill(Color.gray.opacity(0.15)).overlay(ProgressView())
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.15))
+                                    .overlay(ProgressView())
                             case .success(let image):
-                                image.resizable().scaledToFill()
-                            case .failure:
-                                ZStack {
-                                    mutedTeal.opacity(0.15)
-                                    Image(systemName: "fork.knife")
-                                        .font(.system(size: 30))
-                                        .foregroundColor(mutedTeal.opacity(0.5))
-                                }
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            case .failure(_):
+                                placeholderView
                             @unknown default:
                                 EmptyView()
                             }
                         }
                     }
-                    // 3. Jika dari Firebase (Base64) - INI YANG MEMBUAT GAMBARMU MUNCUL
-                    else if let imageData = Data(base64Encoded: imageUrl),
-                            let uiImage = UIImage(data: imageData) {
+                    // 2. Jika dari Firebase / Local Upload (Base64)
+                    else if let imageData = Data(base64Encoded: cleanImageString),
+                             let uiImage = UIImage(data: imageData) {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFill()
                     }
-                    // 4. Fallback (Cadangan)
+                    // 3. Fallback Cadangan
                     else {
-                        ZStack {
-                            mutedTeal.opacity(0.15)
-                            Image(systemName: "fork.knife")
-                                .font(.system(size: 30))
-                                .foregroundColor(mutedTeal.opacity(0.5))
-                        }
+                        placeholderView
                     }
                 }
                 .frame(height: 140)
                 .frame(maxWidth: .infinity)
                 .clipped()
                 
-                Button(action: { Task { await recipeVM.toggleFavorite(recipe: recipe) } }) {
+                // TOMBOL HEART
+                Button(action: {
+                    Task {
+                        await recipeVM.toggleFavorite(recipe: recipe)
+                    }
+                }) {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 18))
                         .foregroundColor(burntOrange)
@@ -86,6 +80,7 @@ struct ProfileFavoriteCardView: View {
                         .clipShape(Circle())
                         .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
                 }
+                .buttonStyle(BorderlessButtonStyle())
                 .padding(12)
             }
             
@@ -97,7 +92,7 @@ struct ProfileFavoriteCardView: View {
                     .lineLimit(2)
                     .frame(minHeight: 40, alignment: .topLeading)
                 
-                Text(authorName == "TheMealDB" || authorName == "Me" ? "by \(authorName)" : "by \(authorName)")
+                Text("by \(authorName)")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
@@ -110,16 +105,43 @@ struct ProfileFavoriteCardView: View {
         }
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        // 🚀 TAMBAHAN KECIL: Memastikan seluruh badan kartu bisa di-klik
         .contentShape(Rectangle())
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-        
         .task {
+            self.displayImage = recipe.recipeImage
             self.authorName = await profileVM.fetchAuthorName(for: recipe.userId)
+            
+            // Auto-fallback: Jika string gambar kosong tetapi berasal dari themealdb, ambil ulang dari API
+            if displayImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && recipe.userId == "themealdb", let mealId = recipe.id {
+                guard let url = URL(string: "https://www.themealdb.com/api/json/v1/1/lookup.php?i=\(mealId)") else { return }
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: url)
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let meals = json["meals"] as? [[String: Any]],
+                       let fullMeal = meals.first,
+                       let mealThumb = fullMeal["strMealThumb"] as? String {
+                        await MainActor.run {
+                            withAnimation {
+                                self.displayImage = mealThumb
+                            }
+                        }
+                    }
+                } catch {
+                    print("Gagal mengambil gambar pemulihan otomatis: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private var placeholderView: some View {
+        ZStack {
+            mutedTeal.opacity(0.15)
+            Image(systemName: "fork.knife")
+                .font(.system(size: 30))
+                .foregroundColor(mutedTeal.opacity(0.5))
         }
     }
 }
-
 // MARK: - Preview
 #Preview {
     ZStack {
@@ -133,7 +155,7 @@ struct ProfileFavoriteCardView: View {
                     ingredients: [],
                     steps: [],
                     category: "Thai",
-                    recipeImage: "" // Kosong untuk mengetes Icon
+                    recipeImage: ""
                 ),
                 recipeVM: RecipeViewModel(),
                 profileVM: ProfileViewModel()

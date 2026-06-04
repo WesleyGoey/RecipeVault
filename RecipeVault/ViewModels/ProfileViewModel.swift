@@ -44,8 +44,20 @@ final class ProfileViewModel: ObservableObject {
     private let collectionService = CollectionService.shared
     private let recipeService = RecipeService.shared
     
+    // 🚀 TAMBAHAN BARU: Variabel untuk menyimpan listener Combine tanpa mengganggu View
+    private var cancellables = Set<AnyCancellable>()
+    
     init() {
         Task { await initializeUserProfile() }
+        
+        // 🚀 TAMBAHAN BARU: Mendengarkan perubahan favorit dari RecipeViewModel agar halaman Profile otomatis refresh
+        NotificationCenter.default.publisher(for: .favoritesUpdated)
+            .sink { [weak self] _ in
+                Task {
+                    await self?.loadFavoriteRecipes()
+                }
+            }
+            .store(in: &cancellables)
     }
     
     func initializeUserProfile() async {
@@ -55,6 +67,11 @@ final class ProfileViewModel: ObservableObject {
             await loadPublicCollections()
             await loadFavoriteRecipes()
         }
+    }
+    
+    // 🚀 TAMBAHAN BARU: Helper untuk menghapus error (Sangat berguna jika View ingin menutup Alert)
+    func clearError() {
+        self.operationError = ""
     }
     
     // MARK: - 👤 Profile CRUD Methods

@@ -38,6 +38,34 @@ class RecipeViewModel: ObservableObject {
     private let recipeService = RecipeService.shared
     private let collectionService = CollectionService.shared
     private let authService = AuthService.shared
+    
+    // 🚀 KUNCI PERBAIKAN: Penyimpanan bersama (Shared Cache) & Combine untuk sinkronisasi antar objek ViewModel
+    private static var sharedFavoriteIds: Set<String> = []
+    private var cancellables = Set<AnyCancellable>()
+
+    // MARK: - INITIALIZER
+    init() {
+        // 1. Langsung samakan data begitu ViewModel baru lahir (Mencegah hati kosong saat buka detail dari Profile)
+        self.favoriteRecipeIds = Self.sharedFavoriteIds
+        
+        // 2. Dengarkan sinyal jika ada instance lain yang mengubah status favorite
+        NotificationCenter.default.publisher(for: .favoritesUpdated)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.favoriteRecipeIds = Self.sharedFavoriteIds
+            }
+            .store(in: &cancellables)
+            
+        // 3. Ambil data terbaru dari server di background untuk memastikan akurasi data
+        Task {
+            await loadFavoriteIds()
+        }
+    }
+
+    // Helper untuk menghapus error (Sangat berguna jika View ingin menutup Alert)
+    func clearError() {
+        self.operationError = ""
+    }
 
     // MARK: - Helpers
     /// Pastikan recipe punya ID yang stabil sebelum dipakai untuk favorite / collection.
@@ -46,17 +74,14 @@ class RecipeViewModel: ObservableObject {
         var normalized = recipe
 
         // Jika id nil, kita tidak bisa simpan favorite secara konsisten.
-        // Untuk API (TheMealDB) seharusnya selalu ada idMeal.
         guard let rid = normalized.id,
             !rid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
             return nil
         }
 
-        // (Opsional) Pastikan userId terisi untuk membedakan sumber.
-        if normalized.userId.trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty
-        {
+        // Pastikan userId terisi untuk membedakan sumber.
+        if normalized.userId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             normalized.userId = "themealdb"
         }
 
@@ -189,7 +214,9 @@ class RecipeViewModel: ObservableObject {
         guard let uid = authService.getCurrentUID() else { return }
         do {
             let ids = try await recipeService.getFavoriteRecipeIds(userId: uid)
-            self.favoriteRecipeIds = Set(ids)
+            // 🚀 Simpan ke static cache dan lokal secara bersamaan
+            Self.sharedFavoriteIds = Set(ids)
+            self.favoriteRecipeIds = Self.sharedFavoriteIds
         } catch {
             print("Error loading favorites: \(error.localizedDescription)")
         }
@@ -203,30 +230,29 @@ class RecipeViewModel: ObservableObject {
     func toggleFavorite(recipe: Recipe) async {
         guard let uid = authService.getCurrentUID() else { return }
 
-        // ✅ Normalisasi dulu supaya id selalu valid & konsisten
-        guard let normalized = normalizedRecipeForPersistence(recipe) else {
-            print(
-                "toggleFavorite aborted: recipe.id is nil/empty (cannot persist favorite)"
-            )
+        guard let normalized = normalizedRecipeForPersistence(recipe),
+              let recipeId = normalized.id else {
+            print("toggleFavorite aborted: recipe.id is nil/empty")
             return
         }
-        guard let recipeId = normalized.id else { return }
 
         let isCurrentlyFavorite = favoriteRecipeIds.contains(recipeId)
         let willBeFavorite = !isCurrentlyFavorite
 
-        // Optimistic UI Update: Langsung ubah warna UI sebelum server membalas
+        // OPTIMISTIC UPDATE: Ubah data lokal
         if willBeFavorite {
             favoriteRecipeIds.insert(recipeId)
         } else {
             favoriteRecipeIds.remove(recipeId)
         }
+        
+        // 🚀 UPDATE STATIC CACHE: Amankan agar data langsung sinkron ke semua screen
+        Self.sharedFavoriteIds = favoriteRecipeIds
+
+        NotificationCenter.default.post(name: .favoritesUpdated, object: nil)
 
         do {
-            // 🚀 JIKA RESEP DARI THEMEALDB DIFAVORITKAN, SIMPAN SALINANNYA KE FIRESTORE
-            // Penting: ini membuat ProfileView bisa load resep favorit dari Firestore.
             if willBeFavorite && normalized.userId == "themealdb" {
-                // Menggunakan try? agar tidak crash jika resep sudah pernah tersimpan sebelumnya
                 try? await recipeService.createRecipe(
                     recipe: normalized,
                     imageData: nil
@@ -239,22 +265,19 @@ class RecipeViewModel: ObservableObject {
                 isFavorite: willBeFavorite
             )
         } catch {
-            // Jika Firebase gagal, kembalikan warna hati seperti semula
+            // ROLLBACK jika database Firestore gagal merespon
             if isCurrentlyFavorite {
                 favoriteRecipeIds.insert(recipeId)
             } else {
                 favoriteRecipeIds.remove(recipeId)
             }
+            
+            // 🚀 ROLLBACK STATIC CACHE
+            Self.sharedFavoriteIds = favoriteRecipeIds
+            
+            NotificationCenter.default.post(name: .favoritesUpdated, object: nil)
             print("Error toggling favorite: \(error.localizedDescription)")
         }
-
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(
-                name: .favoritesUpdated,
-                object: nil
-            )
-        }
-
     }
 
     // MARK: - 🌟 COLLECTION SHEET LOGIC
@@ -285,7 +308,6 @@ class RecipeViewModel: ObservableObject {
     }
 
     func saveToSelectedCollections() async {
-        // ✅ Normalisasi dulu supaya id selalu valid & konsisten
         guard let rawRecipe = selectedRecipeForCollection,
             let normalized = normalizedRecipeForPersistence(rawRecipe),
             let recipeId = normalized.id
@@ -294,10 +316,7 @@ class RecipeViewModel: ObservableObject {
         isSavingToCollections = true
 
         do {
-            // 🚀 JIKA RESEP DARI THEMEALDB DISIMPAN KE KOLEKSI, SIMPAN SALINANNYA KE FIRESTORE
-            // Kita mengirimkan imageData: nil, sehingga URL aslinya (http...) tetap utuh.
             if normalized.userId == "themealdb" {
-                // Menggunakan try? agar tidak crash jika resep sudah pernah tersimpan sebelumnya
                 try? await recipeService.createRecipe(
                     recipe: normalized,
                     imageData: nil

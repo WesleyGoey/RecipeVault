@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ProfileView: View {
-    // 🚀 TERIMA BINDING TAB
     @Binding var selectedTab: Int
     @State private var navResetID = UUID()
 
@@ -16,7 +15,6 @@ struct ProfileView: View {
     @EnvironmentObject var recipeVM: RecipeViewModel
     @StateObject private var vm = ProfileViewModel()
 
-    // 🚀 UBAH NAMA JADI selectedSegment agar tidak bentrok dengan selectedTab dari MainTabView
     @State private var selectedSegment: Int = 0  // 0 = Collections, 1 = Favorites
 
     @State private var showAuthView: Bool = false
@@ -48,7 +46,6 @@ struct ProfileView: View {
                             segmentedControl
                                 .padding(.horizontal)
 
-                            // Gunakan selectedSegment
                             if selectedSegment == 0 {
                                 collectionsSection
                                     .padding(.horizontal)
@@ -98,18 +95,30 @@ struct ProfileView: View {
             .onReceive(
                 NotificationCenter.default.publisher(for: .favoritesUpdated)
             ) { _ in
-                if selectedSegment == 1 {  // Jika user sedang membuka tab Favorites
+                if selectedSegment == 1 {
                     Task { await vm.loadFavoriteRecipes() }
                 }
             }
         }
-        .id(navResetID)  // 🚀 RESET LOGIC
+        .id(navResetID)
         .onChange(of: selectedTab) { newTab in
-            // Jika keluar dari tab Profile (index 4), reset halamannya!
             if newTab != 4 {
                 navResetID = UUID()
             }
         }
+    }
+
+    // MARK: - Subviews & Subcomponents
+    
+    // 🚀 OPTIMASI: Menggabungkan logika penguraian inisial nama agar tidak duplikat di body view
+    private var profileInitialsView: some View {
+        Text(
+            vm.name.split(separator: " ").prefix(2)
+                .compactMap { $0.first }.map { String($0) }
+                .joined()
+        )
+        .font(.merriweather(32, weight: .bold))
+        .foregroundColor(.white)
     }
 
     // MARK: - Header
@@ -160,14 +169,14 @@ struct ProfileView: View {
                         Circle()
                             .fill(Color(hex: "2F6B5E"))
                             .frame(width: 86, height: 86)
+                        
                         if let ui = vm.selectedUIImage {
                             Image(uiImage: ui)
-                                .resizable().scaledToFill().frame(
-                                    width: 86,
-                                    height: 86
-                                ).clipShape(Circle())
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 86, height: 86)
+                                .clipShape(Circle())
                         }
-                        // 🚀 PERBAIKAN LOGIKA FOTO PROFIL UNTUK BASE64 & LINK HTTP
                         else if !vm.profilePictureURL.isEmpty {
                             if vm.profilePictureURL.hasPrefix("http") {
                                 AsyncImage(url: URL(string: vm.profilePictureURL)) { phase in
@@ -177,28 +186,19 @@ struct ProfileView: View {
                                     default: Color.clear
                                     }
                                 }
-                                .frame(width: 86, height: 86).clipShape(Circle())
+                                .frame(width: 86, height: 86)
+                                .clipShape(Circle())
                             } else if let data = Data(base64Encoded: vm.profilePictureURL), let uiImage = UIImage(data: data) {
                                 Image(uiImage: uiImage)
-                                    .resizable().scaledToFill()
-                                    .frame(width: 86, height: 86).clipShape(Circle())
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 86, height: 86)
+                                    .clipShape(Circle())
                             } else {
-                                Text(
-                                    vm.name.split(separator: " ").prefix(2)
-                                        .compactMap { $0.first }.map { String($0) }
-                                        .joined()
-                                )
-                                .font(.merriweather(32, weight: .bold))
-                                .foregroundColor(.white)
+                                profileInitialsView
                             }
                         } else {
-                            Text(
-                                vm.name.split(separator: " ").prefix(2)
-                                    .compactMap { $0.first }.map { String($0) }
-                                    .joined()
-                            )
-                            .font(.merriweather(32, weight: .bold))
-                            .foregroundColor(.white)
+                            profileInitialsView
                         }
                     }
 
@@ -263,14 +263,12 @@ struct ProfileView: View {
                 }) {
                     Text("Login")
                         .font(.merriweather(16, weight: .bold))
-                        .frame(minWidth: 120, maxWidth: .infinity).padding(
-                            .vertical,
-                            12
-                        )
-                        .background(Color.white).foregroundColor(
-                            Color(hex: "2F6B5E")
-                        )
-                        .cornerRadius(12).overlay(
+                        .frame(minWidth: 120, maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.white)
+                        .foregroundColor(Color(hex: "2F6B5E"))
+                        .cornerRadius(12)
+                        .overlay(
                             RoundedRectangle(cornerRadius: 12).stroke(
                                 Color(hex: "EDEFE3"),
                                 lineWidth: 1
@@ -284,24 +282,22 @@ struct ProfileView: View {
                 }) {
                     Text("Register")
                         .font(.merriweather(16, weight: .bold))
-                        .frame(minWidth: 120, maxWidth: .infinity).padding(
-                            .vertical,
-                            12
-                        )
-                        .background(Color(hex: "2F6B5E")).foregroundColor(
-                            .white
-                        ).cornerRadius(12)
+                        .frame(minWidth: 120, maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color(hex: "2F6B5E"))
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
                 }
             }
             .frame(maxWidth: 420)
         }
-        .padding(.top, 18).frame(maxWidth: .infinity)
+        .padding(.top, 18)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Segmented control
     private var segmentedControl: some View {
         HStack(spacing: 0) {
-            // Gunakan selectedSegment
             Button(action: { withAnimation { selectedSegment = 0 } }) {
                 Text("Public Collections")
                     .font(
@@ -313,7 +309,8 @@ struct ProfileView: View {
                     .foregroundColor(
                         selectedSegment == 0 ? .white : Color(hex: "163A2B")
                     )
-                    .padding(.vertical, 10).frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
                     .background(
                         selectedSegment == 0
                             ? Color(hex: "2F6B5E") : Color.clear
@@ -339,7 +336,8 @@ struct ProfileView: View {
                     .foregroundColor(
                         selectedSegment == 1 ? .white : Color(hex: "163A2B")
                     )
-                    .padding(.vertical, 10).frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
                     .background(
                         selectedSegment == 1
                             ? Color(hex: "2F6B5E") : Color.clear
@@ -354,7 +352,9 @@ struct ProfileView: View {
                     )
             }.buttonStyle(PlainButtonStyle())
         }
-        .padding(4).background(Color.white.opacity(0.9)).cornerRadius(14)
+        .padding(4)
+        .background(Color.white.opacity(0.9))
+        .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
     }
 
@@ -366,14 +366,13 @@ struct ProfileView: View {
             } else if vm.publicCollections.isEmpty {
                 VStack(spacing: 12) {
                     Text("No public collections")
-                        .font(.merriweather(18, weight: .bold)).foregroundColor(
-                            Color(hex: "163A2B")
-                        )
-                    Text(
-                        "Collections that you set as 'Public' will appear here."
-                    )
-                    .font(.merriweather(14)).foregroundColor(.gray)
-                    .multilineTextAlignment(.center).padding(.horizontal, 36)
+                        .font(.merriweather(18, weight: .bold))
+                        .foregroundColor(Color(hex: "163A2B"))
+                    Text("Collections that you set as 'Public' will appear here.")
+                        .font(.merriweather(14))
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 36)
                 }.padding(.top, 12)
             } else {
                 LazyVGrid(columns: columns, spacing: 18) {
@@ -386,8 +385,7 @@ struct ProfileView: View {
                         ) {
                             ProfileCollectionCardView(
                                 collection: col,
-                                recipeCount: vm.collectionCounts[col.id ?? ""]
-                                    ?? 0
+                                recipeCount: vm.collectionCounts[col.id ?? ""] ?? 0
                             )
                             .frame(height: 170)
                         }
@@ -406,14 +404,13 @@ struct ProfileView: View {
             } else if vm.favoriteRecipes.isEmpty {
                 VStack(spacing: 12) {
                     Text("Belum ada favorit")
-                        .font(.merriweather(18, weight: .bold)).foregroundColor(
-                            Color(hex: "163A2B")
-                        )
-                    Text(
-                        "Simpan resep ke favorit untuk menemukannya lebih cepat."
-                    )
-                    .font(.merriweather(14)).foregroundColor(.gray)
-                    .multilineTextAlignment(.center).padding(.horizontal, 36)
+                        .font(.merriweather(18, weight: .bold))
+                        .foregroundColor(Color(hex: "163A2B"))
+                    Text("Simpan resep ke favorit untuk menemukannya lebih cepat.")
+                        .font(.merriweather(14))
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 36)
                 }.padding(.top, 12)
             } else {
                 LazyVGrid(columns: columns, spacing: 18) {

@@ -151,7 +151,6 @@ struct AuthView: View {
     }
 
     // MARK: - Forms
-    // 🚀 FORM SEKARANG MENGGUNAKAN DUA STRUCT TERPISAH
     private var loginForm: some View {
         VStack(spacing: 14) {
             CustomTextField(title: "Email", placeholder: "email@example.com", text: $loginEmail, keyboard: .emailAddress, isWords: false)
@@ -164,7 +163,7 @@ struct AuthView: View {
             CustomTextField(title: "Name", placeholder: "Full name", text: $regName, keyboard: .default, isWords: true)
             CustomTextField(title: "Email", placeholder: "email@example.com", text: $regEmail, keyboard: .emailAddress, isWords: false)
             CustomSecureField(title: "Password", placeholder: "At least 8 characters", text: $regPassword)
-            CustomSecureField(title: "Confirm", placeholder: "Confirm password", text: $regConfirmPassword)
+            CustomSecureField(title: "Confirm Password", placeholder: "Confirm password", text: $regConfirmPassword)
         }
     }
 
@@ -173,10 +172,11 @@ struct AuthView: View {
         if mode == .login {
             return !loginEmail.trimmingCharacters(in: .whitespaces).isEmpty && !loginPassword.isEmpty
         } else {
+            // 🚀 PERBAIKAN: Tombol aktif selama semua field diisi teks, agar validasi pesan error di dalam submit() bisa berjalan saat ditekan.
             return !regName.trimmingCharacters(in: .whitespaces).isEmpty &&
-                   regEmail.contains("@") &&
-                   regPassword.count >= 8 &&
-                   regPassword == regConfirmPassword
+                   !regEmail.trimmingCharacters(in: .whitespaces).isEmpty &&
+                   !regPassword.isEmpty &&
+                   !regConfirmPassword.isEmpty
         }
     }
 
@@ -202,10 +202,11 @@ struct AuthView: View {
             let nameTrim = regName.trimmingCharacters(in: .whitespacesAndNewlines)
             let emailTrim = regEmail.trimmingCharacters(in: .whitespacesAndNewlines)
             
+            // 🚀 PERBAIKAN LOGIKA VALIDASI: Diperiksa berurutan dari atas ke bawah
             guard !nameTrim.isEmpty else { authVM.errorMessage = "Masukkan nama."; return }
-            guard emailTrim.contains("@") && !regPassword.isEmpty else { authVM.errorMessage = "Email tidak valid."; return }
-            guard regPassword == regConfirmPassword else { authVM.errorMessage = "Password dan konfirmasi tidak cocok."; return }
+            guard emailTrim.contains("@") else { authVM.errorMessage = "Email tidak valid."; return }
             guard regPassword.count >= 8 else { authVM.errorMessage = "Password minimal 8 karakter."; return }
+            guard regPassword == regConfirmPassword else { authVM.errorMessage = "Password dan konfirmasi tidak cocok."; return }
 
             authVM.name = nameTrim
             authVM.email = emailTrim
@@ -220,7 +221,7 @@ struct AuthView: View {
     }
 }
 
-// MARK: - 🚀 STRUCT TERPISAH UNTUK TEXT BIASA
+// MARK: - STRUCT TERPISAH UNTUK TEXT BIASA
 struct CustomTextField: View {
     let title: String
     let placeholder: String
@@ -247,7 +248,7 @@ struct CustomTextField: View {
     }
 }
 
-// MARK: - 🚀 STRUCT TERPISAH UNTUK PASSWORD (MENCEGAH BUG HILANG FOKUS)
+// MARK: - STRUCT TERPISAH UNTUK PASSWORD
 struct CustomSecureField: View {
     let title: String
     let placeholder: String
