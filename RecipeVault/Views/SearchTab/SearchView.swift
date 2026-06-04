@@ -16,8 +16,6 @@ struct SearchView: View {
     @FocusState private var isSearchFocused: Bool
     
     @State private var navResetID = UUID()
-    
-    @State private var featuredCollections: [RecipeCollection] = []
 
     let bgYellow = Color(hex: "f8fae5")
     let burntOrange = Color(hex: "cd4b12")
@@ -130,14 +128,6 @@ struct SearchView: View {
                 .background(bgYellow)
             }
             .background(bgYellow.ignoresSafeArea())
-            .onAppear {
-                Task { await viewModel.fetchPublicCollections() }
-            }
-            .onChange(of: viewModel.collections) { collections in
-                if !collections.isEmpty {
-                    featuredCollections = Array(collections.shuffled().prefix(2))
-                }
-            }
         }
         .id(navResetID)
         .onChange(of: selectedTab) { newTab in
@@ -171,13 +161,13 @@ extension SearchView {
                 VStack(spacing: 20) {
                     if viewModel.isLoadingCollections {
                         ProgressView()
-                    } else if featuredCollections.isEmpty {
+                    } else if viewModel.featuredCollections.isEmpty {
                         Text("No featured collections available.")
                             .font(.merriweather(14, weight: .regular))
                             .foregroundColor(.gray)
                             .padding(.leading, 24)
                     } else {
-                        ForEach(featuredCollections) { collection in
+                        ForEach(viewModel.featuredCollections) { collection in
                             OptimizedCollectionLink(
                                 collection: collection,
                                 creatorNames: viewModel.creatorNames
@@ -303,7 +293,7 @@ struct OptimizedCollectionLink: View {
                 author: "@\(authorName.uppercased().replacingOccurrences(of: " ", with: "_"))",
                 recipeCount: 0,
                 imageUrl: validImage,
-                isCompact: isCompact
+                badgeText: "COLLECTION"
             )
         }
         .buttonStyle(PlainButtonStyle())
