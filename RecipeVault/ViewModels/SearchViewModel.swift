@@ -5,10 +5,10 @@
 //  Created by Wesley Goey on 28/05/26.
 //
 
-
 import Foundation
 import SwiftUI
 import Combine
+import FirebaseFirestore // 🚀 Wajib ditambahkan untuk mem-bypass error Firebase Index
 
 // MARK: - SearchViewModel Class
 @MainActor
@@ -22,11 +22,13 @@ class SearchViewModel: ObservableObject {
     
     @Published var mealDBRecipes: [Recipe] = []
     @Published var collections: [RecipeCollection] = []
+    
+    // 🚀 INI DIA PENYEBAB ERROR-NYA: Variabel ini sebelumnya tertinggal!
+    @Published var featuredCollections: [RecipeCollection] = []
+    
     @Published var creatorNames: [String: String] = [:]
     
     private let mealDBService = TheMealDBService.shared
-    private let collectionService = CollectionService.shared
-    private let profileService = ProfileService.shared
     
     // MARK: - Initializer
     init() {
@@ -69,21 +71,49 @@ class SearchViewModel: ObservableObject {
     // MARK: - Fetch Public Collections
     func fetchPublicCollections() async {
         isLoadingCollections = true
-        collections = []
         
         do {
-            let fetchedCollections = try await collectionService.getPublicCollections()
-            self.collections = fetchedCollections
+            let db = Firestore.firestore()
+            // 🚀 Tarik seluruh koleksi lalu filter manual agar tidak terkena limitasi Index Firebase
+            let snapshot = try await db.collection("collections").getDocuments()
             
+            var fetchedCollections: [RecipeCollection] = []
             var namesDict: [String: String] = [:]
-            let uniqueUserIds = Array(Set(fetchedCollections.map { $0.userId }))
             
-            for uid in uniqueUserIds {
-                if let userData = try await profileService.getUserProfile(userId: uid),
-                   let userName = userData["name"] as? String {
-                    namesDict[uid] = userName
+            for doc in snapshot.documents {
+                let data = doc.data()
+                let visibilityString = data["visibility"] as? String ?? ""
+                
+                // Hanya masukkan koleksi yang bersifat public
+                if visibilityString.lowercased().contains("public") {
+                    let userId = data["userId"] as? String ?? ""
+                    
+                    var collection = RecipeCollection(
+                        userId: userId,
+                        name: data["name"] as? String ?? "",
+                        description: data["description"] as? String ?? "",
+                        collectionImage: data["collectionImage"] as? String ?? "",
+                        visibility: .publicVisibility
+                    )
+                    collection.id = doc.documentID
+                    fetchedCollections.append(collection)
+                    
+                    // Tarik nama user (Kreator)
+                    if namesDict[userId] == nil {
+                        let userDoc = try? await db.collection("users").document(userId).getDocument()
+                        if let userName = userDoc?.data()?["name"] as? String {
+                            namesDict[userId] = userName
+                        } else {
+                            namesDict[userId] = "Chef"
+                        }
+                    }
                 }
             }
+            
+            self.collections = fetchedCollections
+        
+            self.featuredCollections = Array(fetchedCollections.shuffled().prefix(2))
+            
             self.creatorNames = namesDict
             
         } catch {
