@@ -72,7 +72,6 @@ struct RecipeDetailView: View {
             }
         }
         .task {
-            // 🔴 PERBAIKAN: Cek juga apakah gambarnya kosong. Jika ya, jalankan fetchFullDetails.
             let isImageEmpty = recipe.recipeImage.trimmingCharacters(
                 in: .whitespacesAndNewlines
             ).isEmpty

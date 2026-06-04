@@ -23,10 +23,7 @@ struct ProfileFavoriteCardView: View {
     let mutedTeal = Color(hex: "43766c")
     
     var body: some View {
-        // 🚀 KUNCI PERBAIKAN: ZStack Utama untuk memisahkan area klik Kartu dan Tombol Hati
         ZStack(alignment: .topTrailing) {
-            
-            // 1. AREA KARTU (BISA DIKLIK UNTUK MASUK KE DETAIL)
             NavigationLink(destination: RecipeDetailView(recipe: recipe, viewModel: recipeVM)) {
                 VStack(alignment: .leading, spacing: 12) {
                     Group {
@@ -90,9 +87,7 @@ struct ProfileFavoriteCardView: View {
                 .contentShape(Rectangle())
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
             }
-            .buttonStyle(PlainButtonStyle()) // Mencegah teks menjadi warna biru bawaan iOS
-            
-            // 2. TOMBOL HEART (MELAYANG BEBAS DI ATAS NAVIGATION LINK)
+            .buttonStyle(PlainButtonStyle())
             Image(systemName: "heart.fill")
                 .font(.system(size: 18))
                 .foregroundColor(burntOrange)
@@ -100,17 +95,13 @@ struct ProfileFavoriteCardView: View {
                 .background(Color.white)
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
-                .padding(12) // Posisikan di pojok
-                .contentShape(Circle()) // Batasi area sentuh agar presisi
+                .padding(12)
+                .contentShape(Circle())
                 .highPriorityGesture(
                     TapGesture().onEnded {
-                        // 🚀 OPTIMISTIC UI UPDATE:
-                        // Hapus langsung dari layar secara visual agar pengguna merasa aplikasi sangat cepat!
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                             profileVM.favoriteRecipes.removeAll { $0.id == recipe.id }
                         }
-                        
-                        // Proses penghapusan asli di database Firebase berjalan di latar belakang
                         Task {
                             await recipeVM.toggleFavorite(recipe: recipe)
                         }

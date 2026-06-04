@@ -110,8 +110,6 @@ struct ProfileView: View {
     }
 
     // MARK: - Subviews & Subcomponents
-
-    // 🚀 OPTIMASI: Menggabungkan logika penguraian inisial nama agar tidak duplikat di body view
     private var profileInitialsView: some View {
         Text(
             vm.name.split(separator: " ").prefix(2)
