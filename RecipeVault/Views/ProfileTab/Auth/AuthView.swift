@@ -14,12 +14,12 @@ struct AuthView: View {
     @ObservedObject var vm: ProfileViewModel
     var initialMode: AuthMode = .login
     @Environment(\.dismiss) private var dismiss
-
+    
     @State private var mode: AuthMode = .login
-
+    
     @State private var loginEmail: String = ""
     @State private var loginPassword: String = ""
-
+    
     @State private var regName: String = ""
     @State private var regEmail: String = ""
     @State private var regPassword: String = ""
@@ -29,20 +29,22 @@ struct AuthView: View {
     init(vm: ProfileViewModel, initialMode: AuthMode = .login) {
         self.vm = vm
         self.initialMode = initialMode
+        // 🚀 PERBAIKAN: Injeksi nilai awal langsung ke dalam @State
+        self._mode = State(initialValue: initialMode)
     }
-
+    
     var body: some View {
         NavigationView {
             ZStack {
                 Color(hex: "FBF9EC").ignoresSafeArea()
-
+                
                 VStack(spacing: 0) {
                     header
                         .frame(maxWidth: 360)
                         .padding(.top, 20)
                         .padding(.horizontal, 20)
                         .padding(.bottom, 24)
-
+                    
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 16) {
                             if mode == .login {
@@ -58,7 +60,7 @@ struct AuthView: View {
                                     .multilineTextAlignment(.center)
                                     .frame(maxWidth: 360)
                             }
-
+                            
                             Button(action: { Task { await submit() } }) {
                                 HStack {
                                     if authVM.isLoading {
@@ -79,7 +81,7 @@ struct AuthView: View {
                             }
                             .disabled(authVM.isLoading || !isFormValid())
                             .padding(.top, 10)
-
+                            
                             HStack {
                                 Button(action: { dismiss() }) {
                                     Text("Cancel")
@@ -108,7 +110,8 @@ struct AuthView: View {
                 .frame(maxWidth: .infinity)
             }
             .onAppear {
-                mode = initialMode
+                // 🚀 PERBAIKAN: Hapus baris 'mode = initialMode' karena sudah ditangani di init
+                
                 if !vm.email.trimmingCharacters(in: .whitespaces).isEmpty {
                     loginEmail = vm.email
                     regEmail = vm.email
@@ -118,7 +121,7 @@ struct AuthView: View {
             .disabled(authVM.isLoading)
         }
     }
-
+    
     // MARK: - Circle Header
     private var header: some View {
         HStack(spacing: 12) {
@@ -133,7 +136,7 @@ struct AuthView: View {
                     .frame(width: 34, height: 34)
                     .foregroundColor(.white)
             }
-
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(mode == .login ? "Welcome back" : "Create your account")
                     .font(.merriweather(20, weight: .bold))
@@ -146,7 +149,7 @@ struct AuthView: View {
             Spacer()
         }
     }
-
+    
     // MARK: - Login form
     private var loginForm: some View {
         VStack(spacing: 14) {
@@ -154,7 +157,7 @@ struct AuthView: View {
             CustomSecureField(title: "Password", placeholder: "Password", text: $loginPassword)
         }
     }
-
+    
     //MARK: - Register form
     private var registerForm: some View {
         VStack(spacing: 14) {
@@ -164,7 +167,7 @@ struct AuthView: View {
             CustomSecureField(title: "Confirm Password", placeholder: "Confirm password", text: $regConfirmPassword)
         }
     }
-
+    
     // MARK: - Actions & validation
     private func isFormValid() -> Bool {
         if mode == .login {
@@ -172,16 +175,16 @@ struct AuthView: View {
         } else {
             // 🚀 PERBAIKAN: Tombol aktif selama semua field diisi teks, agar validasi pesan error di dalam submit() bisa berjalan saat ditekan.
             return !regName.trimmingCharacters(in: .whitespaces).isEmpty &&
-                   !regEmail.trimmingCharacters(in: .whitespaces).isEmpty &&
-                   !regPassword.isEmpty &&
-                   !regConfirmPassword.isEmpty
+            !regEmail.trimmingCharacters(in: .whitespaces).isEmpty &&
+            !regPassword.isEmpty &&
+            !regConfirmPassword.isEmpty
         }
     }
     
     // MARK: - Submit login or registration
     private func submit() async {
         authVM.errorMessage = ""
-
+        
         if mode == .login {
             guard !loginEmail.trimmingCharacters(in: .whitespaces).isEmpty, !loginPassword.isEmpty else {
                 authVM.errorMessage = "Email and password needed."
@@ -206,7 +209,7 @@ struct AuthView: View {
             guard emailTrim.contains("@") else { authVM.errorMessage = "Invalid email."; return }
             guard regPassword.count >= 8 else { authVM.errorMessage = "Password minimun 8 characters"; return }
             guard regPassword == regConfirmPassword else { authVM.errorMessage = "New and old password did not match."; return }
-
+            
             authVM.name = nameTrim
             authVM.email = emailTrim
             authVM.password = regPassword
@@ -227,13 +230,13 @@ struct CustomTextField: View {
     @Binding var text: String
     var keyboard: UIKeyboardType = .default
     var isWords: Bool = false
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.merriweather(12, weight: .bold))
                 .foregroundColor(.gray)
-
+            
             TextField(placeholder, text: $text)
                 .keyboardType(keyboard)
                 .padding(14)
@@ -252,13 +255,13 @@ struct CustomSecureField: View {
     let title: String
     let placeholder: String
     @Binding var text: String
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.merriweather(12, weight: .bold))
                 .foregroundColor(.gray)
-
+            
             SecureField(placeholder, text: $text)
                 .padding(14)
                 .font(.merriweather(16, weight: .regular))
