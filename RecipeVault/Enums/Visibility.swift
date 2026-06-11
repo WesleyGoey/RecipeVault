@@ -14,3 +14,4 @@ enum Visibility: String, Codable {
     case publicVisibility = "PUBLIC"
     case privateVisibility = "PRIVATE"
 }
+
