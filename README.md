@@ -16,6 +16,7 @@ Recipe Vault is a native iOS application designed for personalized meal manageme
 | 🎓 Institution | Universitas Ciputra Surabaya |
 | 🚀 Academic Timeline | Semester 4 - Final Project for Software Engineering |
 | 📅 Development Period | April 2026 - June 2026 |
+| 👥 Team Size | 4 Developers |
 | 💻 Platform | Native iOS (Swift) |
 
 ---
